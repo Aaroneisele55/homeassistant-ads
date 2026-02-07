@@ -29,6 +29,11 @@
   "options": {
     "step": {
       "init": {
+        "title": "ADS Options",
+        "description": "Choose an action to manage your ADS entities.",
+        "data": {
+          "action": "Action"
+        },
         "menu_options": {
           "add_entity": "Add Entity",
           "list_entities": "List Entities"
