@@ -23,9 +23,8 @@ from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
 
-# Lock for thread-safe service registration
-_SERVICES_REGISTERED = False
-_SERVICES_LOCK = asyncio.Lock()
+# Helper constant for entity configuration
+CONF_ENTITY_TYPE = "entity_type"
 
 # Config schema for YAML configuration
 CONFIG_SCHEMA = vol.Schema(
@@ -152,13 +151,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         platforms_to_setup = {}
         for entity_config in entities:
             entity_type = entity_config.get(CONF_ENTITY_TYPE)
-            if entity_type:
+            if entity_type is not None and entity_type != "":
                 if entity_type not in platforms_to_setup:
                     platforms_to_setup[entity_type] = []
                 platforms_to_setup[entity_type].append(entity_config)
         
         # Set up each platform
-        for platform, platform_entities in platforms_to_setup.items():
+        for platform in platforms_to_setup:
             await hass.config_entries.async_forward_entry_setup(entry, platform)
     
     # Register update listener for options changes
@@ -181,12 +180,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Unload platforms first
     entities = entry.options.get("entities", [])
     if entities:
-        platforms_to_unload = set(e.get(CONF_ENTITY_TYPE) for e in entities if e.get(CONF_ENTITY_TYPE))
-        unload_ok = await asyncio.gather(
+        platforms_to_unload = {
+            e.get(CONF_ENTITY_TYPE) for e in entities 
+            if e.get(CONF_ENTITY_TYPE) is not None
+        }
+        unload_results = await asyncio.gather(
             *[hass.config_entries.async_forward_entry_unload(entry, platform) 
               for platform in platforms_to_unload]
         )
-        if not all(unload_ok):
+        if not all(unload_results):
             return False
     
     # Get the hub before we remove it
@@ -205,10 +207,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
     """Register ADS services (thread-safe)."""
-    global _SERVICES_REGISTERED
+    # Store registration state in hass.data instead of global variable
+    if "_services_registered" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["_services_lock"] = asyncio.Lock()
+        hass.data[DOMAIN]["_services_registered"] = False
     
-    async with _SERVICES_LOCK:
-        if _SERVICES_REGISTERED:
+    async with hass.data[DOMAIN]["_services_lock"]:
+        if hass.data[DOMAIN]["_services_registered"]:
             return
         
         async def handle_write_data_by_name(call: ServiceCall) -> None:
@@ -229,5 +234,5 @@ async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
             schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
         )
         
-        _SERVICES_REGISTERED = True
+        hass.data[DOMAIN]["_services_registered"] = True
 

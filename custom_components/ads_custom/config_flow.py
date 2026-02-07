@@ -152,16 +152,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_configure_binary_sensor()
             elif entity_type == "light":
                 return await self.async_step_configure_light()
-            # Add more entity types as needed
+            # Cover, valve, and select not yet implemented via UI
             else:
                 return self.async_abort(reason="entity_type_not_supported")
 
+        # Only show implemented entity types
+        available_types = ["binary_sensor", "sensor", "switch", "light"]
+        
         return self.async_show_form(
             step_id="add_entity",
             data_schema=vol.Schema({
                 vol.Required(CONF_ENTITY_TYPE): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=ENTITY_TYPES,
+                        options=available_types,
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
@@ -300,7 +303,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_NAME): cv.string,
                 vol.Optional("adsvar_brightness"): cv.string,
                 vol.Optional("adsvar_brightness_scale", default=255): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=255)
+                    vol.Coerce(int), vol.Range(min=1, max=65535)
                 ),
                 vol.Optional(CONF_UNIQUE_ID): cv.string,
             }),
