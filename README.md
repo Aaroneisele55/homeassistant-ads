@@ -4,11 +4,11 @@
 
 This is a custom Home Assistant integration for Beckhoff's ADS (Automation Device Specification) protocol, which allows communication with TwinCAT PLCs and other Beckhoff automation devices.
 
-**Note:** This is a custom integration with a different domain (`ads_custom`) to prevent conflicts with Home Assistant's core ADS integration. Use this version if you need UI-based configuration or additional features.
+**Note:** This is a custom integration with a different domain (`ads_custom`) to prevent conflicts with Home Assistant's core ADS integration. This version uses YAML configuration with unique_id support.
 
 ## Features
 
-- **Fully UI-based configuration** (no YAML required!)
+- **YAML-based configuration** for all entities
 - Connect to ADS/AMS devices over the network
 - Support for multiple entity types:
   - Binary Sensors
@@ -18,12 +18,10 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
   - Sensors
   - Switches
   - Valves
-- Add, edit, and remove entities through the UI
 - Write data to ADS variables via service calls
 - Real-time push notifications from PLC to Home Assistant
 - Support for all common PLC data types
 - Unique ID support for all entity types
-- Backward compatible with YAML configuration
 
 ## Installation
 
@@ -44,44 +42,20 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 
 ## Configuration
 
-### Step 1: Set up the ADS Connection (UI)
+### Step 1: Set up the ADS Connection
 
-1. Go to Settings → Devices & Services
-2. Click "+ ADD INTEGRATION"
-3. Search for "ADS Custom"
-4. Enter your ADS device information:
-   - **AMS Net ID**: The AMS Net ID of your ADS device (e.g., `192.168.1.100.1.1`)
-   - **IP Address**: (Optional) The IP address of your ADS device
-   - **AMS Port**: The AMS port number (default: `48898`)
+Add the ADS connection to your `configuration.yaml`:
 
-### Step 2: Add Entities (UI)
+```yaml
+ads_custom:
+  device: '192.168.1.100.1.1'  # AMS Net ID of your ADS device
+  ip_address: '192.168.1.100'  # (Optional) IP address of your ADS device
+  port: 48898                  # (Optional) AMS port number (default: 48898)
+```
 
-After setting up the ADS connection, you can add entities directly through the UI:
+### Step 2: Add Entities via YAML
 
-1. Go to Settings → Devices & Services
-2. Find your ADS Custom integration
-3. Click "Configure" (or the gear icon)
-4. Select "Add a new entity"
-5. Choose the entity type (Light, Switch, Sensor, etc.)
-6. Fill in the entity configuration:
-   - **Name**: Friendly name for the entity
-   - **ADS Variable**: The PLC variable name (e.g., `GVL.light_enable`)
-   - Type-specific options (brightness variables for lights, data types for sensors, etc.)
-7. Click "Submit"
-
-Your entity will be created immediately and appear in Home Assistant!
-
-### Managing Entities
-
-To edit or remove entities:
-1. Click "Configure" on your ADS Custom integration
-2. Select "Manage existing entities"
-3. Choose the entity you want to modify
-4. Select "Edit entity" or "Remove entity"
-
-### YAML Configuration (Legacy/Optional)
-
-For backward compatibility, you can still configure entities via YAML. After setting up the ADS connection via UI in Step 1, you can add entities in your `configuration.yaml`:
+Configure your ADS entities in your `configuration.yaml` or in separate platform configuration files.
 
 ### Example Sensor Configuration
 
@@ -139,6 +113,59 @@ light:
     adsvar_brightness_scale: 100
     name: Beckhoff Light BYTE
     unique_id: ads_beckhoff_light_byte
+```
+
+### Example Binary Sensor Configuration
+
+```yaml
+binary_sensor:
+  - platform: ads_custom
+    adsvar: GVL.door_open
+    name: Front Door
+    device_class: door
+    unique_id: ads_front_door
+```
+
+### Example Cover Configuration
+
+```yaml
+cover:
+  - platform: ads_custom
+    adsvar: GVL.cover_closed
+    name: Living Room Blinds
+    adsvar_position: GVL.cover_position
+    adsvar_set_position: GVL.cover_set_position
+    adsvar_open: GVL.cover_open
+    adsvar_close: GVL.cover_close
+    adsvar_stop: GVL.cover_stop
+    device_class: blind
+    unique_id: ads_living_room_blinds
+```
+
+### Example Valve Configuration
+
+```yaml
+valve:
+  - platform: ads_custom
+    adsvar: GVL.valve_open
+    name: Water Valve
+    device_class: water
+    unique_id: ads_water_valve
+```
+
+### Example Select Configuration
+
+```yaml
+select:
+  - platform: ads_custom
+    adsvar: GVL.mode_select
+    name: System Mode
+    options:
+      - "Off"
+      - "Auto"
+      - "Manual"
+      - "Service"
+    unique_id: ads_system_mode
 ```
 
 ## Services
@@ -202,18 +229,6 @@ The integration supports the following ADS/PLC data types:
 
 ## Troubleshooting
 
-### I can't see the Configure button
-
-Make sure you've added the ADS Custom integration first. The Configure button appears on the integration card in Settings → Devices & Services.
-
-### My entities don't appear after adding them
-
-Try restarting Home Assistant or reloading the integration. The entities should appear immediately, but a reload may be needed in some cases.
-
-### YAML entities don't work
-
-If you're using YAML configuration, make sure you've set up the ADS connection through the UI first (Step 1). YAML entities require the connection to be established via the UI config entry.
-
 ### Cannot Connect
 
 - Verify the AMS Net ID is correct
@@ -226,6 +241,13 @@ If you're using YAML configuration, make sure you've set up the ADS connection t
 - Check network stability
 - Verify PLC is not overloaded
 - Check TwinCAT system status
+
+### Entities don't appear
+
+- Check your YAML configuration for syntax errors
+- Verify the ADS variable names are correct
+- Check the Home Assistant logs for error messages
+- Restart Home Assistant after making YAML changes
 
 ## Contributing
 

@@ -13,25 +13,29 @@ from homeassistant.const import (
     CONF_IP_ADDRESS,
     CONF_PORT,
     EVENT_HOMEASSISTANT_STOP,
-    Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [
-    Platform.BINARY_SENSOR,
-    Platform.COVER,
-    Platform.LIGHT,
-    Platform.SELECT,
-    Platform.SENSOR,
-    Platform.SWITCH,
-    Platform.VALVE,
-]
+# Config schema for YAML configuration
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_DEVICE): vol.Coerce(str),
+                vol.Optional(CONF_IP_ADDRESS): vol.Coerce(str),
+                vol.Optional(CONF_PORT, default=48898): vol.Coerce(int),
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 ADS_TYPEMAP = {
     AdsType.BOOL: pyads.PLCTYPE_BOOL,
@@ -69,11 +73,66 @@ SCHEMA_SERVICE_WRITE_DATA_BY_NAME = vol.Schema(
 )
 
 
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the ADS component from YAML configuration."""
+    if DOMAIN not in config:
+        return True
+
+    conf = config[DOMAIN]
+    net_id = conf[CONF_DEVICE]
+    ip_address = conf.get(CONF_IP_ADDRESS)
+    port = conf.get(CONF_PORT, 48898)
+
+    client = pyads.Connection(net_id, port, ip_address)
+
+    try:
+        ads = AdsHub(client)
+    except pyads.ADSError as err:
+        _LOGGER.error(
+            "Could not connect to ADS host (netid=%s, ip=%s, port=%s): %s",
+            net_id,
+            ip_address,
+            port,
+            err,
+        )
+        return False
+
+    # Store the ADS hub with a default key for YAML configuration
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["yaml_connection"] = ads
+
+    async def async_shutdown_handler(event):
+        """Shutdown ADS connection."""
+        ads.shutdown()
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_shutdown_handler)
+
+    async def handle_write_data_by_name(call: ServiceCall) -> None:
+        """Write a value to the connected ADS device."""
+        ads_var: str = call.data[CONF_ADS_VAR]
+        ads_type: AdsType = call.data[CONF_ADS_TYPE]
+        value: int = call.data[CONF_ADS_VALUE]
+
+        try:
+            ads.write_by_name(ads_var, value, ADS_TYPEMAP[ads_type])
+        except pyads.ADSError as err:
+            _LOGGER.error(err)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_WRITE_DATA_BY_NAME,
+        handle_write_data_by_name,
+        schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
+    )
+
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ADS from a config entry."""
     net_id = entry.data[CONF_DEVICE]
     ip_address = entry.data.get(CONF_IP_ADDRESS)
-    port = entry.data.get(CONF_PORT, 48898)  # Default port if not in config
+    port = entry.data.get(CONF_PORT, 48898)
 
     client = pyads.Connection(net_id, port, ip_address)
 
@@ -101,12 +160,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown_handler)
     )
 
-    # Forward to platforms for both YAML and UI configured entities
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Register update listener for options changes
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
     async def handle_write_data_by_name(call: ServiceCall) -> None:
         """Write a value to the connected ADS device."""
         ads_var: str = call.data[CONF_ADS_VAR]
@@ -128,16 +181,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        ads: AdsHub = hass.data[DOMAIN].pop(entry.entry_id)
-        ads.shutdown()
-
-    return unload_ok
+    ads: AdsHub = hass.data[DOMAIN].pop(entry.entry_id)
+    ads.shutdown()
+    return True
 

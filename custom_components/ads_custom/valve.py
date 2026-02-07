@@ -38,34 +38,6 @@ PLATFORM_SCHEMA = VALVE_PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up ADS valves from a config entry."""
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get entities configured via UI
-    entities_config = entry.options.get("entities", {})
-    entities = []
-    
-    for entity_id, config in entities_config.items():
-        if config.get("type") == "valve":
-            ads_var = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, DEFAULT_NAME)
-            if not ads_var:
-                _LOGGER.warning("Skipping valve %s: missing adsvar", entity_id)
-                continue
-            device_class = config.get(CONF_DEVICE_CLASS)
-            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
-            
-            entities.append(AdsValve(ads_hub, ads_var, name, device_class, unique_id))
-    
-    if entities:
-        async_add_entities(entities)
-
-
 def setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -80,7 +52,11 @@ def setup_platform(
         break
 
     if ads_hub is None:
-        return
+        # Fallback to YAML connection if no config entry hub found
+        ads_hub = hass.data.get(DOMAIN, {}).get("yaml_connection")
+        if ads_hub is None:
+            _LOGGER.error("No ADS connection configured. Please set up the ADS integration first.")
+            return
 
     ads_var: str = config.get(CONF_ADS_VAR)
     if not ads_var:
