@@ -249,8 +249,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 platforms_to_setup[entity_type].append(entity_config)
         
         # Set up each platform
-        for platform in platforms_to_setup:
-            await hass.config_entries.async_forward_entry_setup(entry, platform)
+        if platforms_to_setup:
+            await hass.config_entries.async_forward_entry_setups(entry, platforms_to_setup.keys())
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -276,12 +276,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             e.get(CONF_ENTITY_TYPE) for e in entities 
             if e.get(CONF_ENTITY_TYPE) is not None
         }
-        unload_results = await asyncio.gather(
-            *[hass.config_entries.async_forward_entry_unload(entry, platform) 
-              for platform in platforms_to_unload]
-        )
-        if not all(unload_results):
-            return False
+        if platforms_to_unload:
+            unload_ok = await hass.config_entries.async_forward_entry_unloads(
+                entry, platforms_to_unload
+            )
+            if not unload_ok:
+                return False
     
     # Get the hub before we remove it
     ads_hub = hass.data[DOMAIN].get(entry.entry_id)
