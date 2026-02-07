@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import pyads
@@ -21,6 +22,10 @@ from .const import CONF_ADS_VAR, DOMAIN, AdsType
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
+
+# Lock for thread-safe service registration
+_SERVICES_REGISTERED = False
+_SERVICES_LOCK = asyncio.Lock()
 
 # Config schema for YAML configuration
 CONFIG_SCHEMA = vol.Schema(
@@ -74,8 +79,9 @@ SCHEMA_SERVICE_WRITE_DATA_BY_NAME = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ADS component from YAML configuration."""
-    # Initialize data storage
-    hass.data.setdefault(DOMAIN, {})
+    # Initialize data storage once
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
     
     if DOMAIN not in config:
         # No YAML configuration, but config entries may exist
@@ -83,37 +89,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return True
 
     conf = config[DOMAIN]
-    net_id = conf[CONF_DEVICE]
-    ip_address = conf.get(CONF_IP_ADDRESS)
-    port = conf.get(CONF_PORT, 48898)
-
-    client = pyads.Connection(net_id, port, ip_address)
-
-    try:
-        ads = AdsHub(client)
-    except pyads.ADSError as err:
-        _LOGGER.error(
-            "Could not connect to ADS host (netid=%s, ip=%s, port=%s): %s",
-            net_id,
-            ip_address,
-            port,
-            err,
-        )
-        return False
-
-    # Store the ADS hub for platform access
-    hass.data[DOMAIN]["connection"] = ads
-
-    async def async_shutdown_handler(event):
-        """Shutdown ADS connection."""
-        ads.shutdown()
-
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_shutdown_handler)
-
-    # Register services
-    await _async_register_services(hass, ads)
-
-    return True
+    return await _async_setup_connection(hass, conf, "connection")
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
