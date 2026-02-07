@@ -18,7 +18,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -77,18 +77,24 @@ class AdsValve(AdsEntity, ValveEntity):
         super().__init__(ads_hub, name, ads_var, unique_id)
         self._attr_device_class = device_class
         self._attr_reports_position = False
-        self._attr_is_closed = True
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
+    @property
+    def is_closed(self) -> bool | None:
+        """Return if the valve is closed."""
+        # True from PLC means open, so is_closed is the inverse
+        state = self._state_dict.get(STATE_KEY_STATE)
+        if state is None:
+            return None
+        return not state
+
     def open_valve(self, **kwargs) -> None:
         """Open the valve."""
         self._ads_hub.write_by_name(self._ads_var, True, pyads.PLCTYPE_BOOL)
-        self._attr_is_closed = False
 
     def close_valve(self, **kwargs) -> None:
         """Close the valve."""
         self._ads_hub.write_by_name(self._ads_var, False, pyads.PLCTYPE_BOOL)
-        self._attr_is_closed = True

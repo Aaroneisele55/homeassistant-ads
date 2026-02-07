@@ -177,14 +177,14 @@ class AdsCover(AdsEntity, CoverEntity):
         if self._ads_var_open is not None:
             self._ads_hub.write_by_name(self._ads_var_open, True, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(position=100)
+            self.set_cover_position(**{ATTR_POSITION: 100})
 
     def close_cover(self, **kwargs: Any) -> None:
         """Move the cover down."""
         if self._ads_var_close is not None:
             self._ads_hub.write_by_name(self._ads_var_close, True, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(position=0)
+            self.set_cover_position(**{ATTR_POSITION: 0})
 
     @property
     def available(self) -> bool:
