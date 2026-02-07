@@ -130,9 +130,26 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
-        return self.async_show_menu(
+        if user_input is not None:
+            action = user_input.get("action")
+            if action == "add_entity":
+                return await self.async_step_add_entity()
+            elif action == "list_entities":
+                return await self.async_step_list_entities()
+
+        return self.async_show_form(
             step_id="init",
-            menu_options=["add_entity", "list_entities"],
+            data_schema=vol.Schema({
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "add_entity", "label": "Add Entity"},
+                            {"value": "list_entities", "label": "List Entities"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
         )
 
     async def async_step_add_entity(
