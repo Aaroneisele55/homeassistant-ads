@@ -98,6 +98,8 @@ light:
 
 All configuration must be done in your `configuration.yaml` file. There is no UI configuration available.
 
+📖 **For detailed information on all configuration parameters, see [ENTITY_PARAMETERS.md](ENTITY_PARAMETERS.md)**
+
 **Step 1: Configure the ADS Connection**
 
 Add the ADS connection to your `configuration.yaml`:
