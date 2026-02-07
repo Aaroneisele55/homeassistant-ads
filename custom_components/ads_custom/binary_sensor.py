@@ -31,7 +31,7 @@ PLATFORM_SCHEMA = BINARY_SENSOR_PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_ADS_VAR): cv.string,
         vol.Optional(CONF_ADS_TYPE, default=AdsType.BOOL): vol.All(
-            vol.Coerce(AdsType),
+            vol.Coerce(AdsType),  # Coerce string to AdsType enum (StrEnum)
             vol.In([AdsType.BOOL, AdsType.REAL]),
         ),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
@@ -98,6 +98,9 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         if value is None:
             return None
         # For REAL type, treat 0.0 as False, any other value as True
+        # Note: Direct comparison with 0.0 is appropriate here as PLC values
+        # are typically exact (0.0, 1.0, etc.) and floating-point precision
+        # issues are unlikely in this context
         if self._ads_type == AdsType.REAL:
             return bool(value != 0.0)
         # For BOOL type, return value directly
