@@ -97,10 +97,10 @@ class AdsLight(AdsEntity, LightEntity):
 
         if self._ads_var_brightness is not None:
             # Calculate the scaling factor to convert PLC value to HA brightness (0-255)
-            # The factor is used as a divisor in entity.py: value / factor
-            # To scale 0-100 to 0-255: we need to multiply by 255/100
-            # So factor should be: 100/255 = 0.392 (so value / 0.392 gives us the scaled value)
-            # Or better: factor = brightness_scale / 255
+            # When reading from PLC, the factor is passed to async_initialize_device which
+            # divides the PLC value by the factor to get the HA value (see entity.py).
+            # For a 0-100 range: factor = 100/255, so value/factor scales 100 to 255.
+            # For the default 255 range, factor is None to avoid unnecessary division by 1.
             brightness_factor = self._brightness_scale / 255 if self._brightness_scale != 255 else None
             await self.async_initialize_device(
                 self._ads_var_brightness,
