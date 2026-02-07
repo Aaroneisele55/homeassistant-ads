@@ -70,6 +70,38 @@ def setup_platform(
     add_entities([ads_sensor])
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS binary sensor entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get binary_sensor entities from config entry options
+    entities = entry.options.get("entities", [])
+    binary_sensors = [e for e in entities if e.get("entity_type") == "binary_sensor"]
+    
+    if not binary_sensors:
+        return
+    
+    binary_sensor_entities = []
+    for sensor_config in binary_sensors:
+        name = sensor_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = sensor_config.get(CONF_ADS_VAR)
+        ads_type = AdsType(sensor_config.get(CONF_ADS_TYPE, AdsType.BOOL))
+        device_class = sensor_config.get(CONF_DEVICE_CLASS)
+        unique_id = sensor_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var:
+            binary_sensor_entities.append(
+                AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id)
+            )
+    
+    if binary_sensor_entities:
+        async_add_entities(binary_sensor_entities)
+
+
 class AdsBinarySensor(AdsEntity, BinarySensorEntity):
     """Representation of ADS binary sensors."""
 

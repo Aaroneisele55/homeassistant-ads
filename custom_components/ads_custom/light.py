@@ -80,6 +80,39 @@ def setup_platform(
     )
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS light entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get light entities from config entry options
+    entities = entry.options.get("entities", [])
+    lights = [e for e in entities if e.get("entity_type") == "light"]
+    
+    if not lights:
+        return
+    
+    light_entities = []
+    for light_config in lights:
+        name = light_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = light_config.get(CONF_ADS_VAR)
+        ads_var_brightness = light_config.get(CONF_ADS_VAR_BRIGHTNESS)
+        brightness_scale = light_config.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
+        brightness_type = light_config.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
+        unique_id = light_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var:
+            light_entities.append(
+                AdsLight(ads_hub, ads_var, ads_var_brightness, brightness_scale, brightness_type, name, unique_id)
+            )
+    
+    if light_entities:
+        async_add_entities(light_entities)
+
+
 class AdsLight(AdsEntity, LightEntity):
     """Representation of ADS light."""
 

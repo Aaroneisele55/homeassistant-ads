@@ -110,6 +110,51 @@ def setup_platform(
     add_entities([entity])
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS sensor entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get sensor entities from config entry options
+    entities = entry.options.get("entities", [])
+    sensors = [e for e in entities if e.get("entity_type") == "sensor"]
+    
+    if not sensors:
+        return
+    
+    sensor_entities = []
+    for sensor_config in sensors:
+        name = sensor_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = sensor_config.get(CONF_ADS_VAR)
+        ads_type = AdsType(sensor_config.get(CONF_ADS_TYPE, AdsType.INT))
+        factor = sensor_config.get(CONF_ADS_FACTOR)
+        device_class = sensor_config.get(CONF_DEVICE_CLASS)
+        state_class = sensor_config.get(CONF_STATE_CLASS)
+        unit_of_measurement = sensor_config.get(CONF_UNIT_OF_MEASUREMENT)
+        unique_id = sensor_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var:
+            sensor_entities.append(
+                AdsSensor(
+                    ads_hub,
+                    name,
+                    ads_var,
+                    ads_type,
+                    factor,
+                    device_class,
+                    state_class,
+                    unit_of_measurement,
+                    unique_id,
+                )
+            )
+    
+    if sensor_entities:
+        async_add_entities(sensor_entities)
+
+
 class AdsSensor(AdsEntity, SensorEntity):
     """Representation of an ADS sensor entity."""
 
