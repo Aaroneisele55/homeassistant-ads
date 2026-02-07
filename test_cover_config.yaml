@@ -1,0 +1,56 @@
+# Test configuration for the new cover functionality
+# This file demonstrates the new UINT position support and optional adsvar
+
+ads_custom:
+  device: '192.168.1.100.1.1'
+  ip_address: '192.168.1.100'
+  port: 48898
+
+cover:
+  # Test Case 1: Traditional cover with all features (BYTE position)
+  - platform: ads_custom
+    adsvar: GVL.cover1_closed
+    name: Test Cover 1 - Traditional BYTE
+    adsvar_position: GVL.cover1_position
+    adsvar_set_position: GVL.cover1_set_position
+    adsvar_open: GVL.cover1_open
+    adsvar_close: GVL.cover1_close
+    adsvar_stop: GVL.cover1_stop
+    device_class: blind
+    unique_id: test_cover_1
+
+  # Test Case 2: Cover with UINT position and open/close commands only (no adsvar)
+  # This is the user's requested use case
+  - platform: ads_custom
+    name: Test Cover 2 - UINT Position Only
+    adsvar_position: GVL.cover2_position
+    adsvar_position_type: uint
+    adsvar_open: GVL.cover2_open
+    adsvar_close: GVL.cover2_close
+    device_class: garage
+    unique_id: test_cover_2
+
+  # Test Case 3: Cover with UINT position and set_position (no open/close commands)
+  - platform: ads_custom
+    name: Test Cover 3 - UINT with Set Position
+    adsvar_position: GVL.cover3_position
+    adsvar_position_type: uint
+    adsvar_set_position: GVL.cover3_set_position
+    device_class: shutter
+    unique_id: test_cover_3
+
+  # Test Case 4: Minimal cover with just closed state and open/close
+  - platform: ads_custom
+    adsvar: GVL.cover4_closed
+    name: Test Cover 4 - Minimal
+    adsvar_open: GVL.cover4_open
+    adsvar_close: GVL.cover4_close
+    unique_id: test_cover_4
+
+  # Test Case 5: Cover with BYTE position (default type, backwards compatible)
+  - platform: ads_custom
+    name: Test Cover 5 - BYTE Default
+    adsvar_position: GVL.cover5_position
+    adsvar_open: GVL.cover5_open
+    adsvar_close: GVL.cover5_close
+    unique_id: test_cover_5

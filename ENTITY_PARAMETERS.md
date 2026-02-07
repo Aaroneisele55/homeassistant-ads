@@ -141,7 +141,10 @@ The following features are automatically enabled based on configuration:
 ### Read/Write Behavior
 
 - **Read-only (status feedback)**: `adsvar`, `adsvar_position` - These variables are only read to get the current state
-- **Write-only (commands)**: `adsvar_open`, `adsvar_close`, `adsvar_stop` - Home Assistant writes TRUE to these to trigger actions
+- **Write-only (commands)**: `adsvar_open`, `adsvar_close`, `adsvar_stop` - Home Assistant writes TRUE/FALSE to these to trigger actions
+  - When opening: writes `adsvar_open = TRUE` and `adsvar_close = FALSE`
+  - When closing: writes `adsvar_close = TRUE` and `adsvar_open = FALSE`
+  - This ensures only one command is active at a time
 - **Read/Write**: `adsvar_set_position` - Can be both read and written (if the PLC supports reading back the target position)
 
 ---

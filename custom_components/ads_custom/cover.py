@@ -205,6 +205,9 @@ class AdsCover(AdsEntity, CoverEntity):
         """Move the cover up."""
         if self._ads_var_open is not None:
             self._ads_hub.write_by_name(self._ads_var_open, True, pyads.PLCTYPE_BOOL)
+            # Write FALSE to close command to ensure only one command is active
+            if self._ads_var_close is not None:
+                self._ads_hub.write_by_name(self._ads_var_close, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
             self.set_cover_position(**{ATTR_POSITION: 100})
 
@@ -212,6 +215,9 @@ class AdsCover(AdsEntity, CoverEntity):
         """Move the cover down."""
         if self._ads_var_close is not None:
             self._ads_hub.write_by_name(self._ads_var_close, True, pyads.PLCTYPE_BOOL)
+            # Write FALSE to open command to ensure only one command is active
+            if self._ads_var_open is not None:
+                self._ads_hub.write_by_name(self._ads_var_open, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
             self.set_cover_position(**{ATTR_POSITION: 0})
 
