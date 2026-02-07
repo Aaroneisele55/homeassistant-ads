@@ -60,18 +60,14 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the cover platform for ADS."""
-    # Get the first (and typically only) ADS hub from config entries
-    ads_hub = None
-    for entry_id in hass.data.get(DOMAIN, {}):
-        ads_hub = hass.data[DOMAIN][entry_id]
-        break
-
+    ads_hub = hass.data.get(DOMAIN, {}).get("connection")
+    
     if ads_hub is None:
-        # Fallback to YAML connection if no config entry hub found
-        ads_hub = hass.data.get(DOMAIN, {}).get("yaml_connection")
-        if ads_hub is None:
-            _LOGGER.error("No ADS connection configured. Please set up the ADS integration first.")
-            return
+        _LOGGER.error(
+            "No ADS connection configured. Please add 'ads_custom:' "
+            "section to your configuration.yaml"
+        )
+        return
 
     ads_var_is_closed: str = config.get(CONF_ADS_VAR)
     if not ads_var_is_closed:

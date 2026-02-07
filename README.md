@@ -4,11 +4,11 @@
 
 This is a custom Home Assistant integration for Beckhoff's ADS (Automation Device Specification) protocol, which allows communication with TwinCAT PLCs and other Beckhoff automation devices.
 
-**Note:** This is a custom integration with a different domain (`ads_custom`) to prevent conflicts with Home Assistant's core ADS integration. This version uses YAML configuration with unique_id support.
+**Note:** This is a custom integration with a different domain (`ads_custom`) to prevent conflicts with Home Assistant's core ADS integration. This version is **completely YAML-based** for maximum transparency and version control.
 
 ## Features
 
-- **YAML-based configuration** for all entities
+- **100% YAML-based configuration** - No UI, pure configuration.yaml
 - Connect to ADS/AMS devices over the network
 - Support for multiple entity types:
   - Binary Sensors
@@ -22,6 +22,7 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 - Real-time push notifications from PLC to Home Assistant
 - Support for all common PLC data types
 - Unique ID support for all entity types
+- Perfect for version control and automation
 
 ## Installation
 
@@ -42,18 +43,22 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 
 ## Configuration
 
-### Step 1: Set up the ADS Connection
+### Complete YAML Configuration
+
+All configuration must be done in your `configuration.yaml` file. There is no UI configuration available.
+
+**Step 1: Configure the ADS Connection**
 
 Add the ADS connection to your `configuration.yaml`:
 
 ```yaml
 ads_custom:
-  device: '192.168.1.100.1.1'  # AMS Net ID of your ADS device
-  ip_address: '192.168.1.100'  # (Optional) IP address of your ADS device
-  port: 48898                  # (Optional) AMS port number (default: 48898)
+  device: '192.168.1.100.1.1'  # AMS Net ID of your ADS device (required)
+  ip_address: '192.168.1.100'  # IP address of your ADS device (optional)
+  port: 48898                  # AMS port number (optional, default: 48898)
 ```
 
-### Step 2: Add Entities via YAML
+**Step 2: Add Entities**
 
 Configure your ADS entities in your `configuration.yaml` or in separate platform configuration files.
 

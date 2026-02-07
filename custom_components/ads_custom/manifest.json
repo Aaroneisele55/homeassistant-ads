@@ -2,11 +2,11 @@
   "domain": "ads_custom",
   "name": "ADS Custom",
   "codeowners": ["@mrpasztoradam"],
-  "config_flow": true,
+  "config_flow": false,
   "documentation": "https://github.com/Aaroneisele55/homeassistant-ads",
   "iot_class": "local_push",
   "loggers": ["pyads"],
   "quality_scale": "legacy",
   "requirements": ["pyads==3.4.0"],
-  "version": "1.0.0"
+  "version": "2.0.0"
 }

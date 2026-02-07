@@ -1,37 +1,45 @@
-# Restructuring Summary: YAML-Based Configuration
+# Restructuring Summary: 100% YAML-Based Configuration
 
 ## Overview
-This document summarizes the changes made to restructure the ADS Custom integration to be completely YAML-based, while maintaining unique_id support and core functionality.
+This document summarizes the changes made to restructure the ADS Custom integration to be **completely YAML-based with NO UI**, while maintaining unique_id support and core functionality.
 
 ## Key Changes
 
 ### 1. Integration Setup (`__init__.py`)
-- **Added `async_setup()` function** to support YAML-based configuration from `configuration.yaml`
-- **Added `CONFIG_SCHEMA`** to validate YAML configuration
-- **Stores YAML connection** as `hass.data[DOMAIN]["yaml_connection"]` for platform access
-- **Kept `async_setup_entry()`** for optional UI-based connection setup
-- **Removed platform forwarding** - platforms are now loaded via YAML discovery
-- **Removed options flow reload listener** - not needed without entity management UI
+- **Removed `async_setup_entry()` function** - No config entry support
+- **Removed `async_unload_entry()` function** - No config entry support
+- **Only `async_setup()` remains** - Pure YAML-based configuration
+- **Added CONFIG_SCHEMA** to validate YAML configuration
+- **Stores connection** as `hass.data[DOMAIN]["connection"]` for platform access
+- **Requires YAML configuration** - Returns error if no YAML config found
+- **Single service registration** - Service registered once during setup
 
 ### 2. Config Flow (`config_flow.py`)
-- **Removed `AdsOptionsFlow` class** - eliminated all entity management UI
-- **Removed entity configuration UI** (add, edit, remove entity flows)
-- **Kept basic connection configuration** - users can still set up ADS connection via UI
-- **Simplified to single-step flow** - only configures ADS device connection
+- **File completely removed** - No UI configuration at all
+- **No entity management UI** - Pure YAML configuration
+- **No options flow** - Everything configured via YAML
 
-### 3. Platform Files (All Entities)
+### 3. Manifest (`manifest.json`)
+- **Set `config_flow: false`** - Disables UI configuration completely
+- **Version bumped to 2.0.0** - Major version indicating breaking change
+
+### 4. Platform Files (All Entities)
 Updated all platform files (`binary_sensor.py`, `cover.py`, `light.py`, `select.py`, `sensor.py`, `switch.py`, `valve.py`):
-- **Removed `async_setup_entry()` functions** - no longer load entities from config entry options
-- **Enhanced `setup_platform()` functions** - added fallback to YAML connection if no config entry exists
-- **Maintained unique_id support** - all entities still accept and use unique_id parameter
-- **Kept all entity features** - no functionality removed, only configuration method changed
+- **Simplified `setup_platform()` functions** - Only looks for YAML connection
+- **Removed config entry logic** - No fallback to config entries
+- **Maintained unique_id support** - All entities still accept and use unique_id parameter
+- **Kept all entity features** - No functionality removed, only configuration method changed
+- **Clearer error messages** - Explicitly tells users to add YAML configuration
 
-### 4. Documentation (`README.md`)
-- **Updated feature list** - now emphasizes "YAML-based configuration"
-- **Removed UI configuration instructions** - no more entity management through UI
-- **Added comprehensive YAML examples** - for all entity types
-- **Updated troubleshooting** - removed UI-specific issues
-- **Maintained all technical details** - data types, service calls, etc.
+### 5. Translation Files
+- **Removed `strings.json`** - No UI, no translations needed
+- **Removed `translations/` directory** - No UI configuration
+
+### 6. Documentation (`README.md`)
+- **Updated to emphasize 100% YAML** - No mention of UI configuration
+- **Simplified installation** - Just YAML configuration steps
+- **Removed UI references** - All content is YAML-focused
+- **Maintained all technical details** - Data types, service calls, etc.
 
 ### 5. Example Configuration
 - **Created `example_configuration.yaml`** - demonstrates complete YAML setup
@@ -40,13 +48,15 @@ Updated all platform files (`binary_sensor.py`, `cover.py`, `light.py`, `select.
 
 ## Configuration Methods
 
-### Method 1: Pure YAML (Recommended)
+### YAML Only (The Only Way)
 ```yaml
+# Required ADS connection configuration
 ads_custom:
   device: '192.168.1.100.1.1'
   ip_address: '192.168.1.100'
   port: 48898
 
+# Entity configuration
 sensor:
   - platform: ads_custom
     adsvar: GVL.temperature
@@ -54,70 +64,59 @@ sensor:
     unique_id: ads_temp
 ```
 
-### Method 2: UI Connection + YAML Entities (Optional)
-1. Set up ADS connection via UI (Settings → Devices & Services)
-2. Configure entities in YAML (same as above, without `ads_custom:` block)
+There is no UI configuration. Everything must be configured via YAML.
 
-## Benefits of YAML-Based Configuration
+## Benefits of 100% YAML Configuration
 
-1. **Version Control** - Configuration can be tracked in Git
+1. **Version Control** - Complete configuration tracked in Git
 2. **Bulk Management** - Easy to add/modify many entities at once
-3. **Automation** - Can be generated programmatically
-4. **Transparency** - Clear view of all configured entities
-5. **Portability** - Easy to backup and restore
-6. **Simplicity** - Less code, fewer bugs, easier maintenance
+3. **Automation** - Can be generated programmatically or templated
+4. **Transparency** - Clear view of all configured entities at a glance
+5. **Portability** - Easy to backup and restore entire configuration
+6. **Simplicity** - No complex UI code, fewer bugs, easier maintenance
+7. **Professional** - Industry-standard configuration-as-code approach
 
-## Backward Compatibility
+## Migration from Previous Version
 
-The integration maintains backward compatibility:
-- Existing YAML configurations continue to work
-- UI-based connection setup is still available
-- All entity features and parameters remain unchanged
-- Service calls work exactly as before
+If you were using the UI-based configuration in version 1.x:
 
-## Migration Guide
+1. **Document your entities** - Note all entity configurations from the UI
+2. **Convert to YAML** - Use the examples in README.md as templates
+3. **Update to version 2.0** - Install the new version
+4. **Add YAML configuration** - Add `ads_custom:` block and entity definitions
+5. **Restart Home Assistant** - Load the new configuration
+6. **Remove old integration** - Remove any UI-configured integration instances
 
-For users currently using UI-based entity configuration:
-
-1. Export your current entity configurations from the UI
-2. Convert them to YAML format (see examples in README.md)
-3. Add to your `configuration.yaml`
-4. Restart Home Assistant
-5. Optionally, remove the UI-configured integration and rely solely on YAML
+Note: Version 2.0 is a **breaking change** - UI configuration is completely removed.
 
 ## Code Quality Improvements
 
-- **Reduced code complexity** - 643 lines removed, 182 lines added
-- **Eliminated options flow** - Complex entity management UI removed
-- **Simplified platform setup** - Single configuration path (YAML)
-- **Better maintainability** - Less code to maintain and test
-- **Clearer separation** - Connection setup (UI optional) vs entity config (YAML only)
-
-## Testing Recommendations
-
-1. Test YAML connection configuration
-2. Test each entity type with YAML configuration
-3. Verify unique_id support works correctly
-4. Test service calls (write_data_by_name)
-5. Verify real-time updates from PLC
-6. Test UI connection setup (optional path)
+- **Significantly reduced code complexity** - Removed all UI code
+- **Eliminated config flow** - No entity management UI
+- **Eliminated options flow** - No complex configuration screens
+- **Simplified platform setup** - Single, straightforward configuration path
+- **Better maintainability** - Much less code to maintain and test
+- **Clearer architecture** - Pure YAML integration, no mixed modes
+- **Removed translation files** - No UI strings needed
 
 ## Files Modified
 
-1. `custom_components/ads_custom/__init__.py`
-2. `custom_components/ads_custom/config_flow.py`
-3. `custom_components/ads_custom/binary_sensor.py`
-4. `custom_components/ads_custom/cover.py`
-5. `custom_components/ads_custom/light.py`
-6. `custom_components/ads_custom/select.py`
-7. `custom_components/ads_custom/sensor.py`
-8. `custom_components/ads_custom/switch.py`
-9. `custom_components/ads_custom/valve.py`
-10. `README.md`
+1. `custom_components/ads_custom/__init__.py` - Removed config entry support
+2. `custom_components/ads_custom/manifest.json` - Set config_flow to false
+3. `custom_components/ads_custom/binary_sensor.py` - Simplified platform setup
+4. `custom_components/ads_custom/cover.py` - Simplified platform setup
+5. `custom_components/ads_custom/light.py` - Simplified platform setup
+6. `custom_components/ads_custom/select.py` - Simplified platform setup
+7. `custom_components/ads_custom/sensor.py` - Simplified platform setup
+8. `custom_components/ads_custom/switch.py` - Simplified platform setup
+9. `custom_components/ads_custom/valve.py` - Simplified platform setup
+10. `README.md` - Updated for YAML-only configuration
 
-## Files Created
+## Files Removed
 
-1. `example_configuration.yaml` - Complete configuration example
+1. `custom_components/ads_custom/config_flow.py` - No longer needed
+2. `custom_components/ads_custom/strings.json` - No UI strings needed
+3. `custom_components/ads_custom/translations/` - No translations needed
 
 ## Unique ID Support
 
@@ -138,4 +137,6 @@ sensor:
 
 ## Conclusion
 
-The integration has been successfully restructured to be completely YAML-based while maintaining all core functionality, unique_id support, and optional UI-based connection setup. The changes result in a simpler, more maintainable codebase that better aligns with Home Assistant's YAML-first philosophy for custom integrations.
+The integration has been successfully restructured to be **100% YAML-based** with absolutely no UI configuration. This results in a much simpler, more maintainable codebase that fully embraces the configuration-as-code philosophy. All core functionality, unique_id support, and entity features remain intact.
+
+**Version 2.0 is a breaking change** - users must migrate from UI configuration (if they were using it) to YAML configuration. The pure YAML approach provides better version control, transparency, and maintainability for professional deployments.
