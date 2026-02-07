@@ -95,6 +95,16 @@ cover:
     device_class: garage
     unique_id: ads_garage_door
 
+  # Cover with inverted positioning (position 0=open, 100=closed)
+  # Useful when PLC uses reversed positioning logic
+  - platform: ads_custom
+    name: Inverted Blind
+    adsvar_position: GVL.inverted_blind_position
+    adsvar_set_position: GVL.inverted_blind_set_position
+    inverted: true
+    device_class: blind
+    unique_id: ads_inverted_blind
+
 # Valve Example
 valve:
   - platform: ads_custom

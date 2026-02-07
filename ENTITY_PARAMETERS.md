@@ -110,6 +110,21 @@ cover:
     unique_id: ads_garage_door
 ```
 
+#### Cover with Inverted Positioning
+
+This configuration is for covers where the PLC uses inverted positioning logic (0=open, 100=closed instead of the typical 0=closed, 100=open). The `inverted` option automatically handles the conversion:
+
+```yaml
+cover:
+  - platform: ads_custom
+    name: Inverted Blind
+    adsvar_position: GVL.inverted_blind_position        # PLC position: 0=open, 100=closed
+    adsvar_set_position: GVL.inverted_blind_set_position
+    inverted: true                                       # Inverts positioning logic
+    device_class: blind
+    unique_id: ads_inverted_blind
+```
+
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
@@ -121,6 +136,7 @@ cover:
 | `adsvar_open` | string | No | - | Boolean variable to trigger open command (write-only, set to TRUE to open) |
 | `adsvar_close` | string | No | - | Boolean variable to trigger close command (write-only, set to TRUE to close) |
 | `adsvar_stop` | string | No | - | Boolean variable to trigger stop command (write-only, set to TRUE to stop) |
+| `inverted` | boolean | No | `false` | Invert positioning and status detection. When `true`, position 0=open and 100=closed (instead of normal 0=closed and 100=open) |
 | `name` | string | No | `ADS Cover` | Friendly name for the entity |
 | `device_class` | string | No | - | The [device class](https://www.home-assistant.io/integrations/cover/#device-class) (e.g., `blind`, `curtain`, `garage`, `shutter`) |
 | `unique_id` | string | No | - | Unique identifier for the entity |
