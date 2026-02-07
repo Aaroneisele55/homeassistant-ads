@@ -1,56 +1,15 @@
 ##################################
-# ADS KONFIGURATION
+# ADS CONFIGURATION
 ##################################
 ads_custom:
   device: "192.168.1.55.1.1"
   port: 801
 
 ##################################
-# ADS SENSOREN
+# ADS SENSORS
+# NOTE: Light brightness/state sensors REMOVED - now handled by native ADS lights below
 ##################################
 sensor:
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht1_Brightness"
-    adsvar: ".EGWohnzimmerLicht1.Wert"
-    adstype: "byte"
-    unique_id: "a3b1f7e0-7f87-4c32-8e1b-1a2c4b9d1234"
-    state_class: "measurement"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht2_Brightness"
-    adsvar: ".EGWohnzimmerLicht2.Wert"
-    adstype: "byte"
-    unique_id: "b7c3d2f1-8e67-4d12-bf3d-2b6a5c9e5678"
-    state_class: "measurement"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht3_Brightness"
-    adsvar: ".EGWohnzimmerLicht3.Wert"
-    adstype: "byte"
-    unique_id: "c2d5e4f3-9a87-4f45-a5b3-3c7d1b2e8910"
-    state_class: "measurement"
-
-  - platform: ads_custom
-    name: "OGBadLicht1_Brightness"
-    adsvar: ".OGBadLicht1.Wert"
-    adstype: "byte"
-    unique_id: "d4e6f7a8-1b23-4c56-b7c8-4e8f2a3b4567"
-    state_class: "measurement"
-
-  - platform: ads_custom
-    name: "OGBadLicht2_Brightness"
-    adsvar: ".OGBadLicht2.Wert"
-    adstype: "byte"
-    unique_id: "e5f7a8b9-2c34-4d67-c8d9-5f9a3b4c6789"
-    state_class: "measurement"
-
-  - platform: ads_custom
-    name: "OGAaronLicht1_Brightness"
-    adsvar: ".OGAaronLicht1.Wert"
-    adstype: "byte"
-    unique_id: "f6a8b9c0-3d45-4e78-d9ea-6a0b4c5d7890"
-    state_class: "measurement"
-
   - platform: ads_custom
     name: "Windgeschwindigkeit"
     adsvar: ".ParameterWetterstation.Windgschwindigkeit"
@@ -102,79 +61,17 @@ sensor:
     state_class: "measurement"
 
 ##################################
-# ADS BINARY SENSORS (REAL PLC STATE)
+# ADS BINARY SENSORS
+# NOTE: Light state binary sensors REMOVED - now handled by native ADS lights below
 ##################################
-binary_sensor:
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht1_State"
-    adsvar: ".EGWohnzimmerLicht1.EIN"
-    device_class: light
-    unique_id: "7ei8j9k0-1f23-4lg6-57gi-4ei8j3k5678"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht2_State"
-    adsvar: ".EGWohnzimmerLicht2.EIN"
-    device_class: light
-    unique_id: "8fj9k0l1-2g34-4mh7-68hj-5fj9k4l6789"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht3_State"
-    adsvar: ".EGWohnzimmerLicht3.EIN"
-    device_class: light
-    unique_id: "9gk0l1m2-3h45-4ni8-79ik-6gk0l5m7890"
-
-  - platform: ads_custom
-    name: "OGBadLicht1_State"
-    adsvar: ".OGBadLicht1.EIN"
-    device_class: light
-    unique_id: "ahl1m2n3-4i56-4oj9-80jl-7ahl6n8901"
-
-  - platform: ads_custom
-    name: "OGBadLicht2_State"
-    adsvar: ".OGBadLicht2.EIN"
-    device_class: light
-    unique_id: "bil2n3o4-5j67-4pk0-91km-8bil7o9012"
-
-  - platform: ads_custom
-    name: "OGAaronLicht1_State"
-    adsvar: ".OGAaronLicht1.EIN"
-    device_class: light
-    unique_id: "cjm3o4p5-6k78-4ql1-02ln-9cjm8p0123"
+# No binary sensors needed in this configuration
 
 ##################################
-# ADS SWITCHES (CONTROL ONLY)
+# ADS SWITCHES
+# NOTE: Light control switches REMOVED - now handled by native ADS lights below
+# Only keeping switches for non-light functions
 ##################################
 switch:
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht1_Switch"
-    adsvar: ".EGWohnzimmerLicht1.EIN"
-    unique_id: "fmp6r7s8-9n01-4to4-35oq-2fmp1s3456"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht2_Switch"
-    adsvar: ".EGWohnzimmerLicht2.EIN"
-    unique_id: "gnq7s8t9-0o12-4up5-46pr-3gnq2t4567"
-
-  - platform: ads_custom
-    name: "EGWohnzimmerLicht3_Switch"
-    adsvar: ".EGWohnzimmerLicht3.EIN"
-    unique_id: "hor8t9u0-1p23-4vq6-57qs-4hor3u5678"
-
-  - platform: ads_custom
-    name: "OGBadLicht1_Switch"
-    adsvar: ".OGBadLicht1.EIN"
-    unique_id: "ips9u0v1-2q34-4wr7-68rt-5ips4v6789"
-
-  - platform: ads_custom
-    name: "OGBadLicht2_Switch"
-    adsvar: ".OGBadLicht2.EIN"
-    unique_id: "jqt0v1w2-3r45-4xs8-79su-6jqt5w7890"
-
-  - platform: ads_custom
-    name: "OGAaronLicht1_Switch"
-    adsvar: ".OGAaronLicht1.EIN"
-    unique_id: "kru1w2x3-4s56-4yt9-80tv-7kru6x8901"
-
   - platform: ads_custom
     name: "Freigabe System Aaron"
     adsvar: ".bFreigabeSystemAaron"
