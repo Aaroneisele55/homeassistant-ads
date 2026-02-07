@@ -49,46 +49,6 @@ PLATFORM_SCHEMA = LIGHT_PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up ADS lights from a config entry."""
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get entities configured via UI
-    entities_config = entry.options.get("entities", {})
-    entities = []
-    
-    for entity_id, config in entities_config.items():
-        if config.get("type") == "light":
-            ads_var_enable = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, DEFAULT_NAME)
-            if not ads_var_enable:
-                _LOGGER.warning("Skipping light %s: missing adsvar", entity_id)
-                continue
-            ads_var_brightness = config.get(CONF_ADS_VAR_BRIGHTNESS)
-            brightness_scale = config.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
-            brightness_type = config.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
-            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
-            
-            entities.append(
-                AdsLight(
-                    ads_hub,
-                    ads_var_enable,
-                    ads_var_brightness,
-                    brightness_scale,
-                    brightness_type,
-                    name,
-                    unique_id,
-                )
-            )
-    
-    if entities:
-        async_add_entities(entities)
-
-
 def setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -96,13 +56,13 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the light platform for ADS."""
-    # Get the first (and typically only) ADS hub from config entries
-    ads_hub = None
-    for entry_id in hass.data.get(DOMAIN, {}):
-        ads_hub = hass.data[DOMAIN][entry_id]
-        break
-
+    ads_hub = hass.data.get(DOMAIN, {}).get("connection")
+    
     if ads_hub is None:
+        _LOGGER.error(
+            "No ADS connection configured. Please add 'ads_custom:' "
+            "section to your configuration.yaml"
+        )
         return
 
     ads_var_enable: str = config.get(CONF_ADS_VAR)

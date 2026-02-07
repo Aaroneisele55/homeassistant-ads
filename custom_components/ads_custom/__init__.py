@@ -7,31 +7,33 @@ import logging
 import pyads
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_IP_ADDRESS,
     CONF_PORT,
     EVENT_HOMEASSISTANT_STOP,
-    Platform,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [
-    Platform.BINARY_SENSOR,
-    Platform.COVER,
-    Platform.LIGHT,
-    Platform.SELECT,
-    Platform.SENSOR,
-    Platform.SWITCH,
-    Platform.VALVE,
-]
+# Config schema for YAML configuration
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_DEVICE): vol.Coerce(str),
+                vol.Optional(CONF_IP_ADDRESS): vol.Coerce(str),
+                vol.Optional(CONF_PORT, default=48898): vol.Coerce(int),
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 ADS_TYPEMAP = {
     AdsType.BOOL: pyads.PLCTYPE_BOOL,
@@ -69,11 +71,19 @@ SCHEMA_SERVICE_WRITE_DATA_BY_NAME = vol.Schema(
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ADS from a config entry."""
-    net_id = entry.data[CONF_DEVICE]
-    ip_address = entry.data.get(CONF_IP_ADDRESS)
-    port = entry.data.get(CONF_PORT, 48898)  # Default port if not in config
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the ADS component from YAML configuration."""
+    if DOMAIN not in config:
+        _LOGGER.error(
+            "ADS Custom integration requires configuration in configuration.yaml. "
+            "Please add 'ads_custom:' section with device, ip_address, and port."
+        )
+        return False
+
+    conf = config[DOMAIN]
+    net_id = conf[CONF_DEVICE]
+    ip_address = conf.get(CONF_IP_ADDRESS)
+    port = conf.get(CONF_PORT, 48898)
 
     client = pyads.Connection(net_id, port, ip_address)
 
@@ -87,25 +97,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             port,
             err,
         )
-        raise ConfigEntryNotReady(
-            f"Could not connect to ADS device {net_id}"
-        ) from err
+        return False
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = ads
+    # Store the ADS hub for platform access
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["connection"] = ads
 
-    def shutdown_handler(event):
+    async def async_shutdown_handler(event):
         """Shutdown ADS connection."""
         ads.shutdown()
 
-    entry.async_on_unload(
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown_handler)
-    )
-
-    # Forward to platforms for both YAML and UI configured entities
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    # Register update listener for options changes
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_shutdown_handler)
 
     async def handle_write_data_by_name(call: ServiceCall) -> None:
         """Write a value to the connected ADS device."""
@@ -126,18 +128,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     return True
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        ads: AdsHub = hass.data[DOMAIN].pop(entry.entry_id)
-        ads.shutdown()
-
-    return unload_ok
 

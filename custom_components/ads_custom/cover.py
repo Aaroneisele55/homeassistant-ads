@@ -53,52 +53,6 @@ PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up ADS covers from a config entry."""
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get entities configured via UI
-    entities_config = entry.options.get("entities", {})
-    entities = []
-    
-    for entity_id, config in entities_config.items():
-        if config.get("type") == "cover":
-            ads_var_is_closed = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, DEFAULT_NAME)
-            if not ads_var_is_closed:
-                _LOGGER.warning("Skipping cover %s: missing adsvar", entity_id)
-                continue
-            ads_var_position = config.get(CONF_ADS_VAR_POSITION)
-            ads_var_pos_set = config.get(CONF_ADS_VAR_SET_POS)
-            ads_var_open = config.get(CONF_ADS_VAR_OPEN)
-            ads_var_close = config.get(CONF_ADS_VAR_CLOSE)
-            ads_var_stop = config.get(CONF_ADS_VAR_STOP)
-            device_class = config.get(CONF_DEVICE_CLASS)
-            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
-            
-            entities.append(
-                AdsCover(
-                    ads_hub,
-                    ads_var_is_closed,
-                    ads_var_position,
-                    ads_var_pos_set,
-                    ads_var_open,
-                    ads_var_close,
-                    ads_var_stop,
-                    name,
-                    device_class,
-                    unique_id,
-                )
-            )
-    
-    if entities:
-        async_add_entities(entities)
-
-
 def setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -106,13 +60,13 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the cover platform for ADS."""
-    # Get the first (and typically only) ADS hub from config entries
-    ads_hub = None
-    for entry_id in hass.data.get(DOMAIN, {}):
-        ads_hub = hass.data[DOMAIN][entry_id]
-        break
-
+    ads_hub = hass.data.get(DOMAIN, {}).get("connection")
+    
     if ads_hub is None:
+        _LOGGER.error(
+            "No ADS connection configured. Please add 'ads_custom:' "
+            "section to your configuration.yaml"
+        )
         return
 
     ads_var_is_closed: str = config.get(CONF_ADS_VAR)

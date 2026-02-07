@@ -34,33 +34,6 @@ PLATFORM_SCHEMA = SWITCH_PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up ADS switches from a config entry."""
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get entities configured via UI
-    entities_config = entry.options.get("entities", {})
-    entities = []
-    
-    for entity_id, config in entities_config.items():
-        if config.get("type") == "switch":
-            ads_var = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, DEFAULT_NAME)
-            if not ads_var:
-                _LOGGER.warning("Skipping switch %s: missing adsvar", entity_id)
-                continue
-            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
-            
-            entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id))
-    
-    if entities:
-        async_add_entities(entities)
-
-
 def setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -68,13 +41,13 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up switch platform for ADS."""
-    # Get the first (and typically only) ADS hub from config entries
-    ads_hub = None
-    for entry_id in hass.data.get(DOMAIN, {}):
-        ads_hub = hass.data[DOMAIN][entry_id]
-        break
-
+    ads_hub = hass.data.get(DOMAIN, {}).get("connection")
+    
     if ads_hub is None:
+        _LOGGER.error(
+            "No ADS connection configured. Please add 'ads_custom:' "
+            "section to your configuration.yaml"
+        )
         return
 
     name: str = config.get(CONF_NAME, DEFAULT_NAME)

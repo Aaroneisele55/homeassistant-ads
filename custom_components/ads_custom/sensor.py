@@ -67,60 +67,6 @@ PLATFORM_SCHEMA = SENSOR_PLATFORM_SCHEMA.extend(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up ADS sensors from a config entry."""
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get entities configured via UI
-    entities_config = entry.options.get("entities", {})
-    entities = []
-    
-    for entity_id, config in entities_config.items():
-        if config.get("type") == "sensor":
-            ads_var = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, DEFAULT_NAME)
-            if not ads_var:
-                _LOGGER.warning("Skipping sensor %s: missing adsvar", entity_id)
-                continue
-            # Convert adstype string to AdsType enum with error handling
-            ads_type_str = config.get("adstype", "int")
-            try:
-                ads_type = AdsType(ads_type_str)
-            except ValueError:
-                _LOGGER.warning(
-                    "Invalid adstype '%s' for sensor %s, defaulting to int",
-                    ads_type_str,
-                    entity_id,
-                )
-                ads_type = AdsType.INT
-            factor = config.get("factor")
-            device_class = config.get(CONF_DEVICE_CLASS)
-            state_class = config.get("state_class")
-            unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT)
-            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
-            
-            entities.append(
-                AdsSensor(
-                    ads_hub,
-                    name,
-                    ads_var,
-                    ads_type,
-                    factor,
-                    device_class,
-                    state_class,
-                    unit_of_measurement,
-                    unique_id,
-                )
-            )
-    
-    if entities:
-        async_add_entities(entities)
-
-
 def setup_platform(
     hass: HomeAssistant,
     config: ConfigType,
@@ -128,13 +74,13 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up an ADS sensor device."""
-    # Get the first (and typically only) ADS hub from config entries
-    ads_hub = None
-    for entry_id in hass.data.get(DOMAIN, {}):
-        ads_hub = hass.data[DOMAIN][entry_id]
-        break
-
+    ads_hub = hass.data.get(DOMAIN, {}).get("connection")
+    
     if ads_hub is None:
+        _LOGGER.error(
+            "No ADS connection configured. Please add 'ads_custom:' "
+            "section to your configuration.yaml"
+        )
         return
 
     ads_var: str = config.get(CONF_ADS_VAR)
@@ -151,9 +97,9 @@ def setup_platform(
 
     entity = AdsSensor(
         ads_hub,
+        name,
         ads_var,
         ads_type,
-        name,
         factor,
         device_class,
         state_class,
@@ -170,9 +116,9 @@ class AdsSensor(AdsEntity, SensorEntity):
     def __init__(
         self,
         ads_hub: AdsHub,
+        name: str,
         ads_var: str,
         ads_type: AdsType,
-        name: str,
         factor: int | None,
         device_class: SensorDeviceClass | None,
         state_class: SensorStateClass | None,
