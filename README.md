@@ -42,7 +42,7 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 
 ## Configuration
 
-### Step 1: Set up the ADS Connection (UI Only)
+### Step 1: Set up the ADS Connection (UI)
 
 1. Go to Settings → Devices & Services
 2. Click "+ ADD INTEGRATION"
@@ -52,9 +52,13 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
    - **IP Address**: (Optional) The IP address of your ADS device
    - **AMS Port**: The AMS port number (default: `48898`)
 
-### Step 2: Configure Entities (YAML)
+**Important:** After this step, you will have established the connection to your ADS device, but no entities (lights, switches, etc.) will appear yet. You must add entities via YAML configuration as shown in Step 2 below.
 
-After setting up the ADS connection via UI, configure individual entities for each platform in your `configuration.yaml`:
+### Step 2: Add Entities (YAML Configuration Required)
+
+After setting up the ADS connection via UI in Step 1, you must configure individual entities in your `configuration.yaml` file. Each entity (light, switch, sensor, etc.) needs to be manually added to the appropriate section of your configuration file.
+
+**Note:** Unlike some Home Assistant integrations, this integration does not currently support adding entities through the UI. You must use YAML configuration for all entities.
 
 ### Example Sensor Configuration
 
@@ -174,6 +178,26 @@ The integration supports the following ADS/PLC data types:
 3. **Firewall**: Ensure UDP port 48899 and the configured AMS port (default 48898) are open
 
 ## Troubleshooting
+
+### I added the integration but no entities appear
+
+This is expected behavior. After adding the ADS connection through the UI:
+1. The integration creates a connection to your ADS device
+2. **You must manually add entities** in your `configuration.yaml` file
+3. After adding entity configurations to YAML, restart Home Assistant
+4. Your entities will then appear in Home Assistant
+
+Example: To add a light, add this to your `configuration.yaml`:
+```yaml
+light:
+  - platform: ads_custom
+    adsvar: GVL.light_enable
+    adsvar_brightness: GVL.light_brightness
+    adsvar_brightness_type: byte
+    adsvar_brightness_scale: 100
+    name: My Beckhoff Light
+    unique_id: my_light_1
+```
 
 ### Cannot Connect
 
