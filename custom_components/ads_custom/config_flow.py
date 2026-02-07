@@ -150,10 +150,6 @@ class AdsOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage the options."""
-        # Reset state when returning to init
-        self.entity_type = None
-        self.editing_entity_id = None
-
         return self.async_show_menu(
             step_id="init",
             menu_options=["add_entity", "list_entities"],
@@ -200,13 +196,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            # Update the config entry options
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, options={"entities": entities}
-            )
-
-            # Return to menu instead of closing
-            return await self.async_step_init()
+            return self.async_create_entry(title="", data={"entities": entities})
 
         # Build schema based on entity type
         schema = self._get_entity_schema(self.entity_type)
@@ -282,13 +272,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            # Update the config entry options
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, options={"entities": entities}
-            )
-
-            # Return to menu instead of closing
-            return await self.async_step_init()
+            return self.async_create_entry(title="", data={"entities": entities})
 
         self.entity_type = entity_config["type"]
         schema = self._get_entity_schema(self.entity_type, entity_config)
@@ -312,13 +296,7 @@ class AdsOptionsFlow(OptionsFlow):
             if self.editing_entity_id in entities:
                 del entities[self.editing_entity_id]
 
-            # Update the config entry options
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, options={"entities": entities}
-            )
-
-            # Return to menu instead of closing
-            return await self.async_step_init()
+            return self.async_create_entry(title="", data={"entities": entities})
         
         # Show confirmation form
         entity_config = self.config_entry.options.get("entities", {}).get(
