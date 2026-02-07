@@ -96,7 +96,7 @@
       },
       "remove_entity": {
         "title": "Remove Entity",
-        "description": "Are you sure you want to remove this entity?"
+        "description": "Are you sure you want to remove the entity '{entity_name}'?"
       }
     }
   },
