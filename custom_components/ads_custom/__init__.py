@@ -204,6 +204,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     entities = _collect_yaml_entities(config)
 
     # Trigger import flow to create a config entry from YAML
+    _LOGGER.info(
+        "YAML configuration detected for %s, migrating to config entry", DOMAIN
+    )
     hass.async_create_task(
         hass.config_entries.flow.async_init(
             DOMAIN,
