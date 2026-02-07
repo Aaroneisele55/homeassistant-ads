@@ -67,7 +67,7 @@ binary_sensor:
 | `adsvar` | string | **Yes** | - | The name of the ADS variable to monitor |
 | `adstype` | string | No | `bool` | The ADS variable type. Supported values: `bool` (boolean), `real` (floating-point). For `real`, 0.0 = off, any non-zero value = on |
 | `name` | string | No | `ADS binary sensor` | Friendly name for the entity |
-| `device_class` | string | No | `moving` | The [device class](https://www.home-assistant.io/integrations/binary_sensor/#device-class) (e.g., `door`, `motion`, `window`) |
+| `device_class` | string | No | - | The [device class](https://www.home-assistant.io/integrations/binary_sensor/#device-class) (e.g., `door`, `motion`, `window`) |
 | `unique_id` | string | No | - | Unique identifier for the entity |
 
 ### Supported Device Classes

@@ -85,7 +85,7 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         """Initialize ADS binary sensor."""
         super().__init__(ads_hub, name, ads_var, unique_id)
         self._ads_type = ads_type
-        self._configured_device_class = device_class or BinarySensorDeviceClass.MOVING
+        self._configured_device_class = device_class
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
