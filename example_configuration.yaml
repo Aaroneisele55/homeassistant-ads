@@ -1,0 +1,104 @@
+# Example configuration.yaml for ADS Custom integration
+# This file demonstrates how to configure the ADS integration and entities via YAML
+
+# ADS Connection Configuration
+ads_custom:
+  device: '192.168.1.100.1.1'  # AMS Net ID of your ADS device
+  ip_address: '192.168.1.100'  # (Optional) IP address of your ADS device
+  port: 48898                  # (Optional) AMS port number (default: 48898)
+
+# Sensor Example
+sensor:
+  - platform: ads_custom
+    adsvar: GVL.temperature
+    name: Room Temperature
+    adstype: real
+    unit_of_measurement: '°C'
+    device_class: temperature
+    state_class: measurement
+    unique_id: ads_room_temp
+
+  - platform: ads_custom
+    adsvar: GVL.humidity
+    name: Room Humidity
+    adstype: int
+    unit_of_measurement: '%'
+    device_class: humidity
+    state_class: measurement
+    unique_id: ads_room_humidity
+
+# Switch Example
+switch:
+  - platform: ads_custom
+    adsvar: GVL.light_switch
+    name: Room Light
+    unique_id: ads_room_light
+
+  - platform: ads_custom
+    adsvar: GVL.pump
+    name: Water Pump
+    unique_id: ads_water_pump
+
+# Light Example
+light:
+  - platform: ads_custom
+    adsvar: GVL.light_enable
+    adsvar_brightness: GVL.light_brightness
+    name: Dimmable Light
+    unique_id: ads_dimmable_light
+
+  # Beckhoff light with 0-100 range
+  - platform: ads_custom
+    adsvar: GVL.beckhoff_light_enable
+    adsvar_brightness: GVL.beckhoff_light_brightness
+    adsvar_brightness_scale: 100
+    adsvar_brightness_type: byte
+    name: Beckhoff Light
+    unique_id: ads_beckhoff_light
+
+# Binary Sensor Example
+binary_sensor:
+  - platform: ads_custom
+    adsvar: GVL.door_open
+    name: Front Door
+    device_class: door
+    unique_id: ads_front_door
+
+  - platform: ads_custom
+    adsvar: GVL.motion_detected
+    name: Motion Sensor
+    device_class: motion
+    unique_id: ads_motion_sensor
+
+# Cover Example
+cover:
+  - platform: ads_custom
+    adsvar: GVL.cover_closed
+    name: Living Room Blinds
+    adsvar_position: GVL.cover_position
+    adsvar_set_position: GVL.cover_set_position
+    adsvar_open: GVL.cover_open
+    adsvar_close: GVL.cover_close
+    adsvar_stop: GVL.cover_stop
+    device_class: blind
+    unique_id: ads_living_room_blinds
+
+# Valve Example
+valve:
+  - platform: ads_custom
+    adsvar: GVL.valve_open
+    name: Water Valve
+    device_class: water
+    unique_id: ads_water_valve
+
+# Select Example
+select:
+  - platform: ads_custom
+    adsvar: GVL.mode_select
+    name: System Mode
+    options:
+      - "Off"
+      - "Auto"
+      - "Manual"
+      - "Service"
+    unique_id: ads_system_mode
