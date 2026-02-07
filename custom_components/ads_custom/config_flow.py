@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -14,7 +15,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_PORT
 from homeassistant.core import callback
 
 from .const import DOMAIN
@@ -55,8 +56,8 @@ def _base_schema(ads_config: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
+def _validate_input_sync(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect (synchronous).
 
     Data has the keys from _base_schema with values provided by the user.
     """
@@ -76,6 +77,15 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
         raise
 
     return {"title": f"ADS {net_id}", "device_info": device_info}
+
+
+async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect.
+
+    Data has the keys from _base_schema with values provided by the user.
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _validate_input_sync, data)
 
 
 def _format_device(user_input: dict[str, Any]) -> str:
