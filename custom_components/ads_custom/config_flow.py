@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -55,8 +56,8 @@ def _base_schema(ads_config: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
+def _validate_input_sync(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect (synchronous).
 
     Data has the keys from _base_schema with values provided by the user.
     """
@@ -76,6 +77,15 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
         raise
 
     return {"title": f"ADS {net_id}", "device_info": device_info}
+
+
+async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate the user input allows us to connect.
+
+    Data has the keys from _base_schema with values provided by the user.
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _validate_input_sync, data)
 
 
 def _format_device(user_input: dict[str, Any]) -> str:
@@ -198,7 +208,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            return self.async_create_entry(title="", data={"entities": entities})
+            return await self.async_create_entry(title="", data={"entities": entities})
 
         # Build schema based on entity type
         schema = self._get_entity_schema(self.entity_type)
@@ -276,7 +286,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            return self.async_create_entry(title="", data={"entities": entities})
+            return await self.async_create_entry(title="", data={"entities": entities})
 
         self.entity_type = entity_config["type"]
         schema = self._get_entity_schema(self.entity_type, entity_config)
@@ -300,7 +310,7 @@ class AdsOptionsFlow(OptionsFlow):
             if self.editing_entity_id in entities:
                 del entities[self.editing_entity_id]
 
-            return self.async_create_entry(title="", data={"entities": entities})
+            return await self.async_create_entry(title="", data={"entities": entities})
         
         # Show confirmation form
         entity_config = self.config_entry.options.get("entities", {}).get(
