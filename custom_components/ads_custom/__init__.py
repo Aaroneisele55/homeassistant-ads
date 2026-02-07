@@ -17,10 +17,8 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_ADS_VAR, DATA_ADS, DOMAIN, AdsType
+from .const import CONF_ADS_VAR, DOMAIN, AdsType
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,24 +60,11 @@ CONF_ADS_VALUE = "value"
 
 SERVICE_WRITE_DATA_BY_NAME = "write_data_by_name"
 
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_DEVICE): cv.string,
-                vol.Required(CONF_PORT): cv.port,
-                vol.Optional(CONF_IP_ADDRESS): cv.string,
-            }
-        )
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
 SCHEMA_SERVICE_WRITE_DATA_BY_NAME = vol.Schema(
     {
         vol.Required(CONF_ADS_TYPE): vol.Coerce(AdsType),
         vol.Required(CONF_ADS_VALUE): vol.Coerce(int),
-        vol.Required(CONF_ADS_VAR): cv.string,
+        vol.Required(CONF_ADS_VAR): str,
     }
 )
 
@@ -146,52 +131,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ads.shutdown()
 
     return unload_ok
-
-
-def setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the ADS component."""
-    if DOMAIN not in config:
-        return True
-
-    conf = config[DOMAIN]
-
-    net_id = conf[CONF_DEVICE]
-    ip_address = conf.get(CONF_IP_ADDRESS)
-    port = conf[CONF_PORT]
-
-    client = pyads.Connection(net_id, port, ip_address)
-
-    try:
-        ads = AdsHub(client)
-    except pyads.ADSError:
-        _LOGGER.error(
-            "Could not connect to ADS host (netid=%s, ip=%s, port=%s)",
-            net_id,
-            ip_address,
-            port,
-        )
-        return False
-
-    hass.data[DATA_ADS] = ads
-    hass.bus.listen(EVENT_HOMEASSISTANT_STOP, ads.shutdown)
-
-    def handle_write_data_by_name(call: ServiceCall) -> None:
-        """Write a value to the connected ADS device."""
-        ads_var: str = call.data[CONF_ADS_VAR]
-        ads_type: AdsType = call.data[CONF_ADS_TYPE]
-        value: int = call.data[CONF_ADS_VALUE]
-
-        try:
-            ads.write_by_name(ads_var, value, ADS_TYPEMAP[ads_type])
-        except pyads.ADSError as err:
-            _LOGGER.error(err)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_WRITE_DATA_BY_NAME,
-        handle_write_data_by_name,
-        schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
-    )
-
-    return True
 

@@ -15,7 +15,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DATA_ADS
+from .const import CONF_ADS_VAR, DOMAIN
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -40,7 +40,14 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up an ADS select device."""
-    ads_hub = hass.data[DATA_ADS]
+    # Get the first (and typically only) ADS hub from config entries
+    ads_hub = None
+    for entry_id in hass.data.get(DOMAIN, {}):
+        ads_hub = hass.data[DOMAIN][entry_id]
+        break
+
+    if ads_hub is None:
+        return
 
     ads_var: str = config[CONF_ADS_VAR]
     name: str = config[CONF_NAME]
@@ -70,9 +77,18 @@ class AdsSelect(AdsEntity, SelectEntity):
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
-        await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_INT)
-        self._ads_hub.add_device_notification(
-            self._ads_var, pyads.PLCTYPE_INT, self._handle_ads_value
+        # Register notification with custom callback for select entity
+        def update_callback(name: str, value: int) -> None:
+            """Handle the value update from ADS."""
+            if 0 <= value < len(self._attr_options):
+                self._attr_current_option = self._attr_options[value]
+                self.schedule_update_ha_state()
+
+        await self.hass.async_add_executor_job(
+            self._ads_hub.add_device_notification,
+            self._ads_var,
+            pyads.PLCTYPE_INT,
+            update_callback
         )
 
     def select_option(self, option: str) -> None:
@@ -81,9 +97,4 @@ class AdsSelect(AdsEntity, SelectEntity):
             index = self._attr_options.index(option)
             self._ads_hub.write_by_name(self._ads_var, index, pyads.PLCTYPE_INT)
             self._attr_current_option = option
-
-    def _handle_ads_value(self, name: str, value: int) -> None:
-        """Handle the value update from ADS."""
-        if 0 <= value < len(self._attr_options):
-            self._attr_current_option = self._attr_options[value]
             self.schedule_update_ha_state()

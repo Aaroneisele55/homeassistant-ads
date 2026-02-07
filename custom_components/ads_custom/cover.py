@@ -21,7 +21,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DATA_ADS, STATE_KEY_STATE
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -57,7 +57,14 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the cover platform for ADS."""
-    ads_hub = hass.data[DATA_ADS]
+    # Get the first (and typically only) ADS hub from config entries
+    ads_hub = None
+    for entry_id in hass.data.get(DOMAIN, {}):
+        ads_hub = hass.data[DOMAIN][entry_id]
+        break
+
+    if ads_hub is None:
+        return
 
     ads_var_is_closed: str = config[CONF_ADS_VAR]
     ads_var_position: str | None = config.get(CONF_ADS_VAR_POSITION)
@@ -170,14 +177,14 @@ class AdsCover(AdsEntity, CoverEntity):
         if self._ads_var_open is not None:
             self._ads_hub.write_by_name(self._ads_var_open, True, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(position=100)
+            self.set_cover_position(**{ATTR_POSITION: 100})
 
     def close_cover(self, **kwargs: Any) -> None:
         """Move the cover down."""
         if self._ads_var_close is not None:
             self._ads_hub.write_by_name(self._ads_var_close, True, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(position=0)
+            self.set_cover_position(**{ATTR_POSITION: 0})
 
     @property
     def available(self) -> bool:
