@@ -72,6 +72,7 @@ binary_sensor:
 
 # Cover Example
 cover:
+  # Traditional cover with closed state sensor
   - platform: ads_custom
     adsvar: GVL.cover_closed
     name: Living Room Blinds
@@ -82,6 +83,17 @@ cover:
     adsvar_stop: GVL.cover_stop
     device_class: blind
     unique_id: ads_living_room_blinds
+  
+  # Cover with UINT position and open/close commands (no closed state sensor)
+  # Note: PLC position variable should use 0-100 range
+  - platform: ads_custom
+    name: Garage Door
+    adsvar_position: GVL.garage_position        # UINT with 0-100 range
+    adsvar_position_type: uint
+    adsvar_open: GVL.garage_open
+    adsvar_close: GVL.garage_close
+    device_class: garage
+    unique_id: ads_garage_door
 
 # Valve Example
 valve:

@@ -35,13 +35,18 @@ CONF_ADS_VAR_OPEN = "adsvar_open"
 CONF_ADS_VAR_CLOSE = "adsvar_close"
 CONF_ADS_VAR_STOP = "adsvar_stop"
 CONF_ADS_VAR_POSITION = "adsvar_position"
+CONF_ADS_VAR_POSITION_TYPE = "adsvar_position_type"
 
 STATE_KEY_POSITION = "position"
 
+# Default to BYTE for backwards compatibility
+DEFAULT_POSITION_TYPE = "byte"
+
 PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_ADS_VAR): cv.string,
+        vol.Optional(CONF_ADS_VAR): cv.string,
         vol.Optional(CONF_ADS_VAR_POSITION): cv.string,
+        vol.Optional(CONF_ADS_VAR_POSITION_TYPE, default=DEFAULT_POSITION_TYPE): vol.In(["byte", "uint"]),
         vol.Optional(CONF_ADS_VAR_SET_POS): cv.string,
         vol.Optional(CONF_ADS_VAR_CLOSE): cv.string,
         vol.Optional(CONF_ADS_VAR_OPEN): cv.string,
@@ -69,11 +74,9 @@ def setup_platform(
         )
         return
 
-    ads_var_is_closed: str = config.get(CONF_ADS_VAR)
-    if not ads_var_is_closed:
-        _LOGGER.error("Missing required field adsvar in cover configuration")
-        return
+    ads_var_is_closed: str | None = config.get(CONF_ADS_VAR)
     ads_var_position: str | None = config.get(CONF_ADS_VAR_POSITION)
+    ads_var_position_type: str = config.get(CONF_ADS_VAR_POSITION_TYPE, DEFAULT_POSITION_TYPE)
     ads_var_pos_set: str | None = config.get(CONF_ADS_VAR_SET_POS)
     ads_var_open: str | None = config.get(CONF_ADS_VAR_OPEN)
     ads_var_close: str | None = config.get(CONF_ADS_VAR_CLOSE)
@@ -81,6 +84,14 @@ def setup_platform(
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
     device_class: CoverDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
+    
+    # Validate that at least one state variable is provided
+    if not ads_var_is_closed and not ads_var_position:
+        _LOGGER.error(
+            "Cover configuration must include either 'adsvar' (closed state) "
+            "or 'adsvar_position' (position feedback)"
+        )
+        return
 
     add_entities(
         [
@@ -88,6 +99,7 @@ def setup_platform(
                 ads_hub,
                 ads_var_is_closed,
                 ads_var_position,
+                ads_var_position_type,
                 ads_var_pos_set,
                 ads_var_open,
                 ads_var_close,
@@ -106,8 +118,9 @@ class AdsCover(AdsEntity, CoverEntity):
     def __init__(
         self,
         ads_hub: AdsHub,
-        ads_var_is_closed: str,
+        ads_var_closed_state: str | None,
         ads_var_position: str | None,
+        ads_var_position_type: str,
         ads_var_pos_set: str | None,
         ads_var_open: str | None,
         ads_var_close: str | None,
@@ -117,7 +130,7 @@ class AdsCover(AdsEntity, CoverEntity):
         unique_id: str | None,
     ) -> None:
         """Initialize AdsCover entity."""
-        super().__init__(ads_hub, name, ads_var_is_closed, unique_id)
+        super().__init__(ads_hub, name, ads_var_closed_state, unique_id)
         if self._attr_unique_id is None:
             if ads_var_position is not None:
                 self._attr_unique_id = ads_var_position
@@ -128,6 +141,7 @@ class AdsCover(AdsEntity, CoverEntity):
 
         self._state_dict[STATE_KEY_POSITION] = None
         self._ads_var_position = ads_var_position
+        self._ads_var_position_type = ads_var_position_type
         self._ads_var_pos_set = ads_var_pos_set
         self._ads_var_open = ads_var_open
         self._ads_var_close = ads_var_close
@@ -147,8 +161,10 @@ class AdsCover(AdsEntity, CoverEntity):
             await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_position is not None:
+            # Use UINT or BYTE based on configuration
+            plctype = pyads.PLCTYPE_UINT if self._ads_var_position_type == "uint" else pyads.PLCTYPE_BYTE
             await self.async_initialize_device(
-                self._ads_var_position, pyads.PLCTYPE_BYTE, STATE_KEY_POSITION
+                self._ads_var_position, plctype, STATE_KEY_POSITION
             )
 
     @property
@@ -179,14 +195,19 @@ class AdsCover(AdsEntity, CoverEntity):
         """Set cover position."""
         position = kwargs[ATTR_POSITION]
         if self._ads_var_pos_set is not None:
+            # Use UINT or BYTE based on configuration
+            plctype = pyads.PLCTYPE_UINT if self._ads_var_position_type == "uint" else pyads.PLCTYPE_BYTE
             self._ads_hub.write_by_name(
-                self._ads_var_pos_set, position, pyads.PLCTYPE_BYTE
+                self._ads_var_pos_set, position, plctype
             )
 
     def open_cover(self, **kwargs: Any) -> None:
         """Move the cover up."""
         if self._ads_var_open is not None:
             self._ads_hub.write_by_name(self._ads_var_open, True, pyads.PLCTYPE_BOOL)
+            # Write FALSE to close command to ensure only one command is active
+            if self._ads_var_close is not None:
+                self._ads_hub.write_by_name(self._ads_var_close, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
             self.set_cover_position(**{ATTR_POSITION: 100})
 
@@ -194,6 +215,9 @@ class AdsCover(AdsEntity, CoverEntity):
         """Move the cover down."""
         if self._ads_var_close is not None:
             self._ads_hub.write_by_name(self._ads_var_close, True, pyads.PLCTYPE_BOOL)
+            # Write FALSE to open command to ensure only one command is active
+            if self._ads_var_open is not None:
+                self._ads_hub.write_by_name(self._ads_var_open, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
             self.set_cover_position(**{ATTR_POSITION: 0})
 
