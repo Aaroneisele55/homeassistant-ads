@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any
 
 import pyads
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT, CONF_UNIQUE_ID
+from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
@@ -109,6 +110,31 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_import(
+        self, import_data: dict[str, Any]
+    ) -> FlowResult:
+        """Handle import from YAML configuration."""
+        # Extract connection data
+        device = import_data[CONF_DEVICE]
+        await self.async_set_unique_id(device)
+        self._abort_if_unique_id_configured()
+
+        connection_data = {
+            CONF_DEVICE: device,
+            CONF_PORT: import_data.get(CONF_PORT, 48898),
+        }
+        if CONF_IP_ADDRESS in import_data:
+            connection_data[CONF_IP_ADDRESS] = import_data[CONF_IP_ADDRESS]
+
+        # Extract migrated entities (if any)
+        entities = import_data.get("entities", [])
+
+        return self.async_create_entry(
+            title=f"ADS ({device})",
+            data=connection_data,
+            options={"entities": entities},
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -194,6 +220,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
             entities = self.config_entry.options.get("entities", [])
@@ -209,7 +237,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(CONF_ADS_VAR): cv.string,
                 vol.Required(CONF_NAME): cv.string,
-                vol.Optional(CONF_UNIQUE_ID): cv.string,
             }),
             description_placeholders={
                 "entity_type": "Switch",
@@ -223,6 +250,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
             entities = self.config_entry.options.get("entities", [])
@@ -252,7 +281,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Optional(CONF_UNIQUE_ID): cv.string,
             }),
             description_placeholders={
                 "entity_type": "Sensor",
@@ -266,6 +294,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
             entities = self.config_entry.options.get("entities", [])
@@ -288,7 +318,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_DEVICE_CLASS): cv.string,
-                vol.Optional(CONF_UNIQUE_ID): cv.string,
             }),
             description_placeholders={
                 "entity_type": "Binary Sensor",
@@ -302,6 +331,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
             entities = self.config_entry.options.get("entities", [])
@@ -321,7 +352,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional("adsvar_brightness_scale", default=255): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=65535)
                 ),
-                vol.Optional(CONF_UNIQUE_ID): cv.string,
             }),
             description_placeholders={
                 "entity_type": "Light",
