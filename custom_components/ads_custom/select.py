@@ -45,7 +45,7 @@ def setup_platform(
     for entry_id in hass.data.get(DOMAIN, {}):
         ads_hub = hass.data[DOMAIN][entry_id]
         break
-    
+
     if ads_hub is None:
         return
 
@@ -83,7 +83,7 @@ class AdsSelect(AdsEntity, SelectEntity):
             if 0 <= value < len(self._attr_options):
                 self._attr_current_option = self._attr_options[value]
                 self.schedule_update_ha_state()
-        
+
         await self.hass.async_add_executor_job(
             self._ads_hub.add_device_notification,
             self._ads_var,

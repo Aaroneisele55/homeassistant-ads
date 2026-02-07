@@ -43,7 +43,7 @@ def setup_platform(
     for entry_id in hass.data.get(DOMAIN, {}):
         ads_hub = hass.data[DOMAIN][entry_id]
         break
-    
+
     if ads_hub is None:
         return
 
