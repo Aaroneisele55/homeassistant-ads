@@ -36,6 +36,7 @@ CONF_ADS_VAR_CLOSE = "adsvar_close"
 CONF_ADS_VAR_STOP = "adsvar_stop"
 CONF_ADS_VAR_POSITION = "adsvar_position"
 CONF_ADS_VAR_POSITION_TYPE = "adsvar_position_type"
+CONF_INVERTED = "inverted"
 
 STATE_KEY_POSITION = "position"
 
@@ -51,6 +52,7 @@ PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ADS_VAR_CLOSE): cv.string,
         vol.Optional(CONF_ADS_VAR_OPEN): cv.string,
         vol.Optional(CONF_ADS_VAR_STOP): cv.string,
+        vol.Optional(CONF_INVERTED, default=False): cv.boolean,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
@@ -81,6 +83,7 @@ def setup_platform(
     ads_var_open: str | None = config.get(CONF_ADS_VAR_OPEN)
     ads_var_close: str | None = config.get(CONF_ADS_VAR_CLOSE)
     ads_var_stop: str | None = config.get(CONF_ADS_VAR_STOP)
+    inverted: bool = config.get(CONF_INVERTED, False)
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
     device_class: CoverDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
@@ -104,6 +107,7 @@ def setup_platform(
                 ads_var_open,
                 ads_var_close,
                 ads_var_stop,
+                inverted,
                 name,
                 device_class,
                 unique_id,
@@ -125,6 +129,7 @@ class AdsCover(AdsEntity, CoverEntity):
         ads_var_open: str | None,
         ads_var_close: str | None,
         ads_var_stop: str | None,
+        inverted: bool,
         name: str,
         device_class: CoverDeviceClass | None,
         unique_id: str | None,
@@ -146,6 +151,7 @@ class AdsCover(AdsEntity, CoverEntity):
         self._ads_var_open = ads_var_open
         self._ads_var_close = ads_var_close
         self._ads_var_stop = ads_var_stop
+        self._inverted = inverted
         self._attr_device_class = device_class
         self._attr_supported_features = (
             CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
@@ -176,7 +182,12 @@ class AdsCover(AdsEntity, CoverEntity):
             position = self._state_dict.get(STATE_KEY_POSITION)
             # Safe comparison handling potential type mismatches
             try:
-                return position == 0 if position is not None else None
+                if self._inverted:
+                    # When inverted, position == 100 means closed
+                    return position == 100 if position is not None else None
+                else:
+                    # Normal mode: position == 0 means closed
+                    return position == 0 if position is not None else None
             except (TypeError, ValueError):
                 return None
         return None
@@ -184,7 +195,11 @@ class AdsCover(AdsEntity, CoverEntity):
     @property
     def current_cover_position(self) -> int | None:
         """Return current position of cover."""
-        return self._state_dict.get(STATE_KEY_POSITION)
+        position = self._state_dict.get(STATE_KEY_POSITION)
+        if position is not None and self._inverted:
+            # When inverted, return the inverted position
+            return 100 - position
+        return position
 
     def stop_cover(self, **kwargs: Any) -> None:
         """Fire the stop action."""
@@ -195,10 +210,12 @@ class AdsCover(AdsEntity, CoverEntity):
         """Set cover position."""
         position = kwargs[ATTR_POSITION]
         if self._ads_var_pos_set is not None:
+            # When inverted, write the inverted position
+            write_position = (100 - position) if self._inverted else position
             # Use UINT or BYTE based on configuration
             plctype = pyads.PLCTYPE_UINT if self._ads_var_position_type == "uint" else pyads.PLCTYPE_BYTE
             self._ads_hub.write_by_name(
-                self._ads_var_pos_set, position, plctype
+                self._ads_var_pos_set, write_position, plctype
             )
 
     def open_cover(self, **kwargs: Any) -> None:
@@ -209,7 +226,9 @@ class AdsCover(AdsEntity, CoverEntity):
             if self._ads_var_close is not None:
                 self._ads_hub.write_by_name(self._ads_var_close, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(**{ATTR_POSITION: 100})
+            # When inverted, opening means position 0, otherwise 100
+            target_position = 0 if self._inverted else 100
+            self.set_cover_position(**{ATTR_POSITION: target_position})
 
     def close_cover(self, **kwargs: Any) -> None:
         """Move the cover down."""
@@ -219,7 +238,9 @@ class AdsCover(AdsEntity, CoverEntity):
             if self._ads_var_open is not None:
                 self._ads_hub.write_by_name(self._ads_var_open, False, pyads.PLCTYPE_BOOL)
         elif self._ads_var_pos_set is not None:
-            self.set_cover_position(**{ATTR_POSITION: 0})
+            # When inverted, closing means position 100, otherwise 0
+            target_position = 100 if self._inverted else 0
+            self.set_cover_position(**{ATTR_POSITION: target_position})
 
     @property
     def available(self) -> bool:
