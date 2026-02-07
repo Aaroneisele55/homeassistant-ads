@@ -12,6 +12,7 @@ from homeassistant.components.valve import (
     ValveEntity,
     ValveEntityFeature,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -32,6 +33,31 @@ PLATFORM_SCHEMA = VALVE_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS valves from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "valve":
+            ads_var = config[CONF_ADS_VAR]
+            name = config[CONF_NAME]
+            device_class = config.get(CONF_DEVICE_CLASS)
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(AdsValve(ads_hub, ads_var, name, device_class, unique_id))
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(

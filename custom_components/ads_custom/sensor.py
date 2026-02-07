@@ -13,6 +13,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE_CLASS,
     CONF_NAME,
@@ -61,6 +62,49 @@ PLATFORM_SCHEMA = SENSOR_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS sensors from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "sensor":
+            ads_var = config[CONF_ADS_VAR]
+            # Convert adstype string to AdsType enum
+            ads_type_str = config.get("adstype", "int")
+            ads_type = AdsType(ads_type_str)
+            name = config[CONF_NAME]
+            factor = config.get("factor")
+            device_class = config.get(CONF_DEVICE_CLASS)
+            state_class = config.get("state_class")
+            unit_of_measurement = config.get(CONF_UNIT_OF_MEASUREMENT)
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(
+                AdsSensor(
+                    ads_hub,
+                    name,
+                    ads_var,
+                    ads_type,
+                    factor,
+                    device_class,
+                    state_class,
+                    unit_of_measurement,
+                    unique_id,
+                )
+            )
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(

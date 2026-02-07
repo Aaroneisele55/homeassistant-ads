@@ -9,6 +9,7 @@ from homeassistant.components.select import (
     PLATFORM_SCHEMA as SELECT_PLATFORM_SCHEMA,
     SelectEntity,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -31,6 +32,31 @@ PLATFORM_SCHEMA = SELECT_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS select entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "select":
+            ads_var = config[CONF_ADS_VAR]
+            name = config[CONF_NAME]
+            options = config.get(CONF_OPTIONS, [])
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(AdsSelect(ads_hub, ads_var, name, options, unique_id))
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(

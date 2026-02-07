@@ -8,20 +8,22 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 
 ## Features
 
-- UI-based configuration (no YAML required for connection setup)
+- **Fully UI-based configuration** (no YAML required!)
 - Connect to ADS/AMS devices over the network
 - Support for multiple entity types:
   - Binary Sensors
   - Covers
-  - Lights
+  - Lights (with BYTE/UINT brightness support and custom scaling)
   - Select entities
   - Sensors
   - Switches
   - Valves
+- Add, edit, and remove entities through the UI
 - Write data to ADS variables via service calls
 - Real-time push notifications from PLC to Home Assistant
 - Support for all common PLC data types
 - Unique ID support for all entity types
+- Backward compatible with YAML configuration
 
 ## Installation
 
@@ -52,13 +54,34 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
    - **IP Address**: (Optional) The IP address of your ADS device
    - **AMS Port**: The AMS port number (default: `48898`)
 
-**Important:** After this step, you will have established the connection to your ADS device, but no entities (lights, switches, etc.) will appear yet. You must add entities via YAML configuration as shown in Step 2 below.
+### Step 2: Add Entities (UI)
 
-### Step 2: Add Entities (YAML Configuration Required)
+After setting up the ADS connection, you can add entities directly through the UI:
 
-After setting up the ADS connection via UI in Step 1, you must configure individual entities in your `configuration.yaml` file. Each entity (light, switch, sensor, etc.) needs to be manually added to the appropriate section of your configuration file.
+1. Go to Settings → Devices & Services
+2. Find your ADS Custom integration
+3. Click "Configure" (or the gear icon)
+4. Select "Add a new entity"
+5. Choose the entity type (Light, Switch, Sensor, etc.)
+6. Fill in the entity configuration:
+   - **Name**: Friendly name for the entity
+   - **ADS Variable**: The PLC variable name (e.g., `GVL.light_enable`)
+   - Type-specific options (brightness variables for lights, data types for sensors, etc.)
+7. Click "Submit"
 
-**Note:** Unlike some Home Assistant integrations, this integration does not currently support adding entities through the UI. You must use YAML configuration for all entities.
+Your entity will be created immediately and appear in Home Assistant!
+
+### Managing Entities
+
+To edit or remove entities:
+1. Click "Configure" on your ADS Custom integration
+2. Select "Manage existing entities"
+3. Choose the entity you want to modify
+4. Select "Edit entity" or "Remove entity"
+
+### YAML Configuration (Legacy/Optional)
+
+For backward compatibility, you can still configure entities via YAML. After setting up the ADS connection via UI in Step 1, you can add entities in your `configuration.yaml`:
 
 ### Example Sensor Configuration
 
@@ -179,25 +202,17 @@ The integration supports the following ADS/PLC data types:
 
 ## Troubleshooting
 
-### I added the integration but no entities appear
+### I can't see the Configure button
 
-This is expected behavior. After adding the ADS connection through the UI:
-1. The integration creates a connection to your ADS device
-2. **You must manually add entities** in your `configuration.yaml` file
-3. After adding entity configurations to YAML, restart Home Assistant
-4. Your entities will then appear in Home Assistant
+Make sure you've added the ADS Custom integration first. The Configure button appears on the integration card in Settings → Devices & Services.
 
-Example: To add a light, add this to your `configuration.yaml`:
-```yaml
-light:
-  - platform: ads_custom
-    adsvar: GVL.light_enable
-    adsvar_brightness: GVL.light_brightness
-    adsvar_brightness_type: byte
-    adsvar_brightness_scale: 100
-    name: My Beckhoff Light
-    unique_id: my_light_1
-```
+### My entities don't appear after adding them
+
+Try restarting Home Assistant or reloading the integration. The entities should appear immediately, but a reload may be needed in some cases.
+
+### YAML entities don't work
+
+If you're using YAML configuration, make sure you've set up the ADS connection through the UI first (Step 1). YAML entities require the connection to be established via the UI config entry.
 
 ### Cannot Connect
 
