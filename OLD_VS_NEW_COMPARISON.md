@@ -215,11 +215,9 @@ sensor:
     name: "Windgeschwindigkeit"
     adsvar: ".ParameterWetterstation.Windgschwindigkeit"
     adstype: "real"
-  # ... other non-light sensors ...
+  # ... other non-light sensors (7 total)
 
-# Keep only binary sensors that are not light-related
-binary_sensor:
-  # (None in this case, all were light-related)
+# No binary sensors needed (all were light-related)
 
 # Keep only switches that are not light-related
 switch:
