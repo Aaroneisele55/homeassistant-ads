@@ -89,6 +89,18 @@ light:
     unique_id: ads_dimmable_light
 ```
 
+For Beckhoff lights that use 0-100 range instead of 0-255:
+
+```yaml
+light:
+  - platform: ads_custom
+    adsvar: GVL.light_enable
+    adsvar_brightness: GVL.light_brightness
+    adsvar_brightness_scale: 100
+    name: Beckhoff Light
+    unique_id: ads_beckhoff_light
+```
+
 ## Services
 
 ### `ads_custom.write_data_by_name`
