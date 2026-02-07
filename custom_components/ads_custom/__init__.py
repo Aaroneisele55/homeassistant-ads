@@ -7,6 +7,7 @@ import logging
 import pyads
 import voluptuous as vol
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_IP_ADDRESS,
@@ -73,12 +74,13 @@ SCHEMA_SERVICE_WRITE_DATA_BY_NAME = vol.Schema(
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ADS component from YAML configuration."""
+    # Initialize data storage
+    hass.data.setdefault(DOMAIN, {})
+    
     if DOMAIN not in config:
-        _LOGGER.error(
-            "ADS Custom integration requires configuration in configuration.yaml. "
-            "Please add 'ads_custom:' section with device, ip_address, and port."
-        )
-        return False
+        # No YAML configuration, but config entries may exist
+        _LOGGER.debug("No YAML configuration found, waiting for config entries")
+        return True
 
     conf = config[DOMAIN]
     net_id = conf[CONF_DEVICE]
@@ -100,7 +102,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return False
 
     # Store the ADS hub for platform access
-    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["connection"] = ads
 
     async def async_shutdown_handler(event):
@@ -108,6 +109,72 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ads.shutdown()
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_shutdown_handler)
+
+    # Register services
+    await _async_register_services(hass, ads)
+
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up ADS from a config entry."""
+    net_id = entry.data[CONF_DEVICE]
+    ip_address = entry.data.get(CONF_IP_ADDRESS)
+    port = entry.data.get(CONF_PORT, 48898)
+
+    client = pyads.Connection(net_id, port, ip_address)
+
+    try:
+        ads = AdsHub(client)
+    except pyads.ADSError as err:
+        _LOGGER.error(
+            "Could not connect to ADS host (netid=%s, ip=%s, port=%s): %s",
+            net_id,
+            ip_address,
+            port,
+            err,
+        )
+        return False
+
+    # Store the ADS hub using entry_id to allow multiple connections
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = ads
+    
+    # Also store as "connection" for backward compatibility with YAML platforms
+    if "connection" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["connection"] = ads
+
+    async def async_shutdown_handler(event):
+        """Shutdown ADS connection."""
+        ads.shutdown()
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, async_shutdown_handler)
+
+    # Register services (only once)
+    await _async_register_services(hass, ads)
+
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload a config entry."""
+    ads_hub = hass.data[DOMAIN].pop(entry.entry_id, None)
+    
+    if ads_hub:
+        await hass.async_add_executor_job(ads_hub.shutdown)
+    
+    # Clean up "connection" if it was this entry
+    if hass.data[DOMAIN].get("connection") is ads_hub:
+        hass.data[DOMAIN].pop("connection", None)
+    
+    return True
+
+
+async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
+    """Register ADS services."""
+    # Only register services once
+    if hass.services.has_service(DOMAIN, SERVICE_WRITE_DATA_BY_NAME):
+        return
 
     async def handle_write_data_by_name(call: ServiceCall) -> None:
         """Write a value to the connected ADS device."""
@@ -126,6 +193,4 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         handle_write_data_by_name,
         schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
     )
-
-    return True
 
