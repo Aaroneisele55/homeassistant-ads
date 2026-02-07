@@ -20,7 +20,8 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
+from . import ADS_TYPEMAP, CONF_ADS_TYPE
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, AdsType
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -29,6 +30,10 @@ DEFAULT_NAME = "ADS binary sensor"
 PLATFORM_SCHEMA = BINARY_SENSOR_PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_ADS_VAR): cv.string,
+        vol.Optional(CONF_ADS_TYPE, default=AdsType.BOOL): vol.All(
+            vol.Coerce(AdsType),  # Coerce string to AdsType enum (StrEnum)
+            vol.In([AdsType.BOOL, AdsType.REAL]),
+        ),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
@@ -56,11 +61,12 @@ def setup_platform(
     if not ads_var:
         _LOGGER.error("Missing required field adsvar in binary_sensor configuration")
         return
+    ads_type: AdsType = config.get(CONF_ADS_TYPE, AdsType.BOOL)
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
     device_class: BinarySensorDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
-    ads_sensor = AdsBinarySensor(ads_hub, name, ads_var, device_class, unique_id)
+    ads_sensor = AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id)
     add_entities([ads_sensor])
 
 
@@ -72,18 +78,30 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         ads_hub: AdsHub,
         name: str,
         ads_var: str,
+        ads_type: AdsType,
         device_class: BinarySensorDeviceClass | None,
         unique_id: str | None,
     ) -> None:
         """Initialize ADS binary sensor."""
         super().__init__(ads_hub, name, ads_var, unique_id)
+        self._ads_type = ads_type
         self._attr_device_class = device_class or BinarySensorDeviceClass.MOVING
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
-        await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
+        await self.async_initialize_device(self._ads_var, ADS_TYPEMAP[self._ads_type])
 
     @property
     def is_on(self) -> bool | None:
         """Return True if the entity is on."""
-        return self._state_dict.get(STATE_KEY_STATE)
+        value = self._state_dict.get(STATE_KEY_STATE)
+        if value is None:
+            return None
+        # For REAL type, treat 0.0 as False, any other value as True
+        # Note: Direct comparison with 0.0 is appropriate here as PLC values
+        # are typically exact (0.0, 1.0, etc.) and floating-point precision
+        # issues are unlikely in this context
+        if self._ads_type == AdsType.REAL:
+            return bool(value != 0.0)
+        # For BOOL type, return value directly
+        return bool(value)

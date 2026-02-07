@@ -69,6 +69,14 @@ binary_sensor:
     name: Motion Sensor
     device_class: motion
     unique_id: ads_motion_sensor
+  
+  # Using REAL type as binary sensor (0.0 = off, non-zero = on)
+  - platform: ads_custom
+    adsvar: GVL.motor_speed
+    adstype: real
+    name: Motor Running
+    device_class: running
+    unique_id: ads_motor_running
 
 # Cover Example
 cover:

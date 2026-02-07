@@ -40,7 +40,7 @@ ads_custom:
 
 ## Binary Sensor
 
-Binary sensors read a boolean value from the PLC and represent it as an on/off state.
+Binary sensors read a boolean value from the PLC and represent it as an on/off state. They can also optionally read a REAL (floating-point) variable and treat it as a binary value (0.0 = off, any non-zero value = on).
 
 ### Configuration
 
@@ -51,13 +51,21 @@ binary_sensor:
     name: Front Door
     device_class: door
     unique_id: ads_front_door
+  
+  # Using REAL type as binary sensor
+  - platform: ads_custom
+    adsvar: GVL.motor_speed
+    adstype: real
+    name: Motor Running
+    device_class: running
 ```
 
 ### Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `adsvar` | string | **Yes** | - | The name of the ADS boolean variable to monitor |
+| `adsvar` | string | **Yes** | - | The name of the ADS variable to monitor |
+| `adstype` | string | No | `bool` | The ADS variable type. Supported values: `bool` (boolean), `real` (floating-point). For `real`, 0.0 = off, any non-zero value = on |
 | `name` | string | No | `ADS binary sensor` | Friendly name for the entity |
 | `device_class` | string | No | `moving` | The [device class](https://www.home-assistant.io/integrations/binary_sensor/#device-class) (e.g., `door`, `motion`, `window`) |
 | `unique_id` | string | No | - | Unique identifier for the entity |
