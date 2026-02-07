@@ -160,7 +160,9 @@ class AdsOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Add a new entity."""
         if user_input is not None:
-            self.entity_type = user_input["entity_type"]
+            self.entity_type = user_input.get("entity_type")
+            if self.entity_type is None:
+                return await self.async_step_init()
             return await self.async_step_configure_entity()
 
         return self.async_show_form(
@@ -184,7 +186,7 @@ class AdsOptionsFlow(OptionsFlow):
             # Process select options if it's a select entity
             if self.entity_type == "select" and "options" in user_input:
                 # Convert comma-separated string to list
-                options_str = user_input["options"].strip()
+                options_str = str(user_input.get("options", "")).strip()
                 user_input["options"] = [opt.strip() for opt in options_str.split(",") if opt.strip()]
 
             # Store the entity configuration
@@ -217,13 +219,15 @@ class AdsOptionsFlow(OptionsFlow):
             return self.async_abort(reason="no_entities")
 
         if user_input is not None:
-            entity_id = user_input["entity"]
+            entity_id = user_input.get("entity")
+            if entity_id is None:
+                return await self.async_step_init()
             self.editing_entity_id = entity_id
             
             return await self.async_step_manage_entity()
 
         entity_choices = {
-            entity_id: f"{config.get('name', entity_id)} ({config['type']})"
+            entity_id: f"{config.get('name', entity_id)} ({config.get('type', 'unknown')})"
             for entity_id, config in entities.items()
         }
 
@@ -262,9 +266,9 @@ class AdsOptionsFlow(OptionsFlow):
 
         if user_input is not None:
             # Process select options if it's a select entity
-            if entity_config["type"] == "select" and "options" in user_input:
+            if entity_config.get("type") == "select" and "options" in user_input:
                 # Convert comma-separated string to list
-                options_str = user_input["options"].strip()
+                options_str = str(user_input.get("options", "")).strip()
                 user_input["options"] = [opt.strip() for opt in options_str.split(",") if opt.strip()]
             
             entities[self.editing_entity_id] = {

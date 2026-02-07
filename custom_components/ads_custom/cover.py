@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pyads
@@ -26,6 +27,7 @@ from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 from .hub import AdsHub
 
+_LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS Cover"
 
 CONF_ADS_VAR_SET_POS = "adsvar_set_position"
@@ -65,13 +67,16 @@ async def async_setup_entry(
     
     for entity_id, config in entities_config.items():
         if config.get("type") == "cover":
-            ads_var_is_closed = config[CONF_ADS_VAR]
+            ads_var_is_closed = config.get(CONF_ADS_VAR)
+            name = config.get(CONF_NAME, DEFAULT_NAME)
+            if not ads_var_is_closed:
+                _LOGGER.warning("Skipping cover %s: missing adsvar", entity_id)
+                continue
             ads_var_position = config.get(CONF_ADS_VAR_POSITION)
             ads_var_pos_set = config.get(CONF_ADS_VAR_SET_POS)
             ads_var_open = config.get(CONF_ADS_VAR_OPEN)
             ads_var_close = config.get(CONF_ADS_VAR_CLOSE)
             ads_var_stop = config.get(CONF_ADS_VAR_STOP)
-            name = config[CONF_NAME]
             device_class = config.get(CONF_DEVICE_CLASS)
             unique_id = config.get(CONF_UNIQUE_ID) or entity_id
             
@@ -110,13 +115,16 @@ def setup_platform(
     if ads_hub is None:
         return
 
-    ads_var_is_closed: str = config[CONF_ADS_VAR]
+    ads_var_is_closed: str = config.get(CONF_ADS_VAR)
+    if not ads_var_is_closed:
+        _LOGGER.error("Missing required field adsvar in cover configuration")
+        return
     ads_var_position: str | None = config.get(CONF_ADS_VAR_POSITION)
     ads_var_pos_set: str | None = config.get(CONF_ADS_VAR_SET_POS)
     ads_var_open: str | None = config.get(CONF_ADS_VAR_OPEN)
     ads_var_close: str | None = config.get(CONF_ADS_VAR_CLOSE)
     ads_var_stop: str | None = config.get(CONF_ADS_VAR_STOP)
-    name: str = config[CONF_NAME]
+    name: str = config.get(CONF_NAME, DEFAULT_NAME)
     device_class: CoverDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
@@ -193,15 +201,20 @@ class AdsCover(AdsEntity, CoverEntity):
     def is_closed(self) -> bool | None:
         """Return if the cover is closed."""
         if self._ads_var is not None:
-            return self._state_dict[STATE_KEY_STATE]
+            return self._state_dict.get(STATE_KEY_STATE)
         if self._ads_var_position is not None:
-            return self._state_dict[STATE_KEY_POSITION] == 0
+            position = self._state_dict.get(STATE_KEY_POSITION)
+            # Safe comparison handling potential type mismatches
+            try:
+                return position == 0 if position is not None else None
+            except (TypeError, ValueError):
+                return None
         return None
 
     @property
-    def current_cover_position(self) -> int:
+    def current_cover_position(self) -> int | None:
         """Return current position of cover."""
-        return self._state_dict[STATE_KEY_POSITION]
+        return self._state_dict.get(STATE_KEY_POSITION)
 
     def stop_cover(self, **kwargs: Any) -> None:
         """Fire the stop action."""

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pyads
 import voluptuous as vol
 
@@ -22,6 +24,7 @@ from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 from .hub import AdsHub
 
+_LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS binary sensor"
 PLATFORM_SCHEMA = BINARY_SENSOR_PLATFORM_SCHEMA.extend(
     {
@@ -47,8 +50,11 @@ async def async_setup_entry(
     
     for entity_id, config in entities_config.items():
         if config.get("type") == "binary_sensor":
-            ads_var = config[CONF_ADS_VAR]
-            name = config[CONF_NAME]
+            ads_var = config.get(CONF_ADS_VAR)
+            name = config.get(CONF_NAME, DEFAULT_NAME)
+            if not ads_var:
+                _LOGGER.warning("Skipping binary_sensor %s: missing adsvar", entity_id)
+                continue
             device_class = config.get(CONF_DEVICE_CLASS)
             unique_id = config.get(CONF_UNIQUE_ID) or entity_id
             
@@ -74,8 +80,11 @@ def setup_platform(
     if ads_hub is None:
         return
 
-    ads_var: str = config[CONF_ADS_VAR]
-    name: str = config[CONF_NAME]
+    ads_var: str = config.get(CONF_ADS_VAR)
+    if not ads_var:
+        _LOGGER.error("Missing required field adsvar in binary_sensor configuration")
+        return
+    name: str = config.get(CONF_NAME, DEFAULT_NAME)
     device_class: BinarySensorDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
@@ -103,6 +112,6 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return True if the entity is on."""
-        return self._state_dict[STATE_KEY_STATE]
+        return self._state_dict.get(STATE_KEY_STATE)
