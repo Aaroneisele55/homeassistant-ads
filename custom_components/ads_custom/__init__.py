@@ -73,7 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ADS from a config entry."""
     net_id = entry.data[CONF_DEVICE]
     ip_address = entry.data.get(CONF_IP_ADDRESS)
-    port = entry.data[CONF_PORT]
+    port = entry.data.get(CONF_PORT, 48898)  # Default port if not in config
 
     client = pyads.Connection(net_id, port, ip_address)
 

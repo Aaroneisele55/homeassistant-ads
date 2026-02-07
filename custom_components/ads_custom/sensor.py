@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import voluptuous as vol
 
 from homeassistant.components.sensor import (
@@ -30,6 +32,7 @@ from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, AdsType
 from .entity import AdsEntity
 from .hub import AdsHub
 
+_LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS sensor"
 
 PLATFORM_SCHEMA = SENSOR_PLATFORM_SCHEMA.extend(
@@ -78,11 +81,22 @@ async def async_setup_entry(
     
     for entity_id, config in entities_config.items():
         if config.get("type") == "sensor":
-            ads_var = config[CONF_ADS_VAR]
-            # Convert adstype string to AdsType enum
+            ads_var = config.get(CONF_ADS_VAR)
+            name = config.get(CONF_NAME, DEFAULT_NAME)
+            if not ads_var:
+                _LOGGER.warning("Skipping sensor %s: missing adsvar", entity_id)
+                continue
+            # Convert adstype string to AdsType enum with error handling
             ads_type_str = config.get("adstype", "int")
-            ads_type = AdsType(ads_type_str)
-            name = config[CONF_NAME]
+            try:
+                ads_type = AdsType(ads_type_str)
+            except ValueError:
+                _LOGGER.warning(
+                    "Invalid adstype '%s' for sensor %s, defaulting to int",
+                    ads_type_str,
+                    entity_id,
+                )
+                ads_type = AdsType.INT
             factor = config.get("factor")
             device_class = config.get(CONF_DEVICE_CLASS)
             state_class = config.get("state_class")
@@ -123,9 +137,12 @@ def setup_platform(
     if ads_hub is None:
         return
 
-    ads_var: str = config[CONF_ADS_VAR]
-    ads_type: AdsType = config[CONF_ADS_TYPE]
-    name: str = config[CONF_NAME]
+    ads_var: str = config.get(CONF_ADS_VAR)
+    if not ads_var:
+        _LOGGER.error("Missing required field adsvar in sensor configuration")
+        return
+    ads_type: AdsType = config.get(CONF_ADS_TYPE, AdsType.INT)
+    name: str = config.get(CONF_NAME, DEFAULT_NAME)
     factor: int | None = config.get(CONF_ADS_FACTOR)
     device_class: SensorDeviceClass | None = config.get(CONF_DEVICE_CLASS)
     state_class: SensorStateClass | None = config.get(CONF_STATE_CLASS)
@@ -182,4 +199,4 @@ class AdsSensor(AdsEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Return the state of the device."""
-        return self._state_dict[STATE_KEY_STATE]
+        return self._state_dict.get(STATE_KEY_STATE)

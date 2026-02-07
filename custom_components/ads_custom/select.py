@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import pyads
 import voluptuous as vol
 
@@ -20,6 +22,7 @@ from .const import CONF_ADS_VAR, DOMAIN
 from .entity import AdsEntity
 from .hub import AdsHub
 
+_LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS select"
 
 CONF_OPTIONS = "options"
@@ -48,9 +51,15 @@ async def async_setup_entry(
     
     for entity_id, config in entities_config.items():
         if config.get("type") == "select":
-            ads_var = config[CONF_ADS_VAR]
-            name = config[CONF_NAME]
+            ads_var = config.get(CONF_ADS_VAR)
+            name = config.get(CONF_NAME, DEFAULT_NAME)
             options = config.get(CONF_OPTIONS, [])
+            if not ads_var:
+                _LOGGER.warning("Skipping select %s: missing adsvar", entity_id)
+                continue
+            if not options or not isinstance(options, list):
+                _LOGGER.warning("Skipping select %s: missing or invalid options", entity_id)
+                continue
             unique_id = config.get(CONF_UNIQUE_ID) or entity_id
             
             entities.append(AdsSelect(ads_hub, ads_var, name, options, unique_id))
@@ -75,9 +84,15 @@ def setup_platform(
     if ads_hub is None:
         return
 
-    ads_var: str = config[CONF_ADS_VAR]
-    name: str = config[CONF_NAME]
-    options: list[str] = config[CONF_OPTIONS]
+    ads_var: str = config.get(CONF_ADS_VAR)
+    if not ads_var:
+        _LOGGER.error("Missing required field adsvar in select configuration")
+        return
+    name: str = config.get(CONF_NAME, DEFAULT_NAME)
+    options: list[str] = config.get(CONF_OPTIONS, [])
+    if not options:
+        _LOGGER.error("Missing required field options in select configuration")
+        return
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     entity = AdsSelect(ads_hub, ads_var, name, options, unique_id)
@@ -98,6 +113,9 @@ class AdsSelect(AdsEntity, SelectEntity):
     ) -> None:
         """Initialize the AdsSelect entity."""
         super().__init__(ads_hub, name, ads_var, unique_id)
+        # Ensure options is a valid non-empty list
+        if not options or not isinstance(options, list):
+            raise ValueError(f"Select entity {name} must have a non-empty list of options")
         self._attr_options = options
         self._attr_current_option = None
 
@@ -106,9 +124,17 @@ class AdsSelect(AdsEntity, SelectEntity):
         # Register notification with custom callback for select entity
         def update_callback(name: str, value: int) -> None:
             """Handle the value update from ADS."""
-            if 0 <= value < len(self._attr_options):
+            # Additional safety check for options
+            if self._attr_options and 0 <= value < len(self._attr_options):
                 self._attr_current_option = self._attr_options[value]
                 self.schedule_update_ha_state()
+            else:
+                _LOGGER.warning(
+                    "Invalid value %d for select %s (valid range: 0-%d)",
+                    value,
+                    self.name,
+                    len(self._attr_options) - 1 if self._attr_options else -1,
+                )
 
         await self.hass.async_add_executor_job(
             self._ads_hub.add_device_notification,

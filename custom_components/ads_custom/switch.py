@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pyads
@@ -21,6 +22,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 
+_LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS Switch"
 
 PLATFORM_SCHEMA = SWITCH_PLATFORM_SCHEMA.extend(
@@ -46,8 +48,11 @@ async def async_setup_entry(
     
     for entity_id, config in entities_config.items():
         if config.get("type") == "switch":
-            ads_var = config[CONF_ADS_VAR]
-            name = config[CONF_NAME]
+            ads_var = config.get(CONF_ADS_VAR)
+            name = config.get(CONF_NAME, "ADS Switch")
+            if not ads_var:
+                _LOGGER.warning("Skipping switch %s: missing adsvar", entity_id)
+                continue
             unique_id = config.get(CONF_UNIQUE_ID) or entity_id
             
             entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id))
@@ -72,8 +77,11 @@ def setup_platform(
     if ads_hub is None:
         return
 
-    name: str = config[CONF_NAME]
-    ads_var: str = config[CONF_ADS_VAR]
+    name: str = config.get(CONF_NAME, DEFAULT_NAME)
+    ads_var: str = config.get(CONF_ADS_VAR)
+    if not ads_var:
+        _LOGGER.error("Missing required field adsvar in switch configuration")
+        return
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     add_entities([AdsSwitch(ads_hub, name, ads_var, unique_id)])
@@ -87,9 +95,9 @@ class AdsSwitch(AdsEntity, SwitchEntity):
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return True if the entity is on."""
-        return self._state_dict[STATE_KEY_STATE]
+        return self._state_dict.get(STATE_KEY_STATE)
 
     def turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
