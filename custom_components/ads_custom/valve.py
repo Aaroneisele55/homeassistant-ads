@@ -82,12 +82,23 @@ class AdsValve(AdsEntity, ValveEntity):
     ) -> None:
         """Initialize AdsValve entity."""
         super().__init__(ads_hub, name, ads_var, unique_id)
-        self._attr_device_class = device_class
+        self._configured_device_class = device_class
         self._attr_reports_position = False
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
+
+    @property
+    def device_class(self) -> ValveDeviceClass | None:
+        """Return the device class of the valve.
+
+        Checks entity registry for custom device_class first,
+        then falls back to configured value.
+        """
+        if self.registry_entry and self.registry_entry.device_class:
+            return self.registry_entry.device_class
+        return self._configured_device_class
 
     @property
     def is_closed(self) -> bool | None:

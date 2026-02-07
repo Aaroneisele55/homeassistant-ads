@@ -152,7 +152,7 @@ class AdsCover(AdsEntity, CoverEntity):
         self._ads_var_close = ads_var_close
         self._ads_var_stop = ads_var_stop
         self._inverted = inverted
-        self._attr_device_class = device_class
+        self._configured_device_class = device_class
         self._attr_supported_features = (
             CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
         )
@@ -172,6 +172,17 @@ class AdsCover(AdsEntity, CoverEntity):
             await self.async_initialize_device(
                 self._ads_var_position, plctype, STATE_KEY_POSITION
             )
+
+    @property
+    def device_class(self) -> CoverDeviceClass | None:
+        """Return the device class of the cover.
+
+        Checks entity registry for custom device_class first,
+        then falls back to configured value.
+        """
+        if self.registry_entry and self.registry_entry.device_class:
+            return self.registry_entry.device_class
+        return self._configured_device_class
 
     @property
     def is_closed(self) -> bool | None:
