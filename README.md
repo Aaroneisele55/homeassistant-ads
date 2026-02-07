@@ -24,6 +24,57 @@ This is a custom Home Assistant integration for Beckhoff's ADS (Automation Devic
 - Unique ID support for all entity types
 - Perfect for version control and automation
 
+## Migrating from Core ADS or Template Lights
+
+If you're currently using the core Home Assistant ADS integration or a template-based workaround for dimmable lights with BYTE brightness (0-100 range), this integration provides **native support** that eliminates the need for multiple helper entities.
+
+### What's Different?
+
+✅ **Native BYTE brightness support** - Direct support for Beckhoff lights using 0-100 brightness range
+✅ **No template workarounds needed** - One light entity instead of 4 (sensor + binary_sensor + switch + template)
+✅ **Simpler configuration** - Up to 80% fewer lines of YAML configuration
+✅ **Better performance** - No template evaluation overhead
+
+### Migration Resources
+
+- **[USER_MIGRATION_GUIDE.md](USER_MIGRATION_GUIDE.md)** - Complete step-by-step migration guide
+- **[OLD_VS_NEW_COMPARISON.md](OLD_VS_NEW_COMPARISON.md)** - Side-by-side comparison of old vs new approach
+- **[CONVERTED_USER_CONFIG.yaml](CONVERTED_USER_CONFIG.yaml)** - Real-world example of a converted configuration
+
+### Quick Example
+
+**Old approach (4 entities per dimmable light):**
+```yaml
+sensor:
+  - platform: ads
+    name: "Light_Brightness"
+    adsvar: ".Light.Brightness"
+binary_sensor:
+  - platform: ads
+    name: "Light_State"
+    adsvar: ".Light.Enable"
+switch:
+  - platform: ads
+    name: "Light_Switch"
+    adsvar: ".Light.Enable"
+template:
+  - light:
+      name: "My Light"
+      state: "{{ is_state('binary_sensor.Light_State', 'on') }}"
+      # ... complex template code ...
+```
+
+**New approach (1 entity per light):**
+```yaml
+light:
+  - platform: ads_custom
+    name: "My Light"
+    adsvar: ".Light.Enable"
+    adsvar_brightness: ".Light.Brightness"
+    adsvar_brightness_scale: 100
+    adsvar_brightness_type: byte
+```
+
 ## Installation
 
 ### HACS (Recommended)
