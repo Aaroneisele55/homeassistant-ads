@@ -51,7 +51,6 @@ def setup_platform(
             "section to your configuration.yaml"
         )
         return
-        return
 
     ads_var: str = config.get(CONF_ADS_VAR)
     if not ads_var:
