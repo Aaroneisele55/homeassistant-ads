@@ -96,12 +96,13 @@ This configuration is ideal for covers where:
 - Position is read-only (status feedback from PLC)
 - Open/close are write-only command triggers
 - No separate closed state sensor is available
+- PLC uses UINT data type with 0-100 range
 
 ```yaml
 cover:
   - platform: ads_custom
     name: Garage Door
-    adsvar_position: GVL.garage_position        # Read-only: current position (UINT)
+    adsvar_position: GVL.garage_position        # Read-only: current position UINT (0-100)
     adsvar_position_type: uint
     adsvar_open: GVL.garage_open                # Write-only: set to TRUE to open
     adsvar_close: GVL.garage_close              # Write-only: set to TRUE to close
@@ -115,7 +116,7 @@ cover:
 |-----------|------|----------|---------|-------------|
 | `adsvar` | string | No* | - | Boolean variable indicating if the cover is closed (read-only status feedback) |
 | `adsvar_position` | string | No* | - | Variable for reading the current position 0-100 (read-only status feedback) |
-| `adsvar_position_type` | string | No | `byte` | Data type for position variables: `byte` (0-255) or `uint` (0-65535). Home Assistant will scale to 0-100. |
+| `adsvar_position_type` | string | No | `byte` | Data type for position variables: `byte` or `uint`. **Important:** The PLC variable must use 0-100 range regardless of data type. |
 | `adsvar_set_position` | string | No | - | Variable for setting the target position 0-100 (write-only command) |
 | `adsvar_open` | string | No | - | Boolean variable to trigger open command (write-only, set to TRUE to open) |
 | `adsvar_close` | string | No | - | Boolean variable to trigger close command (write-only, set to TRUE to close) |
@@ -125,6 +126,13 @@ cover:
 | `unique_id` | string | No | - | Unique identifier for the entity |
 
 **Note:** Either `adsvar` or `adsvar_position` must be provided. If only `adsvar_position` is provided, the closed state will be derived from the position (position == 0 means closed).
+
+**Important:** Position values must be in the range 0-100:
+- **0** = fully closed
+- **100** = fully open
+- The PLC variable should use the 0-100 range regardless of whether it's declared as BYTE or UINT in the PLC
+- Use `adsvar_position_type: uint` if your PLC variable is declared as UINT (even if it only uses 0-100)
+- Use `adsvar_position_type: byte` (default) if your PLC variable is declared as BYTE
 
 ### Supported Device Classes
 

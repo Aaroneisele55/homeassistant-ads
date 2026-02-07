@@ -85,9 +85,10 @@ cover:
     unique_id: ads_living_room_blinds
   
   # Cover with UINT position and open/close commands (no closed state sensor)
+  # Note: PLC position variable should use 0-100 range
   - platform: ads_custom
     name: Garage Door
-    adsvar_position: GVL.garage_position
+    adsvar_position: GVL.garage_position        # UINT with 0-100 range
     adsvar_position_type: uint
     adsvar_open: GVL.garage_open
     adsvar_close: GVL.garage_close
