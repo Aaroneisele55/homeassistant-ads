@@ -118,7 +118,7 @@ class AdsCover(AdsEntity, CoverEntity):
     def __init__(
         self,
         ads_hub: AdsHub,
-        ads_var_is_closed: str | None,
+        ads_var_closed_state: str | None,
         ads_var_position: str | None,
         ads_var_position_type: str,
         ads_var_pos_set: str | None,
@@ -130,7 +130,7 @@ class AdsCover(AdsEntity, CoverEntity):
         unique_id: str | None,
     ) -> None:
         """Initialize AdsCover entity."""
-        super().__init__(ads_hub, name, ads_var_is_closed, unique_id)
+        super().__init__(ads_hub, name, ads_var_closed_state, unique_id)
         if self._attr_unique_id is None:
             if ads_var_position is not None:
                 self._attr_unique_id = ads_var_position
