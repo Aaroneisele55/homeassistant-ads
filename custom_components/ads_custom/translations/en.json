@@ -21,7 +21,83 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "no_entities": "No entities configured yet. Add an entity first."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage ADS Entities",
+        "menu_options": {
+          "add_entity": "Add a new entity",
+          "list_entities": "Manage existing entities"
+        }
+      },
+      "add_entity": {
+        "title": "Add Entity",
+        "description": "Select the type of entity you want to add.",
+        "data": {
+          "entity_type": "Entity Type"
+        }
+      },
+      "configure_entity": {
+        "title": "Configure {entity_type}",
+        "description": "Configure the entity settings.",
+        "data": {
+          "entity_id": "Entity ID (optional)",
+          "name": "Name",
+          "adsvar": "ADS Variable",
+          "adsvar_brightness": "Brightness Variable (optional)",
+          "adsvar_brightness_scale": "Brightness Scale (default: 255)",
+          "adsvar_brightness_type": "Brightness Data Type",
+          "adstype": "Data Type",
+          "unit_of_measurement": "Unit of Measurement",
+          "device_class": "Device Class",
+          "state_class": "State Class",
+          "factor": "Factor",
+          "adsvar_position": "Position Variable",
+          "adsvar_set_position": "Position Set Variable",
+          "adsvar_open": "Open Variable",
+          "adsvar_close": "Close Variable",
+          "adsvar_stop": "Stop Variable",
+          "options": "Options (comma-separated)"
+        },
+        "data_description": {
+          "adsvar": "The PLC variable name (e.g., GVL.light_enable)",
+          "adsvar_brightness": "For lights: The PLC variable for brightness control",
+          "adsvar_brightness_scale": "For lights: Maximum brightness value (100 for 0-100 range, 255 for 0-255 range)",
+          "adsvar_brightness_type": "For lights: Data type used for brightness (byte or uint)",
+          "adsvar_position": "For covers: The PLC variable for position feedback",
+          "adsvar_set_position": "For covers: The PLC variable to set position",
+          "adsvar_open": "For covers: The PLC variable to trigger open",
+          "adsvar_close": "For covers: The PLC variable to trigger close",
+          "adsvar_stop": "For covers: The PLC variable to trigger stop",
+          "options": "For select: Comma-separated list of options (e.g., Option1,Option2,Option3)"
+        }
+      },
+      "list_entities": {
+        "title": "Manage Entities",
+        "description": "Select an entity to edit or remove.",
+        "data": {
+          "entity": "Entity"
+        }
+      },
+      "manage_entity": {
+        "title": "Manage Entity",
+        "menu_options": {
+          "edit_entity": "Edit entity",
+          "remove_entity": "Remove entity"
+        }
+      },
+      "edit_entity": {
+        "title": "Edit Entity",
+        "description": "Update the entity configuration."
+      },
+      "remove_entity": {
+        "title": "Remove Entity",
+        "description": "Are you sure you want to remove the entity '{entity_name}'?"
+      }
     }
   },
   "services": {
