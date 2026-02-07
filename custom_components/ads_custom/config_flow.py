@@ -15,7 +15,7 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_PORT
 from homeassistant.core import callback
 
 from .const import DOMAIN
@@ -208,7 +208,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            return await self.async_create_entry(title="", data={"entities": entities})
+            return self.async_create_entry(title="", data={"entities": entities})
 
         # Build schema based on entity type
         schema = self._get_entity_schema(self.entity_type)
@@ -286,7 +286,7 @@ class AdsOptionsFlow(OptionsFlow):
                 **user_input,
             }
 
-            return await self.async_create_entry(title="", data={"entities": entities})
+            return self.async_create_entry(title="", data={"entities": entities})
 
         self.entity_type = entity_config["type"]
         schema = self._get_entity_schema(self.entity_type, entity_config)
@@ -310,7 +310,7 @@ class AdsOptionsFlow(OptionsFlow):
             if self.editing_entity_id in entities:
                 del entities[self.editing_entity_id]
 
-            return await self.async_create_entry(title="", data={"entities": entities})
+            return self.async_create_entry(title="", data={"entities": entities})
         
         # Show confirmation form
         entity_config = self.config_entry.options.get("entities", {}).get(
