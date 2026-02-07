@@ -129,7 +129,9 @@ async def async_setup_entry(
     for sensor_config in sensors:
         name = sensor_config.get(CONF_NAME, DEFAULT_NAME)
         ads_var = sensor_config.get(CONF_ADS_VAR)
-        ads_type = AdsType(sensor_config.get(CONF_ADS_TYPE, AdsType.INT))
+        # Handle both string (from UI) and enum (from YAML) values
+        ads_type_value = sensor_config.get(CONF_ADS_TYPE, AdsType.INT)
+        ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
         factor = sensor_config.get(CONF_ADS_FACTOR)
         device_class = sensor_config.get(CONF_DEVICE_CLASS)
         state_class = sensor_config.get(CONF_STATE_CLASS)
