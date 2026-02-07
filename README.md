@@ -4,7 +4,7 @@
 
 A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Specification)** protocol, enabling real-time communication with TwinCAT PLCs and other Beckhoff automation devices.
 
-> **Note:** This is a custom integration with domain `ads_custom` to prevent conflicts with Home Assistant's core ADS integration. It is **100% YAML-based** for transparency and version control.
+> **Note:** This is a custom integration with domain `ads_custom` to prevent conflicts with Home Assistant's core ADS integration. You can configure it via **UI or YAML** - your choice!
 
 ## Documentation
 
@@ -14,6 +14,8 @@ A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Spec
 
 💡 **[Example Configuration](example_configuration.yaml)** - Working YAML examples
 
+🖥️ **[UI Configuration Guide](docs/UI_CONFIGURATION.md)** - Setup via Home Assistant UI
+
 ## Features
 
 - ✅ **Real-time push notifications** from PLC to Home Assistant
@@ -22,7 +24,7 @@ A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Spec
 - ✅ **Custom brightness scaling** for lights (0-100 or 0-255)
 - ✅ **Unique ID support** for UI customization
 - ✅ **Service calls** to write PLC variables
-- ✅ **100% YAML configuration**
+- ✅ **UI or YAML configuration** - your choice!
 
 ## Quick Start
 
@@ -42,7 +44,21 @@ A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Spec
 1. Copy `custom_components/ads_custom` to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 
-### Basic Configuration
+### Configuration
+
+You have **two options** for configuring the ADS connection - choose the one you prefer:
+
+#### Option 1: UI Configuration (Recommended for Beginners)
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **+ Add Integration**
+3. Search for **ADS Custom**
+4. Follow the setup wizard to enter your connection details
+5. Add entities to your `configuration.yaml`
+
+See the [UI Configuration Guide](docs/UI_CONFIGURATION.md) for detailed instructions.
+
+#### Option 2: YAML Configuration (For Power Users)
 
 Add to your `configuration.yaml`:
 
