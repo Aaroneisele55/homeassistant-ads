@@ -11,6 +11,7 @@ from homeassistant.components.switch import (
     PLATFORM_SCHEMA as SWITCH_PLATFORM_SCHEMA,
     SwitchEntity,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -29,6 +30,30 @@ PLATFORM_SCHEMA = SWITCH_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS switches from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "switch":
+            ads_var = config[CONF_ADS_VAR]
+            name = config[CONF_NAME]
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id))
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(

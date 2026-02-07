@@ -13,6 +13,7 @@ from homeassistant.components.light import (
     ColorMode,
     LightEntity,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -24,17 +25,62 @@ from .entity import AdsEntity
 from .hub import AdsHub
 
 CONF_ADS_VAR_BRIGHTNESS = "adsvar_brightness"
+CONF_ADS_BRIGHTNESS_SCALE = "adsvar_brightness_scale"
+CONF_ADS_VAR_BRIGHTNESS_TYPE = "adsvar_brightness_type"
 STATE_KEY_BRIGHTNESS = "brightness"
 
 DEFAULT_NAME = "ADS Light"
+DEFAULT_BRIGHTNESS_SCALE = 255
+# Default to BYTE because Beckhoff lights typically use BYTE (0-255) for brightness
+DEFAULT_BRIGHTNESS_TYPE = "byte"
+
 PLATFORM_SCHEMA = LIGHT_PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_ADS_VAR): cv.string,
         vol.Optional(CONF_ADS_VAR_BRIGHTNESS): cv.string,
+        vol.Optional(CONF_ADS_BRIGHTNESS_SCALE, default=DEFAULT_BRIGHTNESS_SCALE): cv.positive_int,
+        vol.Optional(CONF_ADS_VAR_BRIGHTNESS_TYPE, default=DEFAULT_BRIGHTNESS_TYPE): vol.In(["byte", "uint"]),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS lights from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "light":
+            ads_var_enable = config[CONF_ADS_VAR]
+            ads_var_brightness = config.get(CONF_ADS_VAR_BRIGHTNESS)
+            brightness_scale = config.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
+            brightness_type = config.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
+            name = config[CONF_NAME]
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(
+                AdsLight(
+                    ads_hub,
+                    ads_var_enable,
+                    ads_var_brightness,
+                    brightness_scale,
+                    brightness_type,
+                    name,
+                    unique_id,
+                )
+            )
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(
@@ -55,11 +101,13 @@ def setup_platform(
 
     ads_var_enable: str = config[CONF_ADS_VAR]
     ads_var_brightness: str | None = config.get(CONF_ADS_VAR_BRIGHTNESS)
+    brightness_scale: int = config[CONF_ADS_BRIGHTNESS_SCALE]
+    brightness_type: str = config[CONF_ADS_VAR_BRIGHTNESS_TYPE]
     name: str = config[CONF_NAME]
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     add_entities(
-        [AdsLight(ads_hub, ads_var_enable, ads_var_brightness, name, unique_id)]
+        [AdsLight(ads_hub, ads_var_enable, ads_var_brightness, brightness_scale, brightness_type, name, unique_id)]
     )
 
 
@@ -71,6 +119,8 @@ class AdsLight(AdsEntity, LightEntity):
         ads_hub: AdsHub,
         ads_var_enable: str,
         ads_var_brightness: str | None,
+        brightness_scale: int,
+        brightness_type: str,
         name: str,
         unique_id: str | None,
     ) -> None:
@@ -78,6 +128,8 @@ class AdsLight(AdsEntity, LightEntity):
         super().__init__(ads_hub, name, ads_var_enable, unique_id)
         self._state_dict[STATE_KEY_BRIGHTNESS] = None
         self._ads_var_brightness = ads_var_brightness
+        self._brightness_scale = brightness_scale
+        self._brightness_type = brightness_type
         if ads_var_brightness is not None:
             self._attr_color_mode = ColorMode.BRIGHTNESS
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
@@ -85,15 +137,26 @@ class AdsLight(AdsEntity, LightEntity):
             self._attr_color_mode = ColorMode.ONOFF
             self._attr_supported_color_modes = {ColorMode.ONOFF}
 
+    def _get_brightness_plc_type(self) -> type:
+        """Return the PLC data type to use for brightness based on configuration."""
+        return pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
+
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None:
+            # Calculate the scaling factor to convert PLC value to HA brightness (0-255)
+            # When reading from PLC, the factor is passed to async_initialize_device which
+            # divides the PLC value by the factor to get the HA value (see entity.py).
+            # For a 0-100 range: factor = 100/255, so value/factor scales 100 to 255.
+            # For the default 255 range, factor is None to avoid unnecessary division by 1.
+            brightness_factor = self._brightness_scale / 255 if self._brightness_scale != 255 else None
             await self.async_initialize_device(
                 self._ads_var_brightness,
-                pyads.PLCTYPE_UINT,
+                self._get_brightness_plc_type(),
                 STATE_KEY_BRIGHTNESS,
+                brightness_factor,
             )
 
     @property
@@ -112,8 +175,10 @@ class AdsLight(AdsEntity, LightEntity):
         self._ads_hub.write_by_name(self._ads_var, True, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None and brightness is not None:
+            # Scale brightness from HA range (0-255) to PLC range (0-brightness_scale)
+            scaled_brightness = int(brightness * self._brightness_scale / 255)
             self._ads_hub.write_by_name(
-                self._ads_var_brightness, brightness, pyads.PLCTYPE_UINT
+                self._ads_var_brightness, scaled_brightness, self._get_brightness_plc_type()
             )
 
     def turn_off(self, **kwargs: Any) -> None:

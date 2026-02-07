@@ -15,6 +15,7 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -48,6 +49,49 @@ PLATFORM_SCHEMA = COVER_PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
 )
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS covers from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get entities configured via UI
+    entities_config = entry.options.get("entities", {})
+    entities = []
+    
+    for entity_id, config in entities_config.items():
+        if config.get("type") == "cover":
+            ads_var_is_closed = config[CONF_ADS_VAR]
+            ads_var_position = config.get(CONF_ADS_VAR_POSITION)
+            ads_var_pos_set = config.get(CONF_ADS_VAR_SET_POS)
+            ads_var_open = config.get(CONF_ADS_VAR_OPEN)
+            ads_var_close = config.get(CONF_ADS_VAR_CLOSE)
+            ads_var_stop = config.get(CONF_ADS_VAR_STOP)
+            name = config[CONF_NAME]
+            device_class = config.get(CONF_DEVICE_CLASS)
+            unique_id = config.get(CONF_UNIQUE_ID) or entity_id
+            
+            entities.append(
+                AdsCover(
+                    ads_hub,
+                    ads_var_is_closed,
+                    ads_var_position,
+                    ads_var_pos_set,
+                    ads_var_open,
+                    ads_var_close,
+                    ads_var_stop,
+                    name,
+                    device_class,
+                    unique_id,
+                )
+            )
+    
+    if entities:
+        async_add_entities(entities)
 
 
 def setup_platform(

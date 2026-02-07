@@ -119,10 +119,10 @@ class AdsHub:
         # Data parsing based on PLC data type
         plc_datatype = notification_item.plc_datatype
         unpack_formats = {
-            pyads.PLCTYPE_BYTE: "<b",
+            pyads.PLCTYPE_BYTE: "<B",  # BYTE is unsigned (0-255)
             pyads.PLCTYPE_INT: "<h",
             pyads.PLCTYPE_UINT: "<H",
-            pyads.PLCTYPE_SINT: "<b",
+            pyads.PLCTYPE_SINT: "<b",  # SINT is signed (-128 to 127)
             pyads.PLCTYPE_USINT: "<B",
             pyads.PLCTYPE_DINT: "<i",
             pyads.PLCTYPE_UDINT: "<I",

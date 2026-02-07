@@ -101,7 +101,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, shutdown_handler)
     )
 
+    # Forward to platforms for both YAML and UI configured entities
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Register update listener for options changes
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     async def handle_write_data_by_name(call: ServiceCall) -> None:
         """Write a value to the connected ADS device."""
@@ -122,6 +126,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
