@@ -25,15 +25,19 @@ from .hub import AdsHub
 
 CONF_ADS_VAR_BRIGHTNESS = "adsvar_brightness"
 CONF_ADS_BRIGHTNESS_SCALE = "adsvar_brightness_scale"
+CONF_ADS_VAR_BRIGHTNESS_TYPE = "adsvar_brightness_type"
 STATE_KEY_BRIGHTNESS = "brightness"
 
 DEFAULT_NAME = "ADS Light"
 DEFAULT_BRIGHTNESS_SCALE = 255
+DEFAULT_BRIGHTNESS_TYPE = "byte"  # Default to BYTE for Beckhoff compatibility
+
 PLATFORM_SCHEMA = LIGHT_PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_ADS_VAR): cv.string,
         vol.Optional(CONF_ADS_VAR_BRIGHTNESS): cv.string,
         vol.Optional(CONF_ADS_BRIGHTNESS_SCALE, default=DEFAULT_BRIGHTNESS_SCALE): cv.positive_int,
+        vol.Optional(CONF_ADS_VAR_BRIGHTNESS_TYPE, default=DEFAULT_BRIGHTNESS_TYPE): vol.In(["byte", "uint"]),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_UNIQUE_ID): cv.string,
     }
@@ -59,11 +63,12 @@ def setup_platform(
     ads_var_enable: str = config[CONF_ADS_VAR]
     ads_var_brightness: str | None = config.get(CONF_ADS_VAR_BRIGHTNESS)
     brightness_scale: int = config[CONF_ADS_BRIGHTNESS_SCALE]
+    brightness_type: str = config[CONF_ADS_VAR_BRIGHTNESS_TYPE]
     name: str = config[CONF_NAME]
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     add_entities(
-        [AdsLight(ads_hub, ads_var_enable, ads_var_brightness, brightness_scale, name, unique_id)]
+        [AdsLight(ads_hub, ads_var_enable, ads_var_brightness, brightness_scale, brightness_type, name, unique_id)]
     )
 
 
@@ -76,6 +81,7 @@ class AdsLight(AdsEntity, LightEntity):
         ads_var_enable: str,
         ads_var_brightness: str | None,
         brightness_scale: int,
+        brightness_type: str,
         name: str,
         unique_id: str | None,
     ) -> None:
@@ -84,6 +90,7 @@ class AdsLight(AdsEntity, LightEntity):
         self._state_dict[STATE_KEY_BRIGHTNESS] = None
         self._ads_var_brightness = ads_var_brightness
         self._brightness_scale = brightness_scale
+        self._brightness_type = brightness_type
         if ads_var_brightness is not None:
             self._attr_color_mode = ColorMode.BRIGHTNESS
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
@@ -96,6 +103,9 @@ class AdsLight(AdsEntity, LightEntity):
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None:
+            # Determine the PLC data type to use
+            plc_type = pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
+            
             # Calculate the scaling factor to convert PLC value to HA brightness (0-255)
             # When reading from PLC, the factor is passed to async_initialize_device which
             # divides the PLC value by the factor to get the HA value (see entity.py).
@@ -104,7 +114,7 @@ class AdsLight(AdsEntity, LightEntity):
             brightness_factor = self._brightness_scale / 255 if self._brightness_scale != 255 else None
             await self.async_initialize_device(
                 self._ads_var_brightness,
-                pyads.PLCTYPE_UINT,
+                plc_type,
                 STATE_KEY_BRIGHTNESS,
                 brightness_factor,
             )
@@ -125,10 +135,13 @@ class AdsLight(AdsEntity, LightEntity):
         self._ads_hub.write_by_name(self._ads_var, True, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None and brightness is not None:
+            # Determine the PLC data type to use
+            plc_type = pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
+            
             # Scale brightness from HA range (0-255) to PLC range (0-brightness_scale)
             scaled_brightness = int(brightness * self._brightness_scale / 255)
             self._ads_hub.write_by_name(
-                self._ads_var_brightness, scaled_brightness, pyads.PLCTYPE_UINT
+                self._ads_var_brightness, scaled_brightness, plc_type
             )
 
     def turn_off(self, **kwargs: Any) -> None:

@@ -101,6 +101,19 @@ light:
     unique_id: ads_beckhoff_light
 ```
 
+For lights using BYTE data type (default) or UINT:
+
+```yaml
+light:
+  - platform: ads_custom
+    adsvar: GVL.light_enable
+    adsvar_brightness: GVL.light_brightness
+    adsvar_brightness_type: byte  # or "uint" - defaults to "byte"
+    adsvar_brightness_scale: 100
+    name: Beckhoff Light BYTE
+    unique_id: ads_beckhoff_light_byte
+```
+
 ## Services
 
 ### `ads_custom.write_data_by_name`
