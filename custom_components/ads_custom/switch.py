@@ -17,7 +17,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DATA_ADS, STATE_KEY_STATE
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
 from .entity import AdsEntity
 
 DEFAULT_NAME = "ADS Switch"
@@ -38,7 +38,14 @@ def setup_platform(
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up switch platform for ADS."""
-    ads_hub = hass.data[DATA_ADS]
+    # Get the first (and typically only) ADS hub from config entries
+    ads_hub = None
+    for entry_id in hass.data.get(DOMAIN, {}):
+        ads_hub = hass.data[DOMAIN][entry_id]
+        break
+    
+    if ads_hub is None:
+        return
 
     name: str = config[CONF_NAME]
     ads_var: str = config[CONF_ADS_VAR]

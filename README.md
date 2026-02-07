@@ -1,11 +1,14 @@
-# ADS - Automation Device Specification Integration
+# ADS Custom - Automation Device Specification Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-This is a Home Assistant integration for Beckhoff's ADS (Automation Device Specification) protocol, which allows communication with TwinCAT PLCs and other Beckhoff automation devices.
+This is a custom Home Assistant integration for Beckhoff's ADS (Automation Device Specification) protocol, which allows communication with TwinCAT PLCs and other Beckhoff automation devices.
+
+**Note:** This is a custom integration with a different domain (`ads_custom`) to prevent conflicts with Home Assistant's core ADS integration. Use this version if you need UI-based configuration or additional features.
 
 ## Features
 
+- UI-based configuration (no YAML required for connection setup)
 - Connect to ADS/AMS devices over the network
 - Support for multiple entity types:
   - Binary Sensors
@@ -18,6 +21,7 @@ This is a Home Assistant integration for Beckhoff's ADS (Automation Device Speci
 - Write data to ADS variables via service calls
 - Real-time push notifications from PLC to Home Assistant
 - Support for all common PLC data types
+- Unique ID support for all entity types
 
 ## Installation
 
@@ -33,60 +37,61 @@ This is a Home Assistant integration for Beckhoff's ADS (Automation Device Speci
 
 ### Manual Installation
 
-1. Copy the `custom_components/ads` directory to your Home Assistant's `custom_components` directory
+1. Copy the `custom_components/ads_custom` directory to your Home Assistant's `custom_components` directory
 2. Restart Home Assistant
 
 ## Configuration
 
-### UI Configuration (Recommended)
+### Step 1: Set up the ADS Connection (UI Only)
 
 1. Go to Settings → Devices & Services
 2. Click "+ ADD INTEGRATION"
-3. Search for "ADS"
+3. Search for "ADS Custom"
 4. Enter your ADS device information:
    - **AMS Net ID**: The AMS Net ID of your ADS device (e.g., `192.168.1.100.1.1`)
    - **IP Address**: (Optional) The IP address of your ADS device
    - **AMS Port**: The AMS port number (default: `48898`)
 
-### YAML Configuration (Legacy)
+### Step 2: Configure Entities (YAML)
 
-You can also configure ADS via YAML in your `configuration.yaml`:
-
-```yaml
-ads:
-  device: '192.168.1.100.1.1'
-  port: 48898
-  ip_address: 192.168.1.100  # optional
-```
-
-## Platform Configuration
-
-After setting up the ADS connection, you can configure individual entities for each platform in your `configuration.yaml`:
+After setting up the ADS connection via UI, configure individual entities for each platform in your `configuration.yaml`:
 
 ### Example Sensor Configuration
 
 ```yaml
 sensor:
-  - platform: ads
+  - platform: ads_custom
     adsvar: GVL.temperature
     name: Room Temperature
     adstype: int
     unit_of_measurement: '°C'
+    unique_id: ads_room_temp
 ```
 
 ### Example Switch Configuration
 
 ```yaml
 switch:
-  - platform: ads
+  - platform: ads_custom
     adsvar: GVL.light_switch
     name: Room Light
-    adstype: bool
+    unique_id: ads_room_light
+```
+
+### Example Light Configuration
+
+```yaml
+light:
+  - platform: ads_custom
+    adsvar: GVL.light_enable
+    adsvar_brightness: GVL.light_brightness
+    name: Dimmable Light
+    unique_id: ads_dimmable_light
 ```
 
 ## Services
 
-### `ads.write_data_by_name`
+### `ads_custom.write_data_by_name`
 
 Write a value to an ADS variable.
 
@@ -101,7 +106,7 @@ Write a value to an ADS variable.
 **Example:**
 
 ```yaml
-service: ads.write_data_by_name
+service: ads_custom.write_data_by_name
 data:
   adsvar: 'GVL.setpoint'
   adstype: 'int'
