@@ -216,10 +216,7 @@ class AdsOptionsFlow(OptionsFlow):
             entity_id = user_input["entity"]
             self.editing_entity_id = entity_id
             
-            return self.async_show_menu(
-                step_id="manage_entity",
-                menu_options=["edit_entity", "remove_entity"],
-            )
+            return await self.async_step_manage_entity()
 
         entity_choices = {
             entity_id: f"{config.get('name', entity_id)} ({config['type']})"
@@ -233,6 +230,15 @@ class AdsOptionsFlow(OptionsFlow):
                     vol.Required("entity"): vol.In(entity_choices),
                 }
             ),
+        )
+
+    async def async_step_manage_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage an entity (edit or remove)."""
+        return self.async_show_menu(
+            step_id="manage_entity",
+            menu_options=["edit_entity", "remove_entity"],
         )
 
     async def async_step_edit_entity(
@@ -267,12 +273,25 @@ class AdsOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Remove an entity."""
-        entities = dict(self.config_entry.options.get("entities", {}))
+        if user_input is not None:
+            entities = dict(self.config_entry.options.get("entities", {}))
+            
+            if self.editing_entity_id in entities:
+                del entities[self.editing_entity_id]
+            
+            return self.async_create_entry(title="", data={"entities": entities})
         
-        if self.editing_entity_id in entities:
-            del entities[self.editing_entity_id]
+        # Show confirmation form
+        entity_config = self.config_entry.options.get("entities", {}).get(
+            self.editing_entity_id, {}
+        )
+        entity_name = entity_config.get("name", self.editing_entity_id)
         
-        return self.async_create_entry(title="", data={"entities": entities})
+        return self.async_show_form(
+            step_id="remove_entity",
+            data_schema=vol.Schema({}),
+            description_placeholders={"entity_name": entity_name},
+        )
 
     def _get_entity_schema(
         self, entity_type: str, existing_config: dict[str, Any] | None = None
