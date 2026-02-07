@@ -93,6 +93,10 @@
       "edit_entity": {
         "title": "Edit Entity",
         "description": "Update the entity configuration."
+      },
+      "remove_entity": {
+        "title": "Remove Entity",
+        "description": "Are you sure you want to remove this entity?"
       }
     }
   },

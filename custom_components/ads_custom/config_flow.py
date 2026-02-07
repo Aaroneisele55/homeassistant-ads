@@ -216,10 +216,7 @@ class AdsOptionsFlow(OptionsFlow):
             entity_id = user_input["entity"]
             self.editing_entity_id = entity_id
             
-            return self.async_show_menu(
-                step_id="manage_entity",
-                menu_options=["edit_entity", "remove_entity"],
-            )
+            return await self.async_step_manage_entity()
 
         entity_choices = {
             entity_id: f"{config.get('name', entity_id)} ({config['type']})"
@@ -233,6 +230,15 @@ class AdsOptionsFlow(OptionsFlow):
                     vol.Required("entity"): vol.In(entity_choices),
                 }
             ),
+        )
+
+    async def async_step_manage_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage an entity (edit or remove)."""
+        return self.async_show_menu(
+            step_id="manage_entity",
+            menu_options=["edit_entity", "remove_entity"],
         )
 
     async def async_step_edit_entity(
