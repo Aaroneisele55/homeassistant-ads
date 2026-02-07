@@ -84,7 +84,7 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
 
     Data has the keys from _base_schema with values provided by the user.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, _validate_input_sync, data)
 
 
