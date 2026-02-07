@@ -4,7 +4,7 @@
 
 A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Specification)** protocol, enabling real-time communication with TwinCAT PLCs and other Beckhoff automation devices.
 
-> **Note:** This is a custom integration with domain `ads_custom` to prevent conflicts with Home Assistant's core ADS integration. You can configure it via **UI or YAML** - your choice!
+> **Note:** This is a custom integration with domain `ads_custom` to prevent conflicts with Home Assistant's core ADS integration. You can configure it fully via **UI** (connection + entities) or **YAML** - your choice!
 
 ## Documentation
 
@@ -24,7 +24,7 @@ A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Spec
 - ✅ **Custom brightness scaling** for lights (0-100 or 0-255)
 - ✅ **Unique ID support** for UI customization
 - ✅ **Service calls** to write PLC variables
-- ✅ **UI or YAML configuration** - your choice!
+- ✅ **Full UI or YAML configuration** - connection AND entities!
 
 ## Quick Start
 
@@ -46,21 +46,20 @@ A custom Home Assistant integration for Beckhoff's **ADS (Automation Device Spec
 
 ### Configuration
 
-You have **two options** for configuring the ADS connection - choose the one you prefer:
+You have **three options** for configuring the ADS integration:
 
-#### Option 1: UI Configuration (Recommended for Beginners)
+#### Option 1: Full UI Configuration (Easiest)
 
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ Add Integration**
 3. Search for **ADS Custom**
-4. Follow the setup wizard to enter your connection details
-5. Add entities to your `configuration.yaml`
+4. Follow the setup wizard for the connection
+5. Click **Configure** → **Add Entity** to add sensors, switches, lights, etc.
+6. No YAML editing or restarts needed!
 
-See the [UI Configuration Guide](docs/UI_CONFIGURATION.md) for detailed instructions.
+#### Option 2: Full YAML Configuration (Power Users)
 
-#### Option 2: YAML Configuration (For Power Users)
-
-Add to your `configuration.yaml`:
+Add everything to your `configuration.yaml`:
 
 ```yaml
 # ADS connection
@@ -68,15 +67,7 @@ ads_custom:
   device: "192.168.1.100.1.1"  # AMS Net ID
   ip_address: "192.168.1.100"  # IP address
 
-# Binary sensor example
-binary_sensor:
-  - platform: ads_custom
-    adsvar: GVL.door_open
-    name: Front Door
-    device_class: door
-    unique_id: ads_front_door
-
-# Sensor example
+# Entities
 sensor:
   - platform: ads_custom
     adsvar: GVL.temperature
@@ -84,15 +75,19 @@ sensor:
     adstype: real
     unit_of_measurement: "°C"
     device_class: temperature
-    unique_id: ads_room_temp
 
-# Switch example
 switch:
   - platform: ads_custom
     adsvar: GVL.pump
     name: Water Pump
-    unique_id: ads_water_pump
 ```
+
+#### Option 3: Mixed Configuration (Flexible)
+
+- **UI for connection** + **YAML for entities**, OR
+- **YAML for connection** + **UI for entities**
+
+Choose the best method for each part!
 
 See [complete documentation](docs/index.md) for all configuration options and entity types.
 
