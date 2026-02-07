@@ -30,7 +30,8 @@ STATE_KEY_BRIGHTNESS = "brightness"
 
 DEFAULT_NAME = "ADS Light"
 DEFAULT_BRIGHTNESS_SCALE = 255
-DEFAULT_BRIGHTNESS_TYPE = "byte"  # Default to BYTE for Beckhoff compatibility
+# Default to BYTE because Beckhoff lights typically use BYTE (0-255) for brightness
+DEFAULT_BRIGHTNESS_TYPE = "byte"
 
 PLATFORM_SCHEMA = LIGHT_PLATFORM_SCHEMA.extend(
     {
@@ -98,14 +99,15 @@ class AdsLight(AdsEntity, LightEntity):
             self._attr_color_mode = ColorMode.ONOFF
             self._attr_supported_color_modes = {ColorMode.ONOFF}
 
+    def _get_brightness_plc_type(self) -> type:
+        """Return the PLC data type to use for brightness based on configuration."""
+        return pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
+
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
         await self.async_initialize_device(self._ads_var, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None:
-            # Determine the PLC data type to use
-            plc_type = pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
-            
             # Calculate the scaling factor to convert PLC value to HA brightness (0-255)
             # When reading from PLC, the factor is passed to async_initialize_device which
             # divides the PLC value by the factor to get the HA value (see entity.py).
@@ -114,7 +116,7 @@ class AdsLight(AdsEntity, LightEntity):
             brightness_factor = self._brightness_scale / 255 if self._brightness_scale != 255 else None
             await self.async_initialize_device(
                 self._ads_var_brightness,
-                plc_type,
+                self._get_brightness_plc_type(),
                 STATE_KEY_BRIGHTNESS,
                 brightness_factor,
             )
@@ -135,13 +137,10 @@ class AdsLight(AdsEntity, LightEntity):
         self._ads_hub.write_by_name(self._ads_var, True, pyads.PLCTYPE_BOOL)
 
         if self._ads_var_brightness is not None and brightness is not None:
-            # Determine the PLC data type to use
-            plc_type = pyads.PLCTYPE_BYTE if self._brightness_type == "byte" else pyads.PLCTYPE_UINT
-            
             # Scale brightness from HA range (0-255) to PLC range (0-brightness_scale)
             scaled_brightness = int(brightness * self._brightness_scale / 255)
             self._ads_hub.write_by_name(
-                self._ads_var_brightness, scaled_brightness, plc_type
+                self._ads_var_brightness, scaled_brightness, self._get_brightness_plc_type()
             )
 
     def turn_off(self, **kwargs: Any) -> None:
