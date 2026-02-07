@@ -248,14 +248,13 @@ class AdsOptionsFlow(OptionsFlow):
         # Check if editing_entity_id is set
         if self.editing_entity_id is None:
             return await self.async_step_init()
-        
+
         entities = dict(self.config_entry.options.get("entities", {}))
         entity_config = entities.get(self.editing_entity_id, {})
-        
+
         # Check if entity exists
         if not entity_config or "type" not in entity_config:
             return await self.async_step_init()
-        
         if user_input is not None:
             # Process select options if it's a select entity
             if entity_config["type"] == "select" and "options" in user_input:
@@ -284,7 +283,7 @@ class AdsOptionsFlow(OptionsFlow):
         # Check if editing_entity_id is set
         if self.editing_entity_id is None:
             return await self.async_step_init()
-        
+
         if user_input is not None:
             entities = dict(self.config_entry.options.get("entities", {}))
             
