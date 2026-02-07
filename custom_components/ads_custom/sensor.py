@@ -145,7 +145,7 @@ class AdsSensor(AdsEntity, SensorEntity):
     @property
     def device_class(self) -> SensorDeviceClass | None:
         """Return the device class of the sensor.
-        
+
         Checks entity registry for custom device_class first,
         then falls back to configured value.
         """

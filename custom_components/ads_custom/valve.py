@@ -92,7 +92,7 @@ class AdsValve(AdsEntity, ValveEntity):
     @property
     def device_class(self) -> ValveDeviceClass | None:
         """Return the device class of the valve.
-        
+
         Checks entity registry for custom device_class first,
         then falls back to configured value.
         """

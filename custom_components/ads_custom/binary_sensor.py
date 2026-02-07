@@ -94,7 +94,7 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
     @property
     def device_class(self) -> BinarySensorDeviceClass | None:
         """Return the device class of the binary sensor.
-        
+
         Checks entity registry for custom device_class first,
         then falls back to configured value.
         """

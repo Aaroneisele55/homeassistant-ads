@@ -176,7 +176,7 @@ class AdsCover(AdsEntity, CoverEntity):
     @property
     def device_class(self) -> CoverDeviceClass | None:
         """Return the device class of the cover.
-        
+
         Checks entity registry for custom device_class first,
         then falls back to configured value.
         """
