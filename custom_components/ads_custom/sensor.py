@@ -129,7 +129,7 @@ class AdsSensor(AdsEntity, SensorEntity):
         super().__init__(ads_hub, name, ads_var, unique_id)
         self._ads_type = ads_type
         self._factor = factor
-        self._attr_device_class = device_class
+        self._configured_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = unit_of_measurement
 
@@ -141,6 +141,17 @@ class AdsSensor(AdsEntity, SensorEntity):
             STATE_KEY_STATE,
             self._factor,
         )
+
+    @property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the device class of the sensor.
+        
+        Checks entity registry for custom device_class first,
+        then falls back to configured value.
+        """
+        if self.registry_entry and self.registry_entry.device_class:
+            return self.registry_entry.device_class
+        return self._configured_device_class
 
     @property
     def native_value(self) -> StateType:

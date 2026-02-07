@@ -85,11 +85,22 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         """Initialize ADS binary sensor."""
         super().__init__(ads_hub, name, ads_var, unique_id)
         self._ads_type = ads_type
-        self._attr_device_class = device_class or BinarySensorDeviceClass.MOVING
+        self._configured_device_class = device_class or BinarySensorDeviceClass.MOVING
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
         await self.async_initialize_device(self._ads_var, ADS_TYPEMAP[self._ads_type])
+
+    @property
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the device class of the binary sensor.
+        
+        Checks entity registry for custom device_class first,
+        then falls back to configured value.
+        """
+        if self.registry_entry and self.registry_entry.device_class:
+            return self.registry_entry.device_class
+        return self._configured_device_class
 
     @property
     def is_on(self) -> bool | None:
