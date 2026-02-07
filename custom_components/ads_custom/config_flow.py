@@ -176,27 +176,31 @@ class AdsOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Configure the entity based on type."""
+        # Check if entity_type is set
+        if self.entity_type is None:
+            return await self.async_step_init()
+
         if user_input is not None:
             # Process select options if it's a select entity
             if self.entity_type == "select" and "options" in user_input:
                 # Convert comma-separated string to list
                 options_str = user_input["options"].strip()
                 user_input["options"] = [opt.strip() for opt in options_str.split(",") if opt.strip()]
-            
+
             # Store the entity configuration
             entities = dict(self.config_entry.options.get("entities", {}))
             entity_id = user_input.get("entity_id") or f"{self.entity_type}_{len(entities)}"
-            
+
             entities[entity_id] = {
                 "type": self.entity_type,
                 **user_input,
             }
-            
+
             return self.async_create_entry(title="", data={"entities": entities})
 
         # Build schema based on entity type
         schema = self._get_entity_schema(self.entity_type)
-        
+
         return self.async_show_form(
             step_id="configure_entity",
             data_schema=schema,
@@ -245,9 +249,17 @@ class AdsOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Edit an existing entity."""
+        # Check if editing_entity_id is set
+        if self.editing_entity_id is None:
+            return await self.async_step_init()
+
         entities = dict(self.config_entry.options.get("entities", {}))
         entity_config = entities.get(self.editing_entity_id, {})
-        
+
+        # Check if entity exists
+        if not entity_config or "type" not in entity_config:
+            return await self.async_step_init()
+
         if user_input is not None:
             # Process select options if it's a select entity
             if entity_config["type"] == "select" and "options" in user_input:
@@ -259,6 +271,7 @@ class AdsOptionsFlow(OptionsFlow):
                 "type": entity_config["type"],
                 **user_input,
             }
+
             return self.async_create_entry(title="", data={"entities": entities})
 
         self.entity_type = entity_config["type"]
@@ -273,12 +286,16 @@ class AdsOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Remove an entity."""
+        # Check if editing_entity_id is set
+        if self.editing_entity_id is None:
+            return await self.async_step_init()
+
         if user_input is not None:
             entities = dict(self.config_entry.options.get("entities", {}))
-            
+
             if self.editing_entity_id in entities:
                 del entities[self.editing_entity_id]
-            
+
             return self.async_create_entry(title="", data={"entities": entities})
         
         # Show confirmation form
