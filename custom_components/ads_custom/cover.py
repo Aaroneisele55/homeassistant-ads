@@ -183,10 +183,12 @@ class AdsCover(AdsEntity, CoverEntity):
             # Safe comparison handling potential type mismatches
             try:
                 if self._inverted:
-                    # When inverted, position == 100 means closed
+                    # When inverted: PLC uses 0=open, 100=closed
+                    # So position == 100 means closed (raw PLC value)
                     return position == 100 if position is not None else None
                 else:
-                    # Normal mode: position == 0 means closed
+                    # Normal mode: PLC uses 0=closed, 100=open
+                    # So position == 0 means closed (raw PLC value)
                     return position == 0 if position is not None else None
             except (TypeError, ValueError):
                 return None
@@ -194,10 +196,16 @@ class AdsCover(AdsEntity, CoverEntity):
 
     @property
     def current_cover_position(self) -> int | None:
-        """Return current position of cover."""
+        """Return current position of cover.
+        
+        Home Assistant convention: 0=closed, 100=open
+        When inverted: PLC uses 0=open, 100=closed, so we convert.
+        """
         position = self._state_dict.get(STATE_KEY_POSITION)
         if position is not None and self._inverted:
-            # When inverted, return the inverted position
+            # Convert PLC's inverted position to HA's expected position
+            # PLC 0 (open) -> HA 100 (open)
+            # PLC 100 (closed) -> HA 0 (closed)
             return 100 - position
         return position
 
@@ -207,10 +215,15 @@ class AdsCover(AdsEntity, CoverEntity):
             self._ads_hub.write_by_name(self._ads_var_stop, True, pyads.PLCTYPE_BOOL)
 
     def set_cover_position(self, **kwargs: Any) -> None:
-        """Set cover position."""
+        """Set cover position.
+        
+        Receives HA position (0=closed, 100=open) and converts if needed.
+        """
         position = kwargs[ATTR_POSITION]
         if self._ads_var_pos_set is not None:
-            # When inverted, write the inverted position
+            # When inverted, convert HA position to PLC's inverted position
+            # HA 100 (open) -> PLC 0 (open in PLC's inverted logic)
+            # HA 0 (closed) -> PLC 100 (closed in PLC's inverted logic)
             write_position = (100 - position) if self._inverted else position
             # Use UINT or BYTE based on configuration
             plctype = pyads.PLCTYPE_UINT if self._ads_var_position_type == "uint" else pyads.PLCTYPE_BYTE
