@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 
 import pyads
 import voluptuous as vol
 
+from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_DEVICE,
+    CONF_DEVICE_CLASS,
     CONF_IP_ADDRESS,
+    CONF_NAME,
     CONF_PORT,
+    CONF_UNIQUE_ID,
+    CONF_UNIT_OF_MEASUREMENT,
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -63,6 +69,74 @@ ADS_TYPEMAP = {
 CONF_ADS_FACTOR = "factor"
 CONF_ADS_TYPE = "adstype"
 CONF_ADS_VALUE = "value"
+
+# Platform YAML keys to scan for entity migration
+_PLATFORM_KEYS = [
+    "binary_sensor",
+    "sensor",
+    "switch",
+    "light",
+    "cover",
+    "valve",
+    "select",
+]
+
+# Keys to copy per entity type when migrating from YAML
+_ENTITY_KEYS: dict[str, list[str]] = {
+    "sensor": [
+        CONF_ADS_VAR, CONF_ADS_TYPE, CONF_ADS_FACTOR, CONF_NAME,
+        CONF_DEVICE_CLASS, "state_class", CONF_UNIT_OF_MEASUREMENT, CONF_UNIQUE_ID,
+    ],
+    "binary_sensor": [
+        CONF_ADS_VAR, CONF_ADS_TYPE, CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIQUE_ID,
+    ],
+    "switch": [CONF_ADS_VAR, CONF_NAME, CONF_UNIQUE_ID],
+    "light": [
+        CONF_ADS_VAR, "adsvar_brightness", "adsvar_brightness_scale",
+        "adsvar_brightness_type", CONF_NAME, CONF_UNIQUE_ID,
+    ],
+    "cover": [
+        CONF_ADS_VAR, "adsvar_position", "adsvar_position_type",
+        "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop",
+        "inverted", CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIQUE_ID,
+    ],
+    "valve": [CONF_ADS_VAR, CONF_NAME, CONF_DEVICE_CLASS, CONF_UNIQUE_ID],
+    "select": [CONF_ADS_VAR, CONF_NAME, "options", CONF_UNIQUE_ID],
+}
+
+
+def _collect_yaml_entities(config: ConfigType) -> list[dict]:
+    """Collect entity configurations from YAML platform sections."""
+    entities: list[dict] = []
+
+    for platform_key in _PLATFORM_KEYS:
+        platform_configs = config.get(platform_key, [])
+        if not isinstance(platform_configs, list):
+            platform_configs = [platform_configs]
+
+        for pcfg in platform_configs:
+            if not isinstance(pcfg, dict):
+                continue
+            if pcfg.get("platform") != DOMAIN:
+                continue
+
+            entity: dict = {CONF_ENTITY_TYPE: platform_key}
+            allowed_keys = _ENTITY_KEYS.get(platform_key, [])
+            for key in allowed_keys:
+                if key in pcfg:
+                    value = pcfg[key]
+                    # Convert enum values to strings for JSON serialization
+                    if hasattr(value, "value"):
+                        value = value.value
+                    entity[key] = value
+
+            # Ensure every migrated entity has a unique_id
+            if not entity.get(CONF_UNIQUE_ID):
+                entity[CONF_UNIQUE_ID] = uuid.uuid4().hex
+
+            entities.append(entity)
+
+    return entities
 
 
 SERVICE_WRITE_DATA_BY_NAME = "write_data_by_name"
@@ -125,6 +199,21 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return True
 
     conf = config[DOMAIN]
+
+    # Collect entity configs from platform YAML sections
+    entities = _collect_yaml_entities(config)
+
+    # Trigger import flow to create a config entry from YAML
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_IMPORT},
+            data={**conf, "entities": entities},
+        )
+    )
+
+    # Still set up the YAML connection for backward compatibility
+    # (platforms using setup_platform need it until YAML is removed)
     return await _async_setup_connection(hass, conf, "connection")
 
 

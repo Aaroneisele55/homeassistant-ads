@@ -14,6 +14,10 @@
           "ip_address": "The IP address of your ADS device (optional if routing is configured)",
           "port": "The AMS port number (default: 48898)"
         }
+      },
+      "import": {
+        "title": "Import from YAML",
+        "description": "Your YAML configuration for ADS Custom has been automatically imported. You can now remove the ads_custom: section and related platform entries from your configuration.yaml file."
       }
     },
     "error": {
@@ -51,13 +55,11 @@
         "description": "Configure a switch entity that controls a boolean variable on your PLC.",
         "data": {
           "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "unique_id": "Unique ID (optional)"
+          "name": "Entity Name"
         },
         "data_description": {
           "adsvar": "The PLC variable name (e.g., GVL.pump)",
-          "name": "Friendly name for the switch",
-          "unique_id": "Unique identifier for advanced customization"
+          "name": "Friendly name for the switch"
         }
       },
       "configure_sensor": {
@@ -69,14 +71,13 @@
           "adstype": "Data Type",
           "unit_of_measurement": "Unit of Measurement (optional)",
           "device_class": "Device Class (optional)",
-          "state_class": "State Class (optional)",
-          "unique_id": "Unique ID (optional)"
+          "state_class": "State Class (optional)"
         },
         "data_description": {
           "adsvar": "The PLC variable name (e.g., GVL.temperature)",
           "name": "Friendly name for the sensor",
           "adstype": "The data type of the PLC variable",
-          "unit_of_measurement": "e.g., °C, %, kW",
+          "unit_of_measurement": "e.g., \u00b0C, %, kW",
           "device_class": "e.g., temperature, humidity, power",
           "state_class": "For statistics and long-term data"
         }
@@ -88,8 +89,7 @@
           "adsvar": "ADS Variable Name",
           "name": "Entity Name",
           "adstype": "Data Type",
-          "device_class": "Device Class (optional)",
-          "unique_id": "Unique ID (optional)"
+          "device_class": "Device Class (optional)"
         },
         "data_description": {
           "adsvar": "The PLC variable name (e.g., GVL.door_open)",
@@ -105,8 +105,7 @@
           "adsvar": "ADS Variable Name (On/Off)",
           "name": "Entity Name",
           "adsvar_brightness": "Brightness Variable (optional)",
-          "adsvar_brightness_scale": "Brightness Scale",
-          "unique_id": "Unique ID (optional)"
+          "adsvar_brightness_scale": "Brightness Scale"
         },
         "data_description": {
           "adsvar": "The PLC variable for on/off control",
