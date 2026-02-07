@@ -21,7 +21,99 @@
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This ADS device is already configured"
+      "already_configured": "This ADS device is already configured",
+      "entity_type_not_supported": "This entity type is not yet supported",
+      "no_entities": "No entities configured yet"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "menu_options": {
+          "add_entity": "Add Entity",
+          "list_entities": "List Entities"
+        }
+      },
+      "add_entity": {
+        "title": "Add Entity",
+        "description": "Select the type of entity you want to add.",
+        "data": {
+          "entity_type": "Entity Type"
+        }
+      },
+      "configure_switch": {
+        "title": "Configure Switch",
+        "description": "Configure a switch entity that controls a boolean variable on your PLC.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "unique_id": "Unique ID (optional)"
+        },
+        "data_description": {
+          "adsvar": "The PLC variable name (e.g., GVL.pump)",
+          "name": "Friendly name for the switch",
+          "unique_id": "Unique identifier for advanced customization"
+        }
+      },
+      "configure_sensor": {
+        "title": "Configure Sensor",
+        "description": "Configure a sensor that reads a numeric or string value from your PLC.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "unit_of_measurement": "Unit of Measurement (optional)",
+          "device_class": "Device Class (optional)",
+          "state_class": "State Class (optional)",
+          "unique_id": "Unique ID (optional)"
+        },
+        "data_description": {
+          "adsvar": "The PLC variable name (e.g., GVL.temperature)",
+          "name": "Friendly name for the sensor",
+          "adstype": "The data type of the PLC variable",
+          "unit_of_measurement": "e.g., °C, %, kW",
+          "device_class": "e.g., temperature, humidity, power",
+          "state_class": "For statistics and long-term data"
+        }
+      },
+      "configure_binary_sensor": {
+        "title": "Configure Binary Sensor",
+        "description": "Configure a binary sensor that reads an on/off state from your PLC.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "device_class": "Device Class (optional)",
+          "unique_id": "Unique ID (optional)"
+        },
+        "data_description": {
+          "adsvar": "The PLC variable name (e.g., GVL.door_open)",
+          "name": "Friendly name for the binary sensor",
+          "adstype": "bool for boolean, real for floating-point",
+          "device_class": "e.g., door, motion, window"
+        }
+      },
+      "configure_light": {
+        "title": "Configure Light",
+        "description": "Configure a light entity that can be turned on/off and optionally dimmed.",
+        "data": {
+          "adsvar": "ADS Variable Name (On/Off)",
+          "name": "Entity Name",
+          "adsvar_brightness": "Brightness Variable (optional)",
+          "adsvar_brightness_scale": "Brightness Scale",
+          "unique_id": "Unique ID (optional)"
+        },
+        "data_description": {
+          "adsvar": "The PLC variable for on/off control",
+          "name": "Friendly name for the light",
+          "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
+          "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)"
+        }
+      },
+      "list_entities": {
+        "title": "Configured Entities",
+        "description": "List of entities configured via UI:\n\n{entity_list}"
+      }
     }
   }
 }

@@ -60,6 +60,34 @@ def setup_platform(
     add_entities([AdsSwitch(ads_hub, name, ads_var, unique_id)])
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS switch entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get switch entities from config entry options
+    entities = entry.options.get("entities", [])
+    switches = [e for e in entities if e.get("entity_type") == "switch"]
+    
+    if not switches:
+        return
+    
+    switch_entities = []
+    for switch_config in switches:
+        name = switch_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = switch_config.get(CONF_ADS_VAR)
+        unique_id = switch_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var:
+            switch_entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id))
+    
+    if switch_entities:
+        async_add_entities(switch_entities)
+
+
 class AdsSwitch(AdsEntity, SwitchEntity):
     """Representation of an ADS switch device."""
 
