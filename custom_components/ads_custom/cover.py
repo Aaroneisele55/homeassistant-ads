@@ -204,7 +204,11 @@ class AdsCover(AdsEntity, CoverEntity):
             return self._state_dict.get(STATE_KEY_STATE)
         if self._ads_var_position is not None:
             position = self._state_dict.get(STATE_KEY_POSITION)
-            return position == 0 if position is not None else None
+            # Safe comparison handling potential type mismatches
+            try:
+                return position == 0 if position is not None else None
+            except (TypeError, ValueError):
+                return None
         return None
 
     @property

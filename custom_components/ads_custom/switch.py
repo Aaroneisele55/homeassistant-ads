@@ -49,7 +49,7 @@ async def async_setup_entry(
     for entity_id, config in entities_config.items():
         if config.get("type") == "switch":
             ads_var = config.get(CONF_ADS_VAR)
-            name = config.get(CONF_NAME, "ADS Switch")
+            name = config.get(CONF_NAME, DEFAULT_NAME)
             if not ads_var:
                 _LOGGER.warning("Skipping switch %s: missing adsvar", entity_id)
                 continue
