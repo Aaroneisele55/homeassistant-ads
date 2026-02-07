@@ -136,7 +136,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_add_entity()
             elif action == "list_entities":
                 return await self.async_step_list_entities()
-        
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
