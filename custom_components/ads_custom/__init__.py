@@ -250,7 +250,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         # Set up each platform
         if platforms_to_setup:
-            await hass.config_entries.async_forward_entry_setups(entry, platforms_to_setup.keys())
+            await hass.config_entries.async_forward_entry_setups(entry, list(platforms_to_setup.keys()))
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -278,7 +278,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
         if platforms_to_unload:
             unload_ok = await hass.config_entries.async_forward_entry_unloads(
-                entry, platforms_to_unload
+                entry, list(platforms_to_unload)
             )
             if not unload_ok:
                 return False
