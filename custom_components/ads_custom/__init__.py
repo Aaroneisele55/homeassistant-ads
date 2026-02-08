@@ -344,6 +344,25 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("async_unload_entry: Unloading config entry")
     
+    # Check if this is a hub entry - if so, also remove all child entity entries
+    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
+    
+    if entry_type == ENTRY_TYPE_HUB:
+        # Find and remove all child entity config entries
+        child_entries = [
+            child_entry for child_entry in hass.config_entries.async_entries(DOMAIN)
+            if child_entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_ENTITY
+            and child_entry.data.get("parent_entry_id") == entry.entry_id
+        ]
+        
+        if child_entries:
+            _LOGGER.info(
+                "Hub entry being removed - also removing %d child entity entries",
+                len(child_entries)
+            )
+            for child_entry in child_entries:
+                await hass.config_entries.async_remove(child_entry.entry_id)
+    
     # Unload all platforms that were forwarded during setup
     _LOGGER.debug("async_unload_entry: Unloading platforms: %s", PLATFORMS)
     unload_ok = all(
@@ -359,16 +378,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("async_unload_entry: Failed to unload some platforms")
         return False
     
-    # Get the hub before we remove it
-    ads_hub = hass.data[DOMAIN].get(entry.entry_id)
-    
-    if ads_hub:
-        await hass.async_add_executor_job(ads_hub.shutdown)
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-    
-    # Clean up "connection" if it points to this hub
-    if hass.data[DOMAIN].get("connection") is ads_hub:
-        hass.data[DOMAIN].pop("connection", None)
+    # Get the hub before we remove it (only for hub entries)
+    if entry_type == ENTRY_TYPE_HUB:
+        ads_hub = hass.data[DOMAIN].get(entry.entry_id)
+        
+        if ads_hub:
+            await hass.async_add_executor_job(ads_hub.shutdown)
+            hass.data[DOMAIN].pop(entry.entry_id, None)
+        
+        # Clean up "connection" if it points to this hub
+        if hass.data[DOMAIN].get("connection") is ads_hub:
+            hass.data[DOMAIN].pop("connection", None)
     
     _LOGGER.debug("async_unload_entry: Successfully unloaded")
     return True

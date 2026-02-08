@@ -1222,3 +1222,266 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 "entity_type": "Switch",
             },
         )
+
+    async def async_step_edit_sensor_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a sensor entity config entry."""
+        if user_input is not None:
+            # Update the config entry data directly
+            new_data = dict(self.config_entry.data)
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_sensor_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "int")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[t.value for t in AdsType],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=entity.get(CONF_UNIT_OF_MEASUREMENT, "")): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_STATE_CLASS, default=entity.get(CONF_STATE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["measurement", "total", "total_increasing"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Sensor",
+            },
+        )
+
+    async def async_step_edit_binary_sensor_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a binary sensor entity config entry."""
+        if user_input is not None:
+            # Update the config entry data directly
+            new_data = dict(self.config_entry.data)
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_binary_sensor_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["bool", "real"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=BINARY_SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Binary Sensor",
+            },
+        )
+
+    async def async_step_edit_light_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a light entity config entry."""
+        if user_input is not None:
+            # Update the config entry data directly
+            new_data = dict(self.config_entry.data)
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_light_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional("adsvar_brightness", default=entity.get("adsvar_brightness", "")): cv.string,
+                vol.Optional("adsvar_brightness_type", default=entity.get("adsvar_brightness_type", "byte")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=65535)
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Light",
+            },
+        )
+
+    async def async_step_edit_cover_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a cover entity config entry."""
+        errors = {}
+        
+        if user_input is not None:
+            # Sanitize optional ADS variable fields - convert empty strings to None
+            for var in COVER_ADS_VAR_FIELDS:
+                if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
+                    user_input.pop(var)
+            
+            # Validate that at least one state variable is provided
+            if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
+                errors["base"] = "no_state_var"
+            
+            if not errors:
+                # Update the config entry data directly
+                new_data = dict(self.config_entry.data)
+                new_data.update(user_input)
+                
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=new_data,
+                )
+                return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_cover_entity",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional("adsvar_position", default=entity.get("adsvar_position", "")): cv.string,
+                vol.Optional("adsvar_position_type", default=entity.get("adsvar_position_type", "byte")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("adsvar_set_position", default=entity.get("adsvar_set_position", "")): cv.string,
+                vol.Optional("adsvar_open", default=entity.get("adsvar_open", "")): cv.string,
+                vol.Optional("adsvar_close", default=entity.get("adsvar_close", "")): cv.string,
+                vol.Optional("adsvar_stop", default=entity.get("adsvar_stop", "")): cv.string,
+                vol.Optional("inverted", default=entity.get("inverted", False)): cv.boolean,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=COVER_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            errors=errors,
+            description_placeholders={
+                "entity_type": "Cover",
+            },
+        )
+
+    async def async_step_edit_valve_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a valve entity config entry."""
+        if user_input is not None:
+            # Update the config entry data directly
+            new_data = dict(self.config_entry.data)
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_valve_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=VALVE_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Valve",
+            },
+        )
+
+    async def async_step_edit_select_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a select entity config entry."""
+        errors = {}
+        
+        if user_input is not None:
+            # Parse options from comma-separated string or list
+            options = user_input.get("options", [])
+            if isinstance(options, str):
+                options = [opt.strip() for opt in options.split(",") if opt.strip()]
+            
+            # Validate that at least one option is provided
+            if not options:
+                errors["options"] = "no_options"
+            
+            if not errors:
+                # Update the config entry data directly
+                new_data = dict(self.config_entry.data)
+                new_data.update(user_input)
+                new_data["options"] = options
+                
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=new_data,
+                )
+                return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        # Convert list of options to comma-separated string for display
+        options = entity.get("options", [])
+        if isinstance(options, list):
+            options_str = ", ".join(options)
+        else:
+            options_str = str(options) if options else ""
+        
+        return self.async_show_form(
+            step_id="edit_select_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Required("options", default=options_str): cv.string,
+            }),
+            errors=errors,
+            description_placeholders={
+                "entity_type": "Select",
+                "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
+            },
+        )
