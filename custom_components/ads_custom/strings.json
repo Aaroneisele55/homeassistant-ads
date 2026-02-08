@@ -22,7 +22,9 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to the ADS device. Please check your configuration and ensure the device is reachable.",
-      "unknown": "Unexpected error occurred"
+      "unknown": "Unexpected error occurred",
+      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
+      "no_options": "Select must have at least one option"
     },
     "abort": {
       "already_configured": "This ADS device is already configured",

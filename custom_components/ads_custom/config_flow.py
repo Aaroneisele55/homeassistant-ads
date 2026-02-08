@@ -490,20 +490,33 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Configure a cover entity."""
+        errors = {}
+        
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Sanitize optional ADS variable fields - convert empty strings to None
+            ads_vars = [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]
+            for var in ads_vars:
+                if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
+                    user_input.pop(var)
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
+            # Validate that at least one state variable is provided
+            if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
+                errors["base"] = "no_state_var"
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
-            )
+            if not errors:
+                # Merge entity type with configuration
+                entity_config = {**self.entity_data, **user_input}
+                # Auto-generate unique_id
+                entity_config["unique_id"] = uuid.uuid4().hex
+                
+                # Add to entities list
+                entities = list(self.config_entry.options.get("entities", []))
+                entities.append(entity_config)
+                
+                return self.async_create_entry(
+                    title="",
+                    data={"entities": entities},
+                )
 
         return self.async_show_form(
             step_id="configure_cover",
@@ -529,6 +542,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
             }),
+            errors=errors,
             description_placeholders={
                 "entity_type": "Cover",
             },
@@ -574,26 +588,33 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Configure a select entity."""
+        errors = {}
+        
         if user_input is not None:
             # Parse options from comma-separated string or list
             options = user_input.get("options", [])
             if isinstance(options, str):
                 options = [opt.strip() for opt in options.split(",") if opt.strip()]
             
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            entity_config["options"] = options
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Validate that at least one option is provided
+            if not options:
+                errors["options"] = "no_options"
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
-            
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
-            )
+            if not errors:
+                # Merge entity type with configuration
+                entity_config = {**self.entity_data, **user_input}
+                entity_config["options"] = options
+                # Auto-generate unique_id
+                entity_config["unique_id"] = uuid.uuid4().hex
+                
+                # Add to entities list
+                entities = list(self.config_entry.options.get("entities", []))
+                entities.append(entity_config)
+                
+                return self.async_create_entry(
+                    title="",
+                    data={"entities": entities},
+                )
 
         return self.async_show_form(
             step_id="configure_select",
@@ -602,6 +623,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_NAME): cv.string,
                 vol.Required("options"): cv.string,
             }),
+            errors=errors,
             description_placeholders={
                 "entity_type": "Select",
                 "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
@@ -851,6 +873,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Edit a light entity."""
         if user_input is not None:
+            # Normalize optional brightness configuration: treat blank as unset
+            brightness_var = user_input.get("adsvar_brightness")
+            if isinstance(brightness_var, str) and not brightness_var.strip():
+                user_input.pop("adsvar_brightness", None)
+            
             # Update the entity with new values
             entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
@@ -862,22 +889,32 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
         
         entity = self.entity_data["entity"]
+        
+        # Build schema with conditional default for brightness variable
+        light_schema: dict[Any, Any] = {
+            vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+            vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            vol.Optional("adsvar_brightness_type", default=entity.get("adsvar_brightness_type", "byte")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=["byte", "uint"],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=65535)
+            ),
+        }
+        
+        # Only add default for brightness var if it exists
+        existing_brightness_var = entity.get("adsvar_brightness")
+        if existing_brightness_var:
+            light_schema[vol.Optional("adsvar_brightness", default=existing_brightness_var)] = cv.string
+        else:
+            light_schema[vol.Optional("adsvar_brightness")] = cv.string
+        
         return self.async_show_form(
             step_id="edit_light",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Optional("adsvar_brightness", default=entity.get("adsvar_brightness", "")): cv.string,
-                vol.Optional("adsvar_brightness_type", default=entity.get("adsvar_brightness_type", "byte")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["byte", "uint"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-            }),
+            data_schema=vol.Schema(light_schema),
             description_placeholders={
                 "entity_type": "Light",
             },
@@ -888,6 +925,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Edit a cover entity."""
         if user_input is not None:
+            # Sanitize optional ADS variable fields - remove empty strings
+            ads_vars = [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]
+            for var in ads_vars:
+                if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
+                    user_input.pop(var)
+            
             # Update the entity with new values
             entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
@@ -997,22 +1040,29 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Edit a select entity."""
+        errors = {}
+        
         if user_input is not None:
             # Parse options from comma-separated string or list
             options = user_input.get("options", [])
             if isinstance(options, str):
                 options = [opt.strip() for opt in options.split(",") if opt.strip()]
             
-            # Update the entity with new values
-            entities = list(self.config_entry.options.get("entities", []))
-            entity_index = self.entity_data["index"]
-            user_input["options"] = options
-            entities[entity_index].update(user_input)
+            # Validate that at least one option is provided
+            if not options:
+                errors["options"] = "no_options"
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
-            )
+            if not errors:
+                # Update the entity with new values
+                entities = list(self.config_entry.options.get("entities", []))
+                entity_index = self.entity_data["index"]
+                user_input["options"] = options
+                entities[entity_index].update(user_input)
+                
+                return self.async_create_entry(
+                    title="",
+                    data={"entities": entities},
+                )
         
         entity = self.entity_data["entity"]
         # Convert list of options to comma-separated string for display
@@ -1028,6 +1078,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
                 vol.Required("options", default=options_str): cv.string,
             }),
+            errors=errors,
             description_placeholders={
                 "entity_type": "Select",
                 "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
