@@ -619,7 +619,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Switch)"
-            await self.hass.config_entries.async_update_subentry(
+            self.hass.config_entries.async_update_subentry(
                 subentry, data=new_data, title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
@@ -644,7 +644,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
-            await self.hass.config_entries.async_update_subentry(
+            self.hass.config_entries.async_update_subentry(
                 subentry, data=new_data, title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
@@ -700,7 +700,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
-            await self.hass.config_entries.async_update_subentry(
+            self.hass.config_entries.async_update_subentry(
                 subentry, data=new_data, title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
@@ -737,7 +737,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Light)"
-            await self.hass.config_entries.async_update_subentry(
+            self.hass.config_entries.async_update_subentry(
                 subentry, data=new_data, title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
@@ -783,7 +783,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data.update(user_input)
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
-                await self.hass.config_entries.async_update_subentry(
+                self.hass.config_entries.async_update_subentry(
                     subentry, data=new_data, title=new_title
                 )
                 return self.async_abort(reason="reconfigure_successful")
@@ -828,7 +828,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
-            await self.hass.config_entries.async_update_subentry(
+            self.hass.config_entries.async_update_subentry(
                 subentry, data=new_data, title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
@@ -873,7 +873,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data["options"] = options
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Select)"
-                await self.hass.config_entries.async_update_subentry(
+                self.hass.config_entries.async_update_subentry(
                     subentry, data=new_data, title=new_title
                 )
                 return self.async_abort(reason="reconfigure_successful")
