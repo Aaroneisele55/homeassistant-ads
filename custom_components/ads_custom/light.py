@@ -21,7 +21,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -85,70 +85,35 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ADS light entities from a config entry."""
-    # Check if this is a hub or entity config entry
-    entry_type = entry.data.get("entry_type", "hub")
-    
-    if entry_type == "entity":
-        # This is an entity config entry - check if it's a light
-        if entry.data.get("entity_type") == "light":
-            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
-            if ads_hub is None:
-                _LOGGER.error("Parent hub not found for entity %s", entry.title)
-                return
-            
-            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-            ads_var = entry.data.get(CONF_ADS_VAR)
-            ads_var_brightness = entry.data.get(CONF_ADS_VAR_BRIGHTNESS)
-            brightness_scale = entry.data.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
-            brightness_type = entry.data.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
-            unique_id = entry.data.get(CONF_UNIQUE_ID)
-            
-            # Get device info from parent hub entry
-            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
-            if parent_entry:
-                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
-                device_name = parent_entry.title
-            else:
-                device_identifiers = None
-                device_name = None
-            
-            if ads_var:
-                async_add_entities([
-                    AdsLight(ads_hub, ads_var, ads_var_brightness, brightness_scale, brightness_type, name, unique_id, device_name, device_identifiers)
-                ])
+    """Set up ADS light entities from a config entry's subentries."""
+    ads_hub = hass.data[DOMAIN].get(entry.entry_id)
+    if ads_hub is None:
         return
-    
-    # This is a hub config entry - load lights from options (backward compatibility)
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get light entities from config entry options
-    entities = entry.options.get("entities", [])
-    lights = [e for e in entities if e.get("entity_type") == "light"]
-    
-    if not lights:
-        return
-    
-    # Create device identifiers based on the ADS connection
+
     device_identifiers = {(DOMAIN, entry.entry_id)}
     device_name = entry.title
-    
-    light_entities = []
-    for light_config in lights:
-        name = light_config.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = light_config.get(CONF_ADS_VAR)
-        ads_var_brightness = light_config.get(CONF_ADS_VAR_BRIGHTNESS)
-        brightness_scale = light_config.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
-        brightness_type = light_config.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
-        unique_id = light_config.get(CONF_UNIQUE_ID)
-        
+
+    entities = []
+    for subentry in entry.subentries.values():
+        if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+            continue
+        if subentry.data.get("entity_type") != "light":
+            continue
+
+        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = subentry.data.get(CONF_ADS_VAR)
+        ads_var_brightness = subentry.data.get(CONF_ADS_VAR_BRIGHTNESS)
+        brightness_scale = subentry.data.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
+        brightness_type = subentry.data.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
+        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+
         if ads_var:
-            light_entities.append(
+            entities.append(
                 AdsLight(ads_hub, ads_var, ads_var_brightness, brightness_scale, brightness_type, name, unique_id, device_name, device_identifiers)
             )
-    
-    if light_entities:
-        async_add_entities(light_entities)
+
+    if entities:
+        async_add_entities(entities)
 
 
 class AdsLight(AdsEntity, LightEntity):

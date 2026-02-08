@@ -28,7 +28,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, StateType
 
 from . import ADS_TYPEMAP, CONF_ADS_FACTOR, CONF_ADS_TYPE
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, AdsType
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY, AdsType
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -115,84 +115,33 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ADS sensor entities from a config entry."""
-    # Check if this is a hub or entity config entry
-    entry_type = entry.data.get("entry_type", "hub")
-    
-    if entry_type == "entity":
-        # This is an entity config entry - check if it's a sensor
-        if entry.data.get("entity_type") == "sensor":
-            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
-            if ads_hub is None:
-                _LOGGER.error("Parent hub not found for entity %s", entry.title)
-                return
-            
-            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-            ads_var = entry.data.get(CONF_ADS_VAR)
-            ads_type_value = entry.data.get(CONF_ADS_TYPE, AdsType.INT)
-            ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
-            factor = entry.data.get(CONF_ADS_FACTOR)
-            device_class = entry.data.get(CONF_DEVICE_CLASS)
-            state_class = entry.data.get(CONF_STATE_CLASS)
-            unit_of_measurement = entry.data.get(CONF_UNIT_OF_MEASUREMENT)
-            unique_id = entry.data.get(CONF_UNIQUE_ID)
-            
-            # Get device info from parent hub entry
-            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
-            if parent_entry:
-                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
-                device_name = parent_entry.title
-            else:
-                device_identifiers = None
-                device_name = None
-            
-            if ads_var:
-                async_add_entities([
-                    AdsSensor(
-                        ads_hub,
-                        name,
-                        ads_var,
-                        ads_type,
-                        factor,
-                        device_class,
-                        state_class,
-                        unit_of_measurement,
-                        unique_id,
-                        device_name,
-                        device_identifiers,
-                    )
-                ])
+    """Set up ADS sensor entities from a config entry's subentries."""
+    ads_hub = hass.data[DOMAIN].get(entry.entry_id)
+    if ads_hub is None:
         return
-    
-    # This is a hub config entry - load sensors from options (backward compatibility)
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get sensor entities from config entry options
-    entities = entry.options.get("entities", [])
-    sensors = [e for e in entities if e.get("entity_type") == "sensor"]
-    
-    if not sensors:
-        return
-    
-    # Create device identifiers based on the ADS connection
+
     device_identifiers = {(DOMAIN, entry.entry_id)}
     device_name = entry.title
-    
-    sensor_entities = []
-    for sensor_config in sensors:
-        name = sensor_config.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = sensor_config.get(CONF_ADS_VAR)
-        # Handle both string (from UI) and enum (from YAML) values
-        ads_type_value = sensor_config.get(CONF_ADS_TYPE, AdsType.INT)
+
+    entities = []
+    for subentry in entry.subentries.values():
+        if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+            continue
+        if subentry.data.get("entity_type") != "sensor":
+            continue
+
+        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = subentry.data.get(CONF_ADS_VAR)
+        ads_type_value = subentry.data.get(CONF_ADS_TYPE, AdsType.INT)
         ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
-        factor = sensor_config.get(CONF_ADS_FACTOR)
-        device_class = sensor_config.get(CONF_DEVICE_CLASS)
-        state_class = sensor_config.get(CONF_STATE_CLASS)
-        unit_of_measurement = sensor_config.get(CONF_UNIT_OF_MEASUREMENT)
-        unique_id = sensor_config.get(CONF_UNIQUE_ID)
-        
+        factor = subentry.data.get(CONF_ADS_FACTOR)
+        device_class = subentry.data.get(CONF_DEVICE_CLASS)
+        state_class = subentry.data.get(CONF_STATE_CLASS)
+        unit_of_measurement = subentry.data.get(CONF_UNIT_OF_MEASUREMENT)
+        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+
         if ads_var:
-            sensor_entities.append(
+            entities.append(
                 AdsSensor(
                     ads_hub,
                     name,
@@ -207,9 +156,9 @@ async def async_setup_entry(
                     device_identifiers,
                 )
             )
-    
-    if sensor_entities:
-        async_add_entities(sensor_entities)
+
+    if entities:
+        async_add_entities(entities)
 
 
 class AdsSensor(AdsEntity, SensorEntity):

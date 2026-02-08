@@ -20,6 +20,8 @@ CONF_PARENT_ENTRY_ID = "parent_entry_id"
 ENTRY_TYPE_HUB = "hub"
 ENTRY_TYPE_ENTITY = "entity"
 
+SUBENTRY_TYPE_ENTITY = "entity"
+
 STATE_KEY_STATE = "state"
 
 

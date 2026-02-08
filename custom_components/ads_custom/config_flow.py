@@ -9,14 +9,19 @@ from typing import Any
 import pyads
 import voluptuous as vol
 
-from homeassistant import config_entries
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
 from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_ADS_VAR, DOMAIN, AdsType, CONF_ENTRY_TYPE, CONF_PARENT_ENTRY_ID, ENTRY_TYPE_HUB, ENTRY_TYPE_ENTITY
+from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +56,7 @@ ENTITY_TYPES = [
 BINARY_SENSOR_DEVICE_CLASSES = [
     "battery",
     "battery_charging",
-    "carbon_monoxide",
+    "co",
     "cold",
     "connectivity",
     "door",
@@ -194,14 +199,22 @@ class CannotConnect(Exception):
     """Error to indicate we cannot connect."""
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AdsConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for ADS Custom."""
 
     VERSION = 1
 
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Return subentries supported by this handler."""
+        return {SUBENTRY_TYPE_ENTITY: AdsEntitySubentryFlowHandler}
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 
@@ -218,9 +231,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(user_input[CONF_DEVICE])
                 self._abort_if_unique_id_configured()
 
-                # Mark this as a hub entry
-                hub_data = {**user_input, CONF_ENTRY_TYPE: ENTRY_TYPE_HUB}
-                return self.async_create_entry(title=info["title"], data=hub_data, options={"entities": []})
+                return self.async_create_entry(title=info["title"], data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
@@ -228,7 +239,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_import(
         self, import_data: dict[str, Any]
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle import from YAML configuration."""
         # Extract connection data
         device = import_data[CONF_DEVICE]
@@ -242,585 +253,401 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if CONF_IP_ADDRESS in import_data:
             connection_data[CONF_IP_ADDRESS] = import_data[CONF_IP_ADDRESS]
 
-        # Extract migrated entities (if any)
+        # Store migrated entities in options for later migration to subentries
         entities = import_data.get("entities", [])
 
-        # Mark this as a hub entry
-        connection_data[CONF_ENTRY_TYPE] = ENTRY_TYPE_HUB
-        
         return self.async_create_entry(
             title=f"ADS ({device})",
             data=connection_data,
             options={"entities": entities},
         )
 
-    async def async_step_entity_add(
-        self, data: dict[str, Any]
-    ) -> FlowResult:
-        """Handle entity creation from options flow."""
-        entity_config = data["entity_config"]
-        title = data["title"]
-        
-        # Generate unique ID for the entity config entry
-        unique_id = f"{entity_config[CONF_PARENT_ENTRY_ID]}_{entity_config['unique_id']}"
-        await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured()
-        
-        return self.async_create_entry(
-            title=title,
-            data=entity_config,
-        )
 
-    async def async_step_entity_migration(
-        self, data: dict[str, Any]
-    ) -> FlowResult:
-        """Handle entity migration from hub options to individual config entries."""
-        entity_config = data["entity_config"]
-        title = data["title"]
-        unique_id = data["unique_id"]
+class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
+    """Handle ADS entity subentry flow for adding/editing entities."""
 
-        # Set unique ID for the entity config entry
-        await self.async_set_unique_id(unique_id)
-        self._abort_if_unique_id_configured()
+    _entity_data: dict[str, Any]
 
-        return self.async_create_entry(
-            title=title,
-            data=entity_config,
-        )
+    # ── Add new entity ──────────────────────────────────────────────
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
-    ) -> OptionsFlowHandler:
-        """Get the options flow for this handler."""
-        return OptionsFlowHandler()
-
-
-class OptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow for ADS Custom."""
-
-    def __init__(self) -> None:
-        """Initialize options flow."""
-        self.entity_data: dict[str, Any] = {}
-
-    async def _async_update_entry_and_reload(
-        self, new_data: dict[str, Any]
-    ) -> FlowResult:
-        """Update config entry data and reload the entry.
-        
-        Args:
-            new_data: New configuration data to update
-            
-        Returns:
-            FlowResult indicating success or error
-        """
-        try:
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
-        except Exception as err:
-            _LOGGER.error("Failed to reload config entry after update: %s", err)
-            return self.async_abort(reason="reload_failed")
-
-    async def async_step_init(
+    async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Manage the options."""
-        # Check if this is a hub or entity config entry
-        entry_type = self.config_entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
-        
-        if entry_type == ENTRY_TYPE_ENTITY:
-            # This is an entity config entry - show entity-specific options
-            return await self.async_step_edit_entity()
-        
-        # This is a hub config entry - directly show add entity dialog
-        return await self.async_step_add_entity()
-
-    async def async_step_edit_entity(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Show menu for editing or deleting this entity."""
-        return self.async_show_menu(
-            step_id="edit_entity",
-            menu_options=["edit_entity_config", "delete_entity"],
-        )
-
-    async def async_step_edit_entity_config(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit this entity's configuration."""
-        # Get entity type from config entry
-        entity_type = self.config_entry.data.get(CONF_ENTITY_TYPE)
-        
-        # Store current config as entity_data and set index to 0 (single entity)
-        self.entity_data = {"index": 0, "entity": dict(self.config_entry.data)}
-        
-        # Route to appropriate edit method based on entity type
-        if entity_type == "switch":
-            return await self.async_step_edit_switch_entity()
-        elif entity_type == "sensor":
-            return await self.async_step_edit_sensor_entity()
-        elif entity_type == "binary_sensor":
-            return await self.async_step_edit_binary_sensor_entity()
-        elif entity_type == "light":
-            return await self.async_step_edit_light_entity()
-        elif entity_type == "cover":
-            return await self.async_step_edit_cover_entity()
-        elif entity_type == "valve":
-            return await self.async_step_edit_valve_entity()
-        elif entity_type == "select":
-            return await self.async_step_edit_select_entity()
-        else:
-            return self.async_abort(reason="entity_type_not_supported")
-
-    async def async_step_delete_entity(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Delete this entity."""
+    ) -> SubentryFlowResult:
+        """Select entity type to add."""
         if user_input is not None:
-            # Remove the config entry
-            await self.hass.config_entries.async_remove(self.config_entry.entry_id)
-            return self.async_abort(reason="entity_deleted")
-
-        # Show confirmation form
-        entity_name = self.config_entry.data.get(CONF_NAME, "Entity")
-        return self.async_show_form(
-            step_id="delete_entity",
-            data_schema=vol.Schema({}),
-            description_placeholders={
-                "entity_name": entity_name,
-            },
-        )
-
-    async def async_step_add_entity(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Add a new entity."""
-        if user_input is not None:
-            self.entity_data = user_input
+            self._entity_data = user_input
             entity_type = user_input[CONF_ENTITY_TYPE]
-            
-            # Route to specific entity configuration
+
             if entity_type == "switch":
                 return await self.async_step_configure_switch()
-            elif entity_type == "sensor":
+            if entity_type == "sensor":
                 return await self.async_step_configure_sensor()
-            elif entity_type == "binary_sensor":
+            if entity_type == "binary_sensor":
                 return await self.async_step_configure_binary_sensor()
-            elif entity_type == "light":
+            if entity_type == "light":
                 return await self.async_step_configure_light()
-            elif entity_type == "cover":
+            if entity_type == "cover":
                 return await self.async_step_configure_cover()
-            elif entity_type == "valve":
+            if entity_type == "valve":
                 return await self.async_step_configure_valve()
-            elif entity_type == "select":
+            if entity_type == "select":
                 return await self.async_step_configure_select()
-            else:
-                return self.async_abort(reason="entity_type_not_supported")
 
-        # Show all implemented entity types
-        available_types = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
-        
+            return self.async_abort(reason="entity_type_not_supported")
+
         return self.async_show_form(
-            step_id="add_entity",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ENTITY_TYPE): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=available_types,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ENTITY_TYPE): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=ENTITY_TYPES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )
+
+    # ── Configure new entities ──────────────────────────────────────
 
     async def async_step_configure_switch(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a switch entity."""
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id for the entity
-            entity_unique_id = uuid.uuid4().hex
-            entity_config["unique_id"] = entity_unique_id
-            
-            # Mark as entity entry and link to parent hub
-            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-            
-            # Create a new config entry for this entity
-            title = f"{user_input[CONF_NAME]} (Switch)"
-            await self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "entity_add"},
-                data={"entity_config": entity_config, "title": title},
+            unique_id = uuid.uuid4().hex
+            return self.async_create_entry(
+                title=f"{user_input[CONF_NAME]} (Switch)",
+                data={
+                    CONF_ENTITY_TYPE: "switch",
+                    **user_input,
+                    "unique_id": unique_id,
+                },
+                unique_id=unique_id,
             )
-            
-            return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_switch",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-            }),
-            description_placeholders={
-                "entity_type": "Switch",
-            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                }
+            ),
         )
 
     async def async_step_configure_sensor(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a sensor entity."""
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id for the entity
-            entity_unique_id = uuid.uuid4().hex
-            entity_config["unique_id"] = entity_unique_id
-            
-            # Mark as entity entry and link to parent hub
-            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-            
-            # Create a new config entry for this entity
-            title = f"{user_input[CONF_NAME]} (Sensor)"
-            await self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "entity_add"},
-                data={"entity_config": entity_config, "title": title},
+            unique_id = uuid.uuid4().hex
+            return self.async_create_entry(
+                title=f"{user_input[CONF_NAME]} (Sensor)",
+                data={
+                    CONF_ENTITY_TYPE: "sensor",
+                    **user_input,
+                    "unique_id": unique_id,
+                },
+                unique_id=unique_id,
             )
-            
-            return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_sensor",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Optional(CONF_ADS_TYPE, default="int"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[t.value for t in AdsType],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
-                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=SENSOR_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_STATE_CLASS): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["measurement", "total", "total_increasing"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
-            description_placeholders={
-                "entity_type": "Sensor",
-            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Optional(CONF_ADS_TYPE, default="int"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[t.value for t in AdsType],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
+                    vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=SENSOR_DEVICE_CLASSES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(CONF_STATE_CLASS): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=["measurement", "total", "total_increasing"],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )
 
     async def async_step_configure_binary_sensor(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a binary sensor entity."""
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id for the entity
-            entity_unique_id = uuid.uuid4().hex
-            entity_config["unique_id"] = entity_unique_id
-            
-            # Mark as entity entry and link to parent hub
-            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-            
-            # Create a new config entry for this entity
-            title = f"{user_input[CONF_NAME]} (Binary Sensor)"
-            await self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "entity_add"},
-                data={"entity_config": entity_config, "title": title},
+            unique_id = uuid.uuid4().hex
+            return self.async_create_entry(
+                title=f"{user_input[CONF_NAME]} (Binary Sensor)",
+                data={
+                    CONF_ENTITY_TYPE: "binary_sensor",
+                    **user_input,
+                    "unique_id": unique_id,
+                },
+                unique_id=unique_id,
             )
-            
-            return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_binary_sensor",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Optional(CONF_ADS_TYPE, default="bool"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["bool", "real"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=BINARY_SENSOR_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
-            description_placeholders={
-                "entity_type": "Binary Sensor",
-            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Optional(CONF_ADS_TYPE, default="bool"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=["bool", "real"],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=BINARY_SENSOR_DEVICE_CLASSES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )
 
     async def async_step_configure_light(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a light entity."""
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id for the entity
-            entity_unique_id = uuid.uuid4().hex
-            entity_config["unique_id"] = entity_unique_id
-            
-            # Mark as entity entry and link to parent hub
-            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-            
-            # Create a new config entry for this entity
-            title = f"{user_input[CONF_NAME]} (Light)"
-            await self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "entity_add"},
-                data={"entity_config": entity_config, "title": title},
+            unique_id = uuid.uuid4().hex
+            return self.async_create_entry(
+                title=f"{user_input[CONF_NAME]} (Light)",
+                data={
+                    CONF_ENTITY_TYPE: "light",
+                    **user_input,
+                    "unique_id": unique_id,
+                },
+                unique_id=unique_id,
             )
-            
-            return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_light",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Optional("adsvar_brightness"): cv.string,
-                vol.Optional("adsvar_brightness_type", default="byte"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["byte", "uint"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional("adsvar_brightness_scale", default=255): vol.All(
-                    vol.Coerce(int), vol.Range(min=1, max=65535)
-                ),
-            }),
-            description_placeholders={
-                "entity_type": "Light",
-            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Optional("adsvar_brightness"): cv.string,
+                    vol.Optional("adsvar_brightness_type", default="byte"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=["byte", "uint"],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional("adsvar_brightness_scale", default=255): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=65535)
+                    ),
+                }
+            ),
         )
 
     async def async_step_configure_cover(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a cover entity."""
-        errors = {}
-        
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Sanitize optional ADS variable fields - convert empty strings to None
+            # Sanitize optional ADS variable fields
             for var in COVER_ADS_VAR_FIELDS:
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
-            
-            # Validate that at least one state variable is provided
+
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
-            
+
             if not errors:
-                # Merge entity type with configuration
-                entity_config = {**self.entity_data, **user_input}
-                # Auto-generate unique_id for the entity
-                entity_unique_id = uuid.uuid4().hex
-                entity_config["unique_id"] = entity_unique_id
-                
-                # Mark as entity entry and link to parent hub
-                entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-                entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-                
-                # Create a new config entry for this entity
-                title = f"{user_input[CONF_NAME]} (Cover)"
-                await self.hass.config_entries.flow.async_init(
-                    DOMAIN,
-                    context={"source": "entity_add"},
-                    data={"entity_config": entity_config, "title": title},
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Cover)",
+                    data={
+                        CONF_ENTITY_TYPE: "cover",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
                 )
-                
-                return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_cover",
-            data_schema=vol.Schema({
-                vol.Optional(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Optional("adsvar_position"): cv.string,
-                vol.Optional("adsvar_position_type", default="byte"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["byte", "uint"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional("adsvar_set_position"): cv.string,
-                vol.Optional("adsvar_open"): cv.string,
-                vol.Optional("adsvar_close"): cv.string,
-                vol.Optional("adsvar_stop"): cv.string,
-                vol.Optional("inverted", default=False): cv.boolean,
-                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=COVER_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Optional("adsvar_position"): cv.string,
+                    vol.Optional("adsvar_position_type", default="byte"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=["byte", "uint"],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional("adsvar_set_position"): cv.string,
+                    vol.Optional("adsvar_open"): cv.string,
+                    vol.Optional("adsvar_close"): cv.string,
+                    vol.Optional("adsvar_stop"): cv.string,
+                    vol.Optional("inverted", default=False): cv.boolean,
+                    vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=COVER_DEVICE_CLASSES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
             errors=errors,
-            description_placeholders={
-                "entity_type": "Cover",
-            },
         )
 
     async def async_step_configure_valve(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a valve entity."""
         if user_input is not None:
-            # Merge entity type with configuration
-            entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id for the entity
-            entity_unique_id = uuid.uuid4().hex
-            entity_config["unique_id"] = entity_unique_id
-            
-            # Mark as entity entry and link to parent hub
-            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-            
-            # Create a new config entry for this entity
-            title = f"{user_input[CONF_NAME]} (Valve)"
-            await self.hass.config_entries.flow.async_init(
-                DOMAIN,
-                context={"source": "entity_add"},
-                data={"entity_config": entity_config, "title": title},
+            unique_id = uuid.uuid4().hex
+            return self.async_create_entry(
+                title=f"{user_input[CONF_NAME]} (Valve)",
+                data={
+                    CONF_ENTITY_TYPE: "valve",
+                    **user_input,
+                    "unique_id": unique_id,
+                },
+                unique_id=unique_id,
             )
-            
-            return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_valve",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=VALVE_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
-            description_placeholders={
-                "entity_type": "Valve",
-            },
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=VALVE_DEVICE_CLASSES,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )
 
     async def async_step_configure_select(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> SubentryFlowResult:
         """Configure a select entity."""
-        errors = {}
-        
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Parse options from comma-separated string or list
             options = user_input.get("options", [])
             if isinstance(options, str):
                 options = [opt.strip() for opt in options.split(",") if opt.strip()]
-            
-            # Validate that at least one option is provided
+
             if not options:
                 errors["options"] = "no_options"
-            
+
             if not errors:
-                # Merge entity type with configuration
-                entity_config = {**self.entity_data, **user_input}
-                entity_config["options"] = options
-                # Auto-generate unique_id for the entity
-                entity_unique_id = uuid.uuid4().hex
-                entity_config["unique_id"] = entity_unique_id
-                
-                # Mark as entity entry and link to parent hub
-                entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-                entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
-                
-                # Create a new config entry for this entity
-                title = f"{user_input[CONF_NAME]} (Select)"
-                await self.hass.config_entries.flow.async_init(
-                    DOMAIN,
-                    context={"source": "entity_add"},
-                    data={"entity_config": entity_config, "title": title},
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Select)",
+                    data={
+                        CONF_ENTITY_TYPE: "select",
+                        **user_input,
+                        "options": options,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
                 )
-                
-                return self.async_create_entry(title="", data=dict(self.config_entry.options or {}))
 
         return self.async_show_form(
             step_id="configure_select",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR): cv.string,
-                vol.Required(CONF_NAME): cv.string,
-                vol.Required("options"): cv.string,
-            }),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR): cv.string,
+                    vol.Required(CONF_NAME): cv.string,
+                    vol.Required("options"): cv.string,
+                }
+            ),
             errors=errors,
-            description_placeholders={
-                "entity_type": "Select",
-                "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
-            },
         )
 
-    # Entity-specific edit methods (for entity config entries)
-    
-    async def async_step_edit_switch_entity(
+    # ── Reconfigure existing entity ─────────────────────────────────
+
+    async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a switch entity config entry."""
+    ) -> SubentryFlowResult:
+        """Reconfigure an entity subentry - route to type-specific step."""
+        subentry = self._get_reconfigure_subentry()
+        self._entity_data = dict(subentry.data)
+        entity_type = self._entity_data.get(CONF_ENTITY_TYPE)
+
+        if entity_type == "switch":
+            return await self.async_step_reconfigure_switch()
+        if entity_type == "sensor":
+            return await self.async_step_reconfigure_sensor()
+        if entity_type == "binary_sensor":
+            return await self.async_step_reconfigure_binary_sensor()
+        if entity_type == "light":
+            return await self.async_step_reconfigure_light()
+        if entity_type == "cover":
+            return await self.async_step_reconfigure_cover()
+        if entity_type == "valve":
+            return await self.async_step_reconfigure_valve()
+        if entity_type == "select":
+            return await self.async_step_reconfigure_select()
+
+        return self.async_abort(reason="entity_type_not_supported")
+
+    async def async_step_reconfigure_switch(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Reconfigure a switch entity."""
         if user_input is not None:
-            # Update the config entry data directly
-            new_data = dict(self.config_entry.data)
+            new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
+            return self.async_update_and_abort(
+                self._get_reconfigure_subentry(),
+                data=new_data,
+                title=f"{user_input[CONF_NAME]} (Switch)",
+            )
+
+        entity = self._entity_data
         return self.async_show_form(
-            step_id="edit_switch_entity",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-            }),
-            description_placeholders={
-                "entity_type": "Switch",
-            },
+            step_id="reconfigure_switch",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                    vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                }
+            ),
         )
 
-    async def async_step_edit_sensor_entity(
+    async def async_step_reconfigure_sensor(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a sensor entity config entry."""
+    ) -> SubentryFlowResult:
+        """Reconfigure a sensor entity."""
         if user_input is not None:
-            # Update the config entry data directly
-            new_data = dict(self.config_entry.data)
+            new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        
-        # Build schema with conditional defaults for optional fields
+            return self.async_update_and_abort(
+                self._get_reconfigure_subentry(),
+                data=new_data,
+                title=f"{user_input[CONF_NAME]} (Sensor)",
+            )
+
+        entity = self._entity_data
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
@@ -831,301 +658,234 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ),
         }
-        
-        # Only add default for unit_of_measurement if it has a value
         unit = entity.get(CONF_UNIT_OF_MEASUREMENT)
         if unit:
             schema_dict[vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=unit)] = cv.string
         else:
             schema_dict[vol.Optional(CONF_UNIT_OF_MEASUREMENT)] = cv.string
-        
-        # Only add default for device_class if it has a non-empty value
+
         device_class = entity.get(CONF_DEVICE_CLASS)
         if device_class:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=SENSOR_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
         else:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=SENSOR_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
-        
-        # Only add default for state_class if it has a non-empty value
+
         state_class = entity.get(CONF_STATE_CLASS)
         if state_class:
             schema_dict[vol.Optional(CONF_STATE_CLASS, default=state_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["measurement", "total", "total_increasing"],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
             )
         else:
             schema_dict[vol.Optional(CONF_STATE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["measurement", "total", "total_increasing"],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
             )
-        
+
         return self.async_show_form(
-            step_id="edit_sensor_entity",
+            step_id="reconfigure_sensor",
             data_schema=vol.Schema(schema_dict),
-            description_placeholders={
-                "entity_type": "Sensor",
-            },
         )
 
-    async def async_step_edit_binary_sensor_entity(
+    async def async_step_reconfigure_binary_sensor(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a binary sensor entity config entry."""
+    ) -> SubentryFlowResult:
+        """Reconfigure a binary sensor entity."""
         if user_input is not None:
-            # Update the config entry data directly
-            new_data = dict(self.config_entry.data)
+            new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        
-        # Build schema with conditional defaults
+            return self.async_update_and_abort(
+                self._get_reconfigure_subentry(),
+                data=new_data,
+                title=f"{user_input[CONF_NAME]} (Binary Sensor)",
+            )
+
+        entity = self._entity_data
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
             vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["bool", "real"],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=["bool", "real"], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
         }
-        
-        # Only add default for device_class if it has a non-empty value
         device_class = entity.get(CONF_DEVICE_CLASS)
         if device_class:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=BINARY_SENSOR_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
         else:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=BINARY_SENSOR_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
-        
+
         return self.async_show_form(
-            step_id="edit_binary_sensor_entity",
+            step_id="reconfigure_binary_sensor",
             data_schema=vol.Schema(schema_dict),
-            description_placeholders={
-                "entity_type": "Binary Sensor",
-            },
         )
 
-    async def async_step_edit_light_entity(
+    async def async_step_reconfigure_light(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a light entity config entry."""
+    ) -> SubentryFlowResult:
+        """Reconfigure a light entity."""
         if user_input is not None:
-            # Update the config entry data directly
-            new_data = dict(self.config_entry.data)
+            new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        
-        # Build schema with conditional default for brightness variable
+            return self.async_update_and_abort(
+                self._get_reconfigure_subentry(),
+                data=new_data,
+                title=f"{user_input[CONF_NAME]} (Light)",
+            )
+
+        entity = self._entity_data
         light_schema: dict[Any, Any] = {
             vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
             vol.Optional("adsvar_brightness_type", default=entity.get("adsvar_brightness_type", "byte")): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["byte", "uint"],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=["byte", "uint"], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
             vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=65535)
             ),
         }
-        
-        # Only add default for brightness var if it exists
         existing_brightness_var = entity.get("adsvar_brightness")
         if existing_brightness_var:
             light_schema[vol.Optional("adsvar_brightness", default=existing_brightness_var)] = cv.string
         else:
             light_schema[vol.Optional("adsvar_brightness")] = cv.string
-        
+
         return self.async_show_form(
-            step_id="edit_light_entity",
+            step_id="reconfigure_light",
             data_schema=vol.Schema(light_schema),
-            description_placeholders={
-                "entity_type": "Light",
-            },
         )
 
-    async def async_step_edit_cover_entity(
+    async def async_step_reconfigure_cover(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a cover entity config entry."""
-        errors = {}
-        
+    ) -> SubentryFlowResult:
+        """Reconfigure a cover entity."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Sanitize optional ADS variable fields - convert empty strings to None
             for var in COVER_ADS_VAR_FIELDS:
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
-            
-            # Validate that at least one state variable is provided
+
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
-            
+
             if not errors:
-                # Update the config entry data directly
-                new_data = dict(self.config_entry.data)
+                new_data = dict(self._entity_data)
                 new_data.update(user_input)
-                return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        
-        # Build schema with conditional defaults
+                return self.async_update_and_abort(
+                    self._get_reconfigure_subentry(),
+                    data=new_data,
+                    title=f"{user_input[CONF_NAME]} (Cover)",
+                )
+
+        entity = self._entity_data
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
             vol.Optional("adsvar_position_type", default=entity.get("adsvar_position_type", "byte")): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=["byte", "uint"],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=["byte", "uint"], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
             vol.Optional("inverted", default=entity.get("inverted", False)): cv.boolean,
         }
-        
-        # Add optional string fields with defaults only if they have values
         for field in COVER_ADS_VAR_FIELDS:
             value = entity.get(field)
             if value:
                 schema_dict[vol.Optional(field, default=value)] = cv.string
             else:
                 schema_dict[vol.Optional(field)] = cv.string
-        
-        # Only add default for device_class if it has a non-empty value
+
         device_class = entity.get(CONF_DEVICE_CLASS)
         if device_class:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=COVER_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
         else:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=COVER_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
-        
+
         return self.async_show_form(
-            step_id="edit_cover_entity",
+            step_id="reconfigure_cover",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
-            description_placeholders={
-                "entity_type": "Cover",
-            },
         )
 
-    async def async_step_edit_valve_entity(
+    async def async_step_reconfigure_valve(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a valve entity config entry."""
+    ) -> SubentryFlowResult:
+        """Reconfigure a valve entity."""
         if user_input is not None:
-            # Update the config entry data directly
-            new_data = dict(self.config_entry.data)
+            new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        
-        # Build schema with conditional defaults
+            return self.async_update_and_abort(
+                self._get_reconfigure_subentry(),
+                data=new_data,
+                title=f"{user_input[CONF_NAME]} (Valve)",
+            )
+
+        entity = self._entity_data
         schema_dict: dict[Any, Any] = {
             vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
         }
-        
-        # Only add default for device_class if it has a non-empty value
         device_class = entity.get(CONF_DEVICE_CLASS)
         if device_class:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=VALVE_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
         else:
             schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=VALVE_DEVICE_CLASSES,
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
             )
-        
+
         return self.async_show_form(
-            step_id="edit_valve_entity",
+            step_id="reconfigure_valve",
             data_schema=vol.Schema(schema_dict),
-            description_placeholders={
-                "entity_type": "Valve",
-            },
         )
 
-    async def async_step_edit_select_entity(
+    async def async_step_reconfigure_select(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Edit a select entity config entry."""
-        errors = {}
-        
+    ) -> SubentryFlowResult:
+        """Reconfigure a select entity."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            # Parse options from comma-separated string or list
             options = user_input.get("options", [])
             if isinstance(options, str):
                 options = [opt.strip() for opt in options.split(",") if opt.strip()]
-            
-            # Validate that at least one option is provided
+
             if not options:
                 errors["options"] = "no_options"
-            
+
             if not errors:
-                # Update the config entry data directly
-                new_data = dict(self.config_entry.data)
+                new_data = dict(self._entity_data)
                 new_data.update(user_input)
                 new_data["options"] = options
-                return await self._async_update_entry_and_reload(new_data)
-        
-        entity = self.config_entry.data
-        # Convert list of options to comma-separated string for display
+                return self.async_update_and_abort(
+                    self._get_reconfigure_subentry(),
+                    data=new_data,
+                    title=f"{user_input[CONF_NAME]} (Select)",
+                )
+
+        entity = self._entity_data
         options = entity.get("options", [])
         if isinstance(options, list):
             options_str = ", ".join(options)
         else:
             options_str = str(options) if options else ""
-        
+
         return self.async_show_form(
-            step_id="edit_select_entity",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Required("options", default=options_str): cv.string,
-            }),
+            step_id="reconfigure_select",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                    vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                    vol.Required("options", default=options_str): cv.string,
+                }
+            ),
             errors=errors,
-            description_placeholders={
-                "entity_type": "Select",
-                "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
-            },
         )

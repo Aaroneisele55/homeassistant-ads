@@ -21,7 +21,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE
+from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -72,66 +72,33 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up ADS valve entities from a config entry."""
-    # Check if this is a hub or entity config entry
-    entry_type = entry.data.get("entry_type", "hub")
-    
-    if entry_type == "entity":
-        # This is an entity config entry - check if it's a valve
-        if entry.data.get("entity_type") == "valve":
-            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
-            if ads_hub is None:
-                _LOGGER.error("Parent hub not found for entity %s", entry.title)
-                return
-            
-            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
-            ads_var = entry.data.get(CONF_ADS_VAR)
-            device_class = entry.data.get(CONF_DEVICE_CLASS)
-            unique_id = entry.data.get(CONF_UNIQUE_ID)
-            
-            # Get device info from parent hub entry
-            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
-            if parent_entry:
-                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
-                device_name = parent_entry.title
-            else:
-                device_identifiers = None
-                device_name = None
-            
-            if ads_var:
-                async_add_entities([
-                    AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers)
-                ])
+    """Set up ADS valve entities from a config entry's subentries."""
+    ads_hub = hass.data[DOMAIN].get(entry.entry_id)
+    if ads_hub is None:
         return
-    
-    # This is a hub config entry - load valves from options (backward compatibility)
-    ads_hub = hass.data[DOMAIN][entry.entry_id]
-    
-    # Get valve entities from config entry options
-    entities = entry.options.get("entities", [])
-    valves = [e for e in entities if e.get("entity_type") == "valve"]
-    
-    if not valves:
-        return
-    
-    # Create device identifiers based on the ADS connection
+
     device_identifiers = {(DOMAIN, entry.entry_id)}
     device_name = entry.title
-    
-    valve_entities = []
-    for valve_config in valves:
-        name = valve_config.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = valve_config.get(CONF_ADS_VAR)
-        device_class = valve_config.get(CONF_DEVICE_CLASS)
-        unique_id = valve_config.get(CONF_UNIQUE_ID)
-        
+
+    entities = []
+    for subentry in entry.subentries.values():
+        if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+            continue
+        if subentry.data.get("entity_type") != "valve":
+            continue
+
+        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = subentry.data.get(CONF_ADS_VAR)
+        device_class = subentry.data.get(CONF_DEVICE_CLASS)
+        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+
         if ads_var:
-            valve_entities.append(
+            entities.append(
                 AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers)
             )
-    
-    if valve_entities:
-        async_add_entities(valve_entities)
+
+    if entities:
+        async_add_entities(entities)
 
 
 class AdsValve(AdsEntity, ValveEntity):

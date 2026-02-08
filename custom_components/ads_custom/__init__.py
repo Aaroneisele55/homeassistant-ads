@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from types import MappingProxyType
 
 import pyads
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.const import (
     CONF_DEVICE,
     CONF_DEVICE_CLASS,
@@ -21,19 +22,22 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import entity_registry as er
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_ADS_VAR, CONF_PARENT_ENTRY_ID, DOMAIN, AdsType, CONF_ENTRY_TYPE, ENTRY_TYPE_HUB, ENTRY_TYPE_ENTITY
+from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
 
 # Helper constant for entity configuration
 CONF_ENTITY_TYPE = "entity_type"
+
+# Old migration constants (kept for backward compatibility during migration)
+CONF_ENTRY_TYPE = "entry_type"
+CONF_PARENT_ENTRY_ID = "parent_entry_id"
+ENTRY_TYPE_HUB = "hub"
+ENTRY_TYPE_ENTITY = "entity"
 
 # Config schema for YAML configuration
 CONFIG_SCHEMA = vol.Schema(
@@ -193,12 +197,130 @@ async def _async_setup_connection(
     return True
 
 
+async def _async_migrate_to_subentries(hass: HomeAssistant) -> None:
+    """Migrate old entity config entries and hub options entities to subentries."""
+    entries = hass.config_entries.async_entries(DOMAIN)
+
+    # Separate hub and entity entries
+    hub_entries: dict[str, ConfigEntry] = {}
+    entity_entries: list[ConfigEntry] = []
+
+    for entry in entries:
+        entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
+        if entry_type == ENTRY_TYPE_ENTITY:
+            entity_entries.append(entry)
+        else:
+            hub_entries[entry.entry_id] = entry
+
+    # 1) Migrate old entity config entries to subentries on their parent hub
+    for entity_entry in entity_entries:
+        parent_id = entity_entry.data.get(CONF_PARENT_ENTRY_ID)
+        parent_hub = hub_entries.get(parent_id)
+
+        if parent_hub is None:
+            _LOGGER.warning(
+                "Orphan entity config entry '%s' has no parent hub, removing",
+                entity_entry.title,
+            )
+            await hass.config_entries.async_remove(entity_entry.entry_id)
+            continue
+
+        # Build subentry data (strip migration-only keys)
+        entity_data = dict(entity_entry.data)
+        entity_data.pop(CONF_ENTRY_TYPE, None)
+        entity_data.pop(CONF_PARENT_ENTRY_ID, None)
+
+        entity_unique_id = entity_data.get(CONF_UNIQUE_ID) or entity_data.get("unique_id")
+
+        # Check for duplicates
+        existing_unique_ids = {s.unique_id for s in parent_hub.subentries.values()}
+        if entity_unique_id and entity_unique_id in existing_unique_ids:
+            _LOGGER.debug(
+                "Entity '%s' already migrated as subentry, removing old entry",
+                entity_entry.title,
+            )
+        else:
+            subentry = ConfigSubentry(
+                data=MappingProxyType(entity_data),
+                subentry_type=SUBENTRY_TYPE_ENTITY,
+                title=entity_entry.title,
+                unique_id=entity_unique_id,
+            )
+            hass.config_entries.async_add_subentry(parent_hub, subentry)
+            _LOGGER.info(
+                "Migrated entity config entry '%s' to subentry on hub '%s'",
+                entity_entry.title,
+                parent_hub.title,
+            )
+
+        await hass.config_entries.async_remove(entity_entry.entry_id)
+
+    # 2) Migrate hub options entities list to subentries
+    for hub_entry in hub_entries.values():
+        entities_in_options = hub_entry.options.get("entities", [])
+        if not entities_in_options:
+            continue
+
+        # Also strip old entry_type from hub data if present
+        hub_data = dict(hub_entry.data)
+        needs_data_update = False
+        if CONF_ENTRY_TYPE in hub_data:
+            hub_data.pop(CONF_ENTRY_TYPE)
+            needs_data_update = True
+
+        existing_unique_ids = {s.unique_id for s in hub_entry.subentries.values()}
+
+        for entity_config in entities_in_options:
+            entity_unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+
+            # Ensure unique_id exists
+            if not entity_unique_id:
+                entity_unique_id = uuid.uuid4().hex
+                entity_config = dict(entity_config)
+                entity_config[CONF_UNIQUE_ID] = entity_unique_id
+
+            if entity_unique_id in existing_unique_ids:
+                continue
+
+            entity_type = entity_config.get(CONF_ENTITY_TYPE, "unknown")
+            entity_name = entity_config.get(CONF_NAME, "Entity")
+
+            subentry = ConfigSubentry(
+                data=MappingProxyType(dict(entity_config)),
+                subentry_type=SUBENTRY_TYPE_ENTITY,
+                title=f"{entity_name} ({entity_type.replace('_', ' ').title()})",
+                unique_id=entity_unique_id,
+            )
+            hass.config_entries.async_add_subentry(hub_entry, subentry)
+            _LOGGER.info(
+                "Migrated options entity '%s' to subentry on hub '%s'",
+                entity_name,
+                hub_entry.title,
+            )
+
+        # Clear entities from options and optionally update data
+        if needs_data_update:
+            hass.config_entries.async_update_entry(
+                hub_entry,
+                data=hub_data,
+                options={},
+            )
+        else:
+            hass.config_entries.async_update_entry(
+                hub_entry,
+                options={},
+            )
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ADS component from YAML configuration."""
     # Initialize data storage once
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    
+
+    # Migrate old entity config entries / hub options to subentries
+    await _async_migrate_to_subentries(hass)
+
     if DOMAIN not in config:
         # No YAML configuration, but config entries may exist
         _LOGGER.debug("No YAML configuration found, waiting for config entries")
@@ -227,295 +349,65 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up ADS from a config entry."""
+    """Set up ADS from a config entry (hub only)."""
     # Initialize data storage
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    
-    # Check if this is a hub or entity config entry
-    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
-    
-    if entry_type == ENTRY_TYPE_ENTITY:
-        # This is an entity config entry - just forward to platforms
-        # The ADS hub should already be set up by the parent entry
-        _LOGGER.debug("async_setup_entry: Setting up entity config entry: %s", entry.title)
-        
-        # Ensure the parent hub is ready before setting up entities
-        parent_entry_id = entry.data.get(CONF_PARENT_ENTRY_ID)
-        if parent_entry_id and parent_entry_id not in hass.data.get(DOMAIN, {}):
-            raise ConfigEntryNotReady(
-                f"Parent hub {parent_entry_id} not ready yet for entity {entry.title}"
-            )
-        
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-        
-        # Register update listener for entity options changes
-        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-        return True
-    
-    # This is a hub config entry - set up the connection
-    _LOGGER.debug("async_setup_entry: Setting up hub config entry: %s", entry.title)
-    
-    # Set up the connection
+
+    # Safety check: old entity entries should have been migrated in async_setup
+    if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_ENTITY:
+        _LOGGER.warning(
+            "Unexpected entity config entry '%s' found; it should have been "
+            "migrated to a subentry. Skipping setup.",
+            entry.title,
+        )
+        return False
+
+    _LOGGER.debug("Setting up hub config entry: %s", entry.title)
+
+    # Set up the ADS connection
     success = await _async_setup_connection(hass, entry.data, entry.entry_id)
-    
     if not success:
         return False
-    
+
     # Also store as "connection" for backward compatibility with YAML platforms
     if "connection" not in hass.data[DOMAIN]:
         hass.data[DOMAIN]["connection"] = hass.data[DOMAIN][entry.entry_id]
-    
-    # Always forward all platforms so they're registered
-    # Each platform's async_setup_entry will check if it has entities and return early if not
-    _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
+
+    # Forward all platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    
-    # Register update listener for options changes first
+
+    # Reload when config entry is updated (e.g. subentry added/removed)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-    
-    # Migrate any entities without unique_id (from old versions)
-    # This must happen after registering the update listener to avoid issues
-    entities = entry.options.get("entities", [])
-    needs_migration = False
-    updated_entities = []
-    
-    for entity_config in entities:
-        if not entity_config.get(CONF_UNIQUE_ID):
-            # Generate unique_id for entities that don't have one
-            # Using dict() is sufficient as entity_config is a flat dictionary
-            entity_config = dict(entity_config)  # Shallow copy is safe here
-            entity_config[CONF_UNIQUE_ID] = uuid.uuid4().hex
-            needs_migration = True
-            _LOGGER.info("Generated unique_id for entity: %s", entity_config.get(CONF_NAME, "unknown"))
-        updated_entities.append(entity_config)
-    
-    # Update config entry if migration was needed
-    # Note: This triggers async_reload_entry via the update listener above
-    # The reload is expected and ensures migrated entities are properly registered
-    if needs_migration:
-        _LOGGER.info("Migrating %d entities to add unique_id, integration will reload", len(updated_entities))
-        hass.config_entries.async_update_entry(
-            entry,
-            options={**entry.options, "entities": updated_entities}
-        )
-        # Early return - the reload will re-run async_setup_entry with migrated data
-        return True
-    
-    # Migrate entities from hub options to individual config entries
-    # This gives each entity edit/delete UI functionality
-    entities_to_migrate = entry.options.get("entities", [])
-    if entities_to_migrate:
-        _LOGGER.info(
-            "Found %d entities in hub options, migrating to individual config entries",
-            len(entities_to_migrate)
-        )
-        
-        migrated_entities = []
-        failed_entities = []
-        
-        for entity_config in entities_to_migrate:
-            entity_type = entity_config.get(CONF_ENTITY_TYPE)
-            entity_name = entity_config.get(CONF_NAME, "Unknown")
-            entity_unique_id = entity_config.get(CONF_UNIQUE_ID)
-            
-            if not entity_type or not entity_unique_id:
-                _LOGGER.warning(
-                    "Skipping migration of entity %s: missing entity_type or unique_id",
-                    entity_name
-                )
-                failed_entities.append(entity_config)
-                continue
-            
-            # Prepare entity config for individual config entry
-            migrated_config = dict(entity_config)
-            migrated_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            migrated_config[CONF_PARENT_ENTRY_ID] = entry.entry_id
-            
-            # Create unique_id for the config entry itself
-            config_entry_unique_id = f"{entry.entry_id}_{entity_unique_id}"
-            
-            # Check if this entity config entry already exists
-            existing_entries = [
-                e for e in hass.config_entries.async_entries(DOMAIN)
-                if e.unique_id == config_entry_unique_id
-            ]
-            
-            if existing_entries:
-                _LOGGER.debug(
-                    "Entity %s already has config entry, marking as migrated",
-                    entity_name
-                )
-                migrated_entities.append(entity_config)
-                continue
-            
-            # Create individual config entry for this entity
-            title = f"{entity_name} ({entity_type.replace('_', ' ').title()})"
-            
-            try:
-                result = await hass.config_entries.flow.async_init(
-                    DOMAIN,
-                    context={"source": "entity_migration"},
-                    data={
-                        "entity_config": migrated_config,
-                        "title": title,
-                        "unique_id": config_entry_unique_id
-                    },
-                )
-                # Verify the flow completed successfully
-                if result.get("type") == FlowResultType.CREATE_ENTRY:
-                    migrated_entities.append(entity_config)
-                    _LOGGER.info("Successfully migrated entity %s to individual config entry", entity_name)
-                else:
-                    _LOGGER.error(
-                        "Migration flow for entity %s did not complete successfully: %s",
-                        entity_name,
-                        result.get("type", "unknown")
-                    )
-                    failed_entities.append(entity_config)
-            except Exception as err:
-                _LOGGER.error(
-                    "Failed to migrate entity %s: %s",
-                    entity_name,
-                    err
-                )
-                failed_entities.append(entity_config)
-        
-        # Update hub options based on migration results
-        if migrated_entities:
-            if failed_entities:
-                # Some entities failed - keep only failed entities in hub options
-                _LOGGER.warning(
-                    "Migration partially complete: %d migrated, %d failed. "
-                    "Keeping failed entities in hub options for retry.",
-                    len(migrated_entities),
-                    len(failed_entities)
-                )
-                hass.config_entries.async_update_entry(
-                    entry,
-                    options={**entry.options, "entities": failed_entities}
-                )
-            else:
-                # All entities migrated successfully - clear hub options
-                _LOGGER.info(
-                    "Migration complete: all %d entities migrated successfully",
-                    len(migrated_entities)
-                )
-                hass.config_entries.async_update_entry(
-                    entry,
-                    options={**entry.options, "entities": []}
-                )
-        elif failed_entities:
-            _LOGGER.error(
-                "Migration failed: 0 entities migrated, %d failed. "
-                "Entities remain in hub options.",
-                len(failed_entities)
-            )
-        # Note: No reload needed - entities are already set up via the new config entries
-    
-    # Get entity registry to handle entity deletions
-    entity_registry = er.async_get(hass)
-    
-    # Subscribe to entity registry updates to handle entity deletions
-    @callback
-    def async_registry_updated(event):
-        """Handle entity registry update events."""
-        if event.data["action"] != "remove":
-            return
-            
-        entity_id = event.data["entity_id"]
-        
-        # Check if the removed entity had our config entry ID
-        # The event includes the old entry before removal (EntityRegistryEntry object)
-        old_entry = event.data.get("old")
-        if old_entry and old_entry.config_entry_id == entry.entry_id:
-            # This entity belonged to our config entry
-            unique_id = old_entry.unique_id
-            if unique_id:
-                # Remove from config entry options
-                entities = list(entry.options.get("entities", []))
-                updated_entities = [e for e in entities if e.get(CONF_UNIQUE_ID) != unique_id]
-                
-                if len(updated_entities) < len(entities):
-                    _LOGGER.info("Entity %s (unique_id: %s) removed from registry, removing from config", 
-                               entity_id, unique_id)
-                    hass.config_entries.async_update_entry(
-                        entry,
-                        options={**entry.options, "entities": updated_entities}
-                    )
-    
-    entry.async_on_unload(
-        hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, async_registry_updated)
-    )
-    
+
     return True
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry when options change."""
-    _LOGGER.debug("async_reload_entry: Reloading config entry due to options change")
+    """Reload config entry when options or subentries change."""
+    _LOGGER.debug("Reloading config entry due to update")
     await hass.config_entries.async_reload(entry.entry_id)
-
-
-# Add helper constant for entity configuration
-CONF_ENTITY_TYPE = "entity_type"
-
-
-async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle permanent removal of a config entry."""
-    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
-
-    if entry_type == ENTRY_TYPE_HUB:
-        # Find and remove all child entity config entries
-        child_entries = [
-            child_entry for child_entry in hass.config_entries.async_entries(DOMAIN)
-            if child_entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_ENTITY
-            and child_entry.data.get("parent_entry_id") == entry.entry_id
-        ]
-
-        if child_entries:
-            _LOGGER.info(
-                "Hub entry being removed - also removing %d child entity entries",
-                len(child_entries),
-            )
-            for child_entry in child_entries:
-                await hass.config_entries.async_remove(child_entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    _LOGGER.debug("async_unload_entry: Unloading config entry")
+    _LOGGER.debug("Unloading config entry: %s", entry.title)
 
-    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    # Unload all platforms that were forwarded during setup
-    _LOGGER.debug("async_unload_entry: Unloading platforms: %s", PLATFORMS)
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
-            ]
-        )
-    )
-    
     if not unload_ok:
-        _LOGGER.error("async_unload_entry: Failed to unload some platforms")
+        _LOGGER.error("Failed to unload some platforms")
         return False
-    
-    # Get the hub before we remove it (only for hub entries)
-    if entry_type == ENTRY_TYPE_HUB:
-        ads_hub = hass.data[DOMAIN].get(entry.entry_id)
-        
-        if ads_hub:
-            await hass.async_add_executor_job(ads_hub.shutdown)
-            hass.data[DOMAIN].pop(entry.entry_id, None)
-        
-        # Clean up "connection" if it points to this hub
-        if hass.data[DOMAIN].get("connection") is ads_hub:
-            hass.data[DOMAIN].pop("connection", None)
-    
-    _LOGGER.debug("async_unload_entry: Successfully unloaded")
+
+    ads_hub = hass.data[DOMAIN].get(entry.entry_id)
+    if ads_hub:
+        await hass.async_add_executor_job(ads_hub.shutdown)
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+
+    # Clean up "connection" if it points to this hub
+    if hass.data[DOMAIN].get("connection") is ads_hub:
+        hass.data[DOMAIN].pop("connection", None)
+
     return True
 
 
@@ -525,11 +417,11 @@ async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
     if "_services_registered" not in hass.data[DOMAIN]:
         hass.data[DOMAIN]["_services_lock"] = asyncio.Lock()
         hass.data[DOMAIN]["_services_registered"] = False
-    
+
     async with hass.data[DOMAIN]["_services_lock"]:
         if hass.data[DOMAIN]["_services_registered"]:
             return
-        
+
         async def handle_write_data_by_name(call: ServiceCall) -> None:
             """Write a value to the connected ADS device."""
             ads_var: str = call.data[CONF_ADS_VAR]
@@ -547,6 +439,5 @@ async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
             handle_write_data_by_name,
             schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
         )
-        
-        hass.data[DOMAIN]["_services_registered"] = True
 
+        hass.data[DOMAIN]["_services_registered"] = True
