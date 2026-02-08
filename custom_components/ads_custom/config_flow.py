@@ -336,7 +336,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -366,7 +366,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -415,7 +415,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -457,7 +457,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -497,7 +497,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -545,7 +545,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -587,7 +587,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             entity_config["unique_id"] = uuid.uuid4().hex
             
             # Add to entities list
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entities.append(entity_config)
             
             return self.async_create_entry(
@@ -689,7 +689,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a switch entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -716,7 +716,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a sensor entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -726,31 +726,63 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
         
         entity = self.entity_data["entity"]
+        
+        # Build schema with conditional defaults for optional fields
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+            vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "int")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[t.value for t in AdsType],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+        
+        # Only add default for unit_of_measurement if it has a value
+        unit = entity.get(CONF_UNIT_OF_MEASUREMENT)
+        if unit:
+            schema_dict[vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=unit)] = cv.string
+        else:
+            schema_dict[vol.Optional(CONF_UNIT_OF_MEASUREMENT)] = cv.string
+        
+        # Only add default for device_class if it has a non-empty value
+        device_class = entity.get(CONF_DEVICE_CLASS)
+        if device_class:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SENSOR_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        else:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=SENSOR_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        
+        # Only add default for state_class if it has a non-empty value
+        state_class = entity.get(CONF_STATE_CLASS)
+        if state_class:
+            schema_dict[vol.Optional(CONF_STATE_CLASS, default=state_class)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=["measurement", "total", "total_increasing"],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        else:
+            schema_dict[vol.Optional(CONF_STATE_CLASS)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=["measurement", "total", "total_increasing"],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        
         return self.async_show_form(
             step_id="edit_sensor",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "int")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[t.value for t in AdsType],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=entity.get(CONF_UNIT_OF_MEASUREMENT, "")): cv.string,
-                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=SENSOR_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_STATE_CLASS, default=entity.get(CONF_STATE_CLASS, "")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["measurement", "total", "total_increasing"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            data_schema=vol.Schema(schema_dict),
             description_placeholders={
                 "entity_type": "Sensor",
             },
@@ -762,7 +794,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a binary sensor entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -772,24 +804,39 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
         
         entity = self.entity_data["entity"]
+        
+        # Build schema with conditional defaults
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+            vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=["bool", "real"],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+        
+        # Only add default for device_class if it has a non-empty value
+        device_class = entity.get(CONF_DEVICE_CLASS)
+        if device_class:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=BINARY_SENSOR_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        else:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=BINARY_SENSOR_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        
         return self.async_show_form(
             step_id="edit_binary_sensor",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["bool", "real"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=BINARY_SENSOR_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            data_schema=vol.Schema(schema_dict),
             description_placeholders={
                 "entity_type": "Binary Sensor",
             },
@@ -801,7 +848,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a light entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -838,7 +885,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a cover entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -848,30 +895,47 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
         
         entity = self.entity_data["entity"]
+        
+        # Build schema with conditional defaults
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            vol.Optional("adsvar_position_type", default=entity.get("adsvar_position_type", "byte")): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=["byte", "uint"],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional("inverted", default=entity.get("inverted", False)): cv.boolean,
+        }
+        
+        # Add optional string fields with defaults only if they have values
+        for field in [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]:
+            value = entity.get(field)
+            if value:
+                schema_dict[vol.Optional(field, default=value)] = cv.string
+            else:
+                schema_dict[vol.Optional(field)] = cv.string
+        
+        # Only add default for device_class if it has a non-empty value
+        device_class = entity.get(CONF_DEVICE_CLASS)
+        if device_class:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=COVER_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        else:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=COVER_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        
         return self.async_show_form(
             step_id="edit_cover",
-            data_schema=vol.Schema({
-                vol.Optional(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Optional("adsvar_position", default=entity.get("adsvar_position", "")): cv.string,
-                vol.Optional("adsvar_position_type", default=entity.get("adsvar_position_type", "byte")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["byte", "uint"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional("adsvar_set_position", default=entity.get("adsvar_set_position", "")): cv.string,
-                vol.Optional("adsvar_open", default=entity.get("adsvar_open", "")): cv.string,
-                vol.Optional("adsvar_close", default=entity.get("adsvar_close", "")): cv.string,
-                vol.Optional("adsvar_stop", default=entity.get("adsvar_stop", "")): cv.string,
-                vol.Optional("inverted", default=entity.get("inverted", False)): cv.boolean,
-                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=COVER_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            data_schema=vol.Schema(schema_dict),
             description_placeholders={
                 "entity_type": "Cover",
             },
@@ -883,7 +947,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a valve entity."""
         if user_input is not None:
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
@@ -893,18 +957,33 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             )
         
         entity = self.entity_data["entity"]
+        
+        # Build schema with conditional defaults
+        schema_dict: dict[Any, Any] = {
+            vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+            vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+        }
+        
+        # Only add default for device_class if it has a non-empty value
+        device_class = entity.get(CONF_DEVICE_CLASS)
+        if device_class:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=VALVE_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        else:
+            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=VALVE_DEVICE_CLASSES,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        
         return self.async_show_form(
             step_id="edit_valve",
-            data_schema=vol.Schema({
-                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
-                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
-                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=VALVE_DEVICE_CLASSES,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
+            data_schema=vol.Schema(schema_dict),
             description_placeholders={
                 "entity_type": "Valve",
             },
@@ -921,7 +1000,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 options = [opt.strip() for opt in options.split(",") if opt.strip()]
             
             # Update the entity with new values
-            entities = self.config_entry.options.get("entities", [])
+            entities = list(self.config_entry.options.get("entities", []))
             entity_index = self.entity_data["index"]
             user_input["options"] = options
             entities[entity_index].update(user_input)
