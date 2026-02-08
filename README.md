@@ -19,13 +19,9 @@ Home Assistant ships a built-in `ads` integration. This custom integration (`ads
 
 | Feature | Core `ads` | `ads_custom` |
 |---------|-----------|-------------|
-| Dimmable lights | Requires a sensor, binary sensor, switch, **and** a template light (4 entities) | Single `light` entity with native brightness support |
-| Brightness data type | No direct PLC byte support | BYTE (0-255) or UINT with configurable scale (e.g. 0-100) |
-| Entity types | Binary Sensor, Light, Sensor, Switch | Binary Sensor, Cover, Light, Select, Sensor, Switch, Valve |
-| Configuration | YAML only | **UI**, **YAML**, or a mix of both |
-| Covers | Basic open/close | Position feedback, set-position, inverted logic, BYTE or UINT position types |
-| Select entities | Not available | Map a PLC integer to a list of options |
-| Valve entities | Not available | Open/close with device-class support |
+| Non-standard dimmable lights with BYTE brightness variable| Requires a sensor, binary sensor, switch, **and** a template light (4 entities) | Single `light` entity with native BYTE brightness variable support |
+| Brightness data type | No direct PLC byte support (only UINT) | BYTE (0-255) or UINT with configurable scale (e.g. 0-100) |
+| Configuration | YAML only | **UI** or **YAML**
 
 Because the domain is `ads_custom`, both integrations can coexist in the same Home Assistant instance without conflict.
 
