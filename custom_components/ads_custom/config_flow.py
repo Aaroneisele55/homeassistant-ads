@@ -325,6 +325,34 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }),
         )
 
+    async def async_step_edit_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit this entity's configuration."""
+        # Get entity type from config entry
+        entity_type = self.config_entry.data.get(CONF_ENTITY_TYPE)
+        
+        # Store current config as entity_data and set index to 0 (single entity)
+        self.entity_data = {"index": 0, "entity": dict(self.config_entry.data)}
+        
+        # Route to appropriate edit method based on entity type
+        if entity_type == "switch":
+            return await self.async_step_edit_switch_entity()
+        elif entity_type == "sensor":
+            return await self.async_step_edit_sensor_entity()
+        elif entity_type == "binary_sensor":
+            return await self.async_step_edit_binary_sensor_entity()
+        elif entity_type == "light":
+            return await self.async_step_edit_light_entity()
+        elif entity_type == "cover":
+            return await self.async_step_edit_cover_entity()
+        elif entity_type == "valve":
+            return await self.async_step_edit_valve_entity()
+        elif entity_type == "select":
+            return await self.async_step_edit_select_entity()
+        else:
+            return self.async_abort(reason="entity_type_not_supported")
+
     async def async_step_add_entity(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -1127,5 +1155,34 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             description_placeholders={
                 "entity_type": "Select",
                 "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
+            },
+        )
+
+    # Entity-specific edit methods (for entity config entries)
+    
+    async def async_step_edit_switch_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a switch entity config entry."""
+        if user_input is not None:
+            # Update the config entry data directly
+            new_data = dict(self.config_entry.data)
+            new_data.update(user_input)
+            
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            return self.async_create_entry(title="", data={})
+        
+        entity = self.config_entry.data
+        return self.async_show_form(
+            step_id="edit_switch_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            }),
+            description_placeholders={
+                "entity_type": "Switch",
             },
         )
