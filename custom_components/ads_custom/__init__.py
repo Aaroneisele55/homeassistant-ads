@@ -33,6 +33,9 @@ _LOGGER = logging.getLogger(__name__)
 # Helper constant for entity configuration
 CONF_ENTITY_TYPE = "entity_type"
 
+# Flow result type constant
+FLOW_RESULT_TYPE_CREATE_ENTRY = "create_entry"
+
 # Config schema for YAML configuration
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -340,8 +343,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 continue
             
             # Create individual config entry for this entity
-            # Use a safe fallback for title if entity_type is invalid
-            title = f"{entity_name} ({entity_type.replace('_', ' ').title() if entity_type else 'Entity'})"
+            title = f"{entity_name} ({entity_type.replace('_', ' ').title()})"
             
             try:
                 result = await hass.config_entries.flow.async_init(
@@ -354,7 +356,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     },
                 )
                 # Verify the flow completed successfully
-                if result.get("type") == "create_entry":
+                if result.get("type") == FLOW_RESULT_TYPE_CREATE_ENTRY:
                     migrated_entities.append(entity_config)
                     _LOGGER.info("Successfully migrated entity %s to individual config entry", entity_name)
                 else:
