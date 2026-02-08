@@ -37,6 +37,105 @@ ENTITY_TYPES = [
     "select",
 ]
 
+# Device class options for dropdowns
+BINARY_SENSOR_DEVICE_CLASSES = [
+    "battery",
+    "battery_charging",
+    "carbon_monoxide",
+    "cold",
+    "connectivity",
+    "door",
+    "garage_door",
+    "gas",
+    "heat",
+    "light",
+    "lock",
+    "moisture",
+    "motion",
+    "moving",
+    "occupancy",
+    "opening",
+    "plug",
+    "power",
+    "presence",
+    "problem",
+    "running",
+    "safety",
+    "smoke",
+    "sound",
+    "tamper",
+    "update",
+    "vibration",
+    "window",
+]
+
+SENSOR_DEVICE_CLASSES = [
+    "apparent_power",
+    "aqi",
+    "atmospheric_pressure",
+    "battery",
+    "carbon_dioxide",
+    "carbon_monoxide",
+    "current",
+    "data_rate",
+    "data_size",
+    "date",
+    "distance",
+    "duration",
+    "energy",
+    "energy_storage",
+    "enum",
+    "frequency",
+    "gas",
+    "humidity",
+    "illuminance",
+    "irradiance",
+    "moisture",
+    "monetary",
+    "nitrogen_dioxide",
+    "nitrogen_monoxide",
+    "nitrous_oxide",
+    "ozone",
+    "ph",
+    "pm1",
+    "pm10",
+    "pm25",
+    "power",
+    "power_factor",
+    "precipitation",
+    "precipitation_intensity",
+    "pressure",
+    "reactive_power",
+    "signal_strength",
+    "sound_pressure",
+    "speed",
+    "sulphur_dioxide",
+    "temperature",
+    "timestamp",
+    "volatile_organic_compounds",
+    "volatile_organic_compounds_parts",
+    "voltage",
+    "volume",
+    "volume_flow_rate",
+    "volume_storage",
+    "water",
+    "weight",
+    "wind_speed",
+]
+
+COVER_DEVICE_CLASSES = [
+    "awning",
+    "blind",
+    "curtain",
+    "damper",
+    "door",
+    "garage",
+    "gate",
+    "shade",
+    "shutter",
+    "window",
+]
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DEVICE): cv.string,
@@ -161,6 +260,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_add_entity()
             elif action == "list_entities":
                 return await self.async_step_list_entities()
+            elif action == "edit_entity":
+                return await self.async_step_select_entity_to_edit()
 
         return self.async_show_form(
             step_id="init",
@@ -169,6 +270,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"value": "add_entity", "label": "Add Entity"},
+                            {"value": "edit_entity", "label": "Edit Entity"},
                             {"value": "list_entities", "label": "List Entities"},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -194,12 +296,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_configure_binary_sensor()
             elif entity_type == "light":
                 return await self.async_step_configure_light()
-            # Cover, valve, and select not yet implemented via UI
+            elif entity_type == "cover":
+                return await self.async_step_configure_cover()
+            # Valve and select not yet implemented via UI
             else:
                 return self.async_abort(reason="entity_type_not_supported")
 
         # Only show implemented entity types
-        available_types = ["binary_sensor", "sensor", "switch", "light"]
+        available_types = ["binary_sensor", "sensor", "switch", "light", "cover"]
         
         return self.async_show_form(
             step_id="add_entity",
@@ -274,7 +378,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_UNIT_OF_MEASUREMENT): cv.string,
-                vol.Optional(CONF_DEVICE_CLASS): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional(CONF_STATE_CLASS): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=["measurement", "total", "total_increasing"],
@@ -317,11 +426,17 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Optional(CONF_DEVICE_CLASS): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=BINARY_SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
             }),
             description_placeholders={
                 "entity_type": "Binary Sensor",
             },
+        )
         )
 
     async def async_step_configure_light(
@@ -349,12 +464,66 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Required(CONF_ADS_VAR): cv.string,
                 vol.Required(CONF_NAME): cv.string,
                 vol.Optional("adsvar_brightness"): cv.string,
+                vol.Optional("adsvar_brightness_type", default="byte"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
                 vol.Optional("adsvar_brightness_scale", default=255): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=65535)
                 ),
             }),
             description_placeholders={
                 "entity_type": "Light",
+            },
+        )
+
+    async def async_step_configure_cover(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a cover entity."""
+        if user_input is not None:
+            # Merge entity type with configuration
+            entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
+            
+            # Add to entities list
+            entities = self.config_entry.options.get("entities", [])
+            entities.append(entity_config)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+
+        return self.async_show_form(
+            step_id="configure_cover",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_ADS_VAR): cv.string,
+                vol.Required(CONF_NAME): cv.string,
+                vol.Optional("adsvar_position"): cv.string,
+                vol.Optional("adsvar_position_type", default="byte"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("adsvar_set_position"): cv.string,
+                vol.Optional("adsvar_open"): cv.string,
+                vol.Optional("adsvar_close"): cv.string,
+                vol.Optional("adsvar_stop"): cv.string,
+                vol.Optional("inverted", default=False): cv.boolean,
+                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=COVER_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Cover",
             },
         )
 
@@ -377,4 +546,248 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="list_entities",
             data_schema=vol.Schema({}),
             description_placeholders={"entity_list": entity_list},
+        )
+
+    async def async_step_select_entity_to_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select an entity to edit."""
+        entities = self.config_entry.options.get("entities", [])
+        
+        if not entities:
+            return self.async_abort(reason="no_entities")
+        
+        if user_input is not None:
+            entity_index = user_input.get("entity_index")
+            # Store the entity index and data for editing
+            self.entity_data = {"index": entity_index, "entity": entities[entity_index].copy()}
+            entity_type = entities[entity_index].get(CONF_ENTITY_TYPE)
+            
+            # Route to specific edit configuration based on entity type
+            if entity_type == "switch":
+                return await self.async_step_edit_switch()
+            elif entity_type == "sensor":
+                return await self.async_step_edit_sensor()
+            elif entity_type == "binary_sensor":
+                return await self.async_step_edit_binary_sensor()
+            elif entity_type == "light":
+                return await self.async_step_edit_light()
+            elif entity_type == "cover":
+                return await self.async_step_edit_cover()
+            else:
+                return self.async_abort(reason="entity_type_not_supported")
+        
+        # Create list of entities with their indices
+        entity_options = [
+            {
+                "value": str(idx),
+                "label": f"{e.get(CONF_NAME, 'Unnamed')} ({e.get(CONF_ENTITY_TYPE, 'unknown')})"
+            }
+            for idx, e in enumerate(entities)
+        ]
+        
+        return self.async_show_form(
+            step_id="select_entity_to_edit",
+            data_schema=vol.Schema({
+                vol.Required("entity_index"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+        )
+
+    async def async_step_edit_switch(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a switch entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = int(self.entity_data["index"])
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_switch",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+            }),
+            description_placeholders={
+                "entity_type": "Switch",
+            },
+        )
+
+    async def async_step_edit_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a sensor entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = int(self.entity_data["index"])
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_sensor",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "int")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[t.value for t in AdsType],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=entity.get(CONF_UNIT_OF_MEASUREMENT, "")): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_STATE_CLASS, default=entity.get(CONF_STATE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["measurement", "total", "total_increasing"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Sensor",
+            },
+        )
+
+    async def async_step_edit_binary_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a binary sensor entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = int(self.entity_data["index"])
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_binary_sensor",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["bool", "real"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=BINARY_SENSOR_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Binary Sensor",
+            },
+        )
+
+    async def async_step_edit_light(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a light entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = int(self.entity_data["index"])
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_light",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional("adsvar_brightness", default=entity.get("adsvar_brightness", "")): cv.string,
+                vol.Optional("adsvar_brightness_type", default=entity.get("adsvar_brightness_type", "byte")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
+                    vol.Coerce(int), vol.Range(min=1, max=65535)
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Light",
+            },
+        )
+
+    async def async_step_edit_cover(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a cover entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = int(self.entity_data["index"])
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_cover",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional("adsvar_position", default=entity.get("adsvar_position", "")): cv.string,
+                vol.Optional("adsvar_position_type", default=entity.get("adsvar_position_type", "byte")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["byte", "uint"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("adsvar_set_position", default=entity.get("adsvar_set_position", "")): cv.string,
+                vol.Optional("adsvar_open", default=entity.get("adsvar_open", "")): cv.string,
+                vol.Optional("adsvar_close", default=entity.get("adsvar_close", "")): cv.string,
+                vol.Optional("adsvar_stop", default=entity.get("adsvar_stop", "")): cv.string,
+                vol.Optional("inverted", default=entity.get("inverted", False)): cv.boolean,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=COVER_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Cover",
+            },
         )
