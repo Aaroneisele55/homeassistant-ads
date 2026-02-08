@@ -38,11 +38,11 @@ class AdsEntity(Entity):
             self._attr_unique_id = unique_id
         self._attr_name = name
         
-        # Set up device info if provided
+        # Set up device info if identifiers provided
         if device_identifiers is not None:
             self._attr_device_info = DeviceInfo(
                 identifiers=device_identifiers,
-                name=device_name or "ADS Device",
+                name=device_name if device_name else "ADS Connection",
                 manufacturer="Beckhoff",
                 model="TwinCAT PLC",
             )
