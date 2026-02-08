@@ -748,6 +748,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.config_entry,
                 data=new_data,
             )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -775,6 +777,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.config_entry,
                 data=new_data,
             )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -853,6 +857,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.config_entry,
                 data=new_data,
             )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -907,6 +913,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.config_entry,
                 data=new_data,
             )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -966,6 +974,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     self.config_entry,
                     data=new_data,
                 )
+                # Reload the config entry to apply changes
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
                 return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -1029,6 +1039,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 self.config_entry,
                 data=new_data,
             )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
@@ -1090,6 +1102,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     self.config_entry,
                     data=new_data,
                 )
+                # Reload the config entry to apply changes
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
                 return self.async_create_entry(title="", data={})
         
         entity = self.config_entry.data
