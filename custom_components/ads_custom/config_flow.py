@@ -437,7 +437,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 "entity_type": "Binary Sensor",
             },
         )
-        )
 
     async def async_step_configure_light(
         self, user_input: dict[str, Any] | None = None
