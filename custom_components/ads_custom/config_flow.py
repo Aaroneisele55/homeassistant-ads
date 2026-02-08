@@ -286,7 +286,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.entity_data = {}
-        self._config_entry = config_entry
+        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -407,7 +407,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             # Mark as entity entry and link to parent hub
             entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
             
             # Create a new config entry for this entity
             title = f"{user_input[CONF_NAME]} (Switch)"
@@ -443,7 +443,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             # Mark as entity entry and link to parent hub
             entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
             
             # Create a new config entry for this entity
             title = f"{user_input[CONF_NAME]} (Sensor)"
@@ -498,7 +498,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             # Mark as entity entry and link to parent hub
             entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
             
             # Create a new config entry for this entity
             title = f"{user_input[CONF_NAME]} (Binary Sensor)"
@@ -546,7 +546,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             # Mark as entity entry and link to parent hub
             entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
             
             # Create a new config entry for this entity
             title = f"{user_input[CONF_NAME]} (Light)"
@@ -604,7 +604,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 
                 # Mark as entity entry and link to parent hub
                 entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-                entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+                entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
                 
                 # Create a new config entry for this entity
                 title = f"{user_input[CONF_NAME]} (Cover)"
@@ -659,7 +659,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             
             # Mark as entity entry and link to parent hub
             entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+            entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
             
             # Create a new config entry for this entity
             title = f"{user_input[CONF_NAME]} (Valve)"
@@ -714,7 +714,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 
                 # Mark as entity entry and link to parent hub
                 entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
-                entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
+                entity_config[CONF_PARENT_ENTRY_ID] = self.config_entry.entry_id
                 
                 # Create a new config entry for this entity
                 title = f"{user_input[CONF_NAME]} (Select)"
