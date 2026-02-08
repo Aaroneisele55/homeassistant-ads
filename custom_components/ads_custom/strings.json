@@ -36,14 +36,12 @@
     "step": {
       "init": {
         "title": "ADS Options",
-        "description": "Choose an action to manage your ADS entities.",
+        "description": "Add new entities to your ADS connection. To edit existing entities, go to Settings → Devices & Services → ADS Custom and configure each entity individually.",
         "data": {
           "action": "Action"
         },
         "menu_options": {
-          "add_entity": "Add Entity",
-          "edit_entity": "Edit Entity",
-          "list_entities": "List Entities"
+          "add_entity": "Add Entity"
         }
       },
       "add_entity": {
@@ -174,92 +172,6 @@
           "name": "Friendly name for the select",
           "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')"
         }
-      },
-      "select_entity_to_edit": {
-        "title": "Select Entity to Edit",
-        "description": "Choose an entity to edit from the list below.",
-        "data": {
-          "entity_index": "Entity"
-        }
-      },
-      "edit_switch": {
-        "title": "Edit Switch",
-        "description": "Modify the configuration for this switch entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name"
-        }
-      },
-      "edit_sensor": {
-        "title": "Edit Sensor",
-        "description": "Modify the configuration for this sensor entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "unit_of_measurement": "Unit of Measurement (optional)",
-          "device_class": "Device Class (optional)",
-          "state_class": "State Class (optional)"
-        }
-      },
-      "edit_binary_sensor": {
-        "title": "Edit Binary Sensor",
-        "description": "Modify the configuration for this binary sensor entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_light": {
-        "title": "Edit Light",
-        "description": "Modify the configuration for this light entity.",
-        "data": {
-          "adsvar": "ADS Variable Name (On/Off)",
-          "name": "Entity Name",
-          "adsvar_brightness": "Brightness Variable (optional)",
-          "adsvar_brightness_type": "Brightness Data Type",
-          "adsvar_brightness_scale": "Brightness Scale"
-        }
-      },
-      "edit_cover": {
-        "title": "Edit Cover",
-        "description": "Modify the configuration for this cover entity.",
-        "data": {
-          "adsvar": "Closed State Variable (optional)",
-          "name": "Entity Name",
-          "adsvar_position": "Position Variable (optional)",
-          "adsvar_position_type": "Position Data Type",
-          "adsvar_set_position": "Set Position Variable (optional)",
-          "adsvar_open": "Open Command Variable (optional)",
-          "adsvar_close": "Close Command Variable (optional)",
-          "adsvar_stop": "Stop Command Variable (optional)",
-          "inverted": "Inverted Positioning",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_valve": {
-        "title": "Edit Valve",
-        "description": "Modify the configuration for this valve entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_select": {
-        "title": "Edit Select",
-        "description": "Modify the configuration for this select entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "options": "Options (comma-separated)"
-        }
-      },
-      "list_entities": {
-        "title": "Configured Entities",
-        "description": "List of entities configured via UI:\n\n{entity_list}"
       },
       "edit_switch_entity": {
         "title": "Edit Switch",
