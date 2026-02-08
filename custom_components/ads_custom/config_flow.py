@@ -730,17 +730,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if unique_id:
                 entities = [e for e in entities if e.get("unique_id") != unique_id]
             else:
-                # Fallback for legacy entities without unique_id
-                # Note: This matches by name AND adsvar. If multiple entities share
-                # the same name and adsvar (which should be rare), all will be removed.
-                # This is acceptable since such duplicates would be problematic anyway.
+                # Fallback for legacy entities without unique_id (rare case)
+                # WARNING: This matches by name AND adsvar. If multiple entities share
+                # the same name and adsvar, all matching entities will be removed.
+                # Legacy entities should be migrated to use unique_id to avoid this.
                 stored_name = self.entity_data.get("name")
                 stored_adsvar = self.entity_data.get("adsvar")
-                entities = [
-                    e for e in entities
-                    if not (e.get(CONF_NAME) == stored_name 
-                           and e.get(CONF_ADS_VAR) == stored_adsvar)
-                ]
+                # Only proceed with deletion if we have valid identifiers
+                if stored_name and stored_adsvar:
+                    entities = [
+                        e for e in entities
+                        if not (e.get(CONF_NAME) == stored_name 
+                               and e.get(CONF_ADS_VAR) == stored_adsvar)
+                    ]
             
             return self.async_create_entry(
                 title="",
