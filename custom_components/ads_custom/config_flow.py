@@ -315,25 +315,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # This is an entity config entry - show entity-specific options
             return await self.async_step_edit_entity()
         
-        # This is a hub config entry - show hub options  
-        if user_input is not None:
-            action = user_input.get("action")
-            if action == "add_entity":
-                return await self.async_step_add_entity()
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Required("action"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"value": "add_entity", "label": "Add Entity"},
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
-        )
+        # This is a hub config entry - directly show add entity dialog
+        return await self.async_step_add_entity()
 
     async def async_step_edit_entity(
         self, user_input: dict[str, Any] | None = None
