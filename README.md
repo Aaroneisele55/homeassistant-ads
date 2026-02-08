@@ -29,10 +29,7 @@ Because the domain is `ads_custom`, both integrations can coexist in the same Ho
 
 ### HACS (recommended)
 
-1. Open **HACS → Integrations**.
-2. Click the three-dot menu → **Custom repositories**.
-3. Paste this repository URL and choose category **Integration**.
-4. Click **Install**, then restart Home Assistant.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Aaroneisele55&repository=homeassistant-ads&category=integration)
 
 ### Manual
 
