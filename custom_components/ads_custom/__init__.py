@@ -292,6 +292,78 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Early return - the reload will re-run async_setup_entry with migrated data
         return True
     
+    # Migrate entities from hub options to individual config entries
+    # This gives each entity edit/delete UI functionality
+    entities_to_migrate = entry.options.get("entities", [])
+    if entities_to_migrate:
+        _LOGGER.info(
+            "Found %d entities in hub options, migrating to individual config entries",
+            len(entities_to_migrate)
+        )
+        
+        for entity_config in entities_to_migrate:
+            entity_type = entity_config.get(CONF_ENTITY_TYPE)
+            entity_name = entity_config.get(CONF_NAME, "Unknown")
+            entity_unique_id = entity_config.get(CONF_UNIQUE_ID)
+            
+            if not entity_type or not entity_unique_id:
+                _LOGGER.warning(
+                    "Skipping migration of entity %s: missing entity_type or unique_id",
+                    entity_name
+                )
+                continue
+            
+            # Prepare entity config for individual config entry
+            migrated_config = dict(entity_config)
+            migrated_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+            migrated_config[CONF_PARENT_ENTRY_ID] = entry.entry_id
+            
+            # Create unique_id for the config entry itself
+            config_entry_unique_id = f"{entry.entry_id}_{entity_unique_id}"
+            
+            # Check if this entity config entry already exists
+            existing_entries = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.unique_id == config_entry_unique_id
+            ]
+            
+            if existing_entries:
+                _LOGGER.debug(
+                    "Entity %s already has config entry, skipping migration",
+                    entity_name
+                )
+                continue
+            
+            # Create individual config entry for this entity
+            title = f"{entity_name} ({entity_type.replace('_', ' ').title()})"
+            
+            try:
+                await hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "entity_migration"},
+                    data={
+                        "entity_config": migrated_config,
+                        "title": title,
+                        "unique_id": config_entry_unique_id
+                    },
+                )
+                _LOGGER.info("Migrated entity %s to individual config entry", entity_name)
+            except Exception as err:
+                _LOGGER.error(
+                    "Failed to migrate entity %s: %s",
+                    entity_name,
+                    err
+                )
+        
+        # After successful migration, clear entities from hub options
+        # Keep backward compatibility by leaving the key but with empty list
+        _LOGGER.info("Migration complete, clearing entities from hub options")
+        hass.config_entries.async_update_entry(
+            entry,
+            options={**entry.options, "entities": []}
+        )
+        # Note: No reload needed - entities are already set up via the new config entries
+    
     # Get entity registry to handle entity deletions
     entity_registry = er.async_get(hass)
     
