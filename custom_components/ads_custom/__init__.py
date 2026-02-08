@@ -23,6 +23,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
@@ -238,6 +239,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # This is an entity config entry - just forward to platforms
         # The ADS hub should already be set up by the parent entry
         _LOGGER.debug("async_setup_entry: Setting up entity config entry: %s", entry.title)
+        
+        # Ensure the parent hub is ready before setting up entities
+        parent_entry_id = entry.data.get(CONF_PARENT_ENTRY_ID)
+        if parent_entry_id and parent_entry_id not in hass.data.get(DOMAIN, {}):
+            raise ConfigEntryNotReady(
+                f"Parent hub {parent_entry_id} not ready yet for entity {entry.title}"
+            )
+        
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         
         # Register update listener for entity options changes
