@@ -13,12 +13,8 @@ if TYPE_CHECKING:
 DOMAIN = "ads_custom"
 
 CONF_ADS_VAR = "adsvar"
-CONF_ENTRY_TYPE = "entry_type"
-CONF_PARENT_ENTRY_ID = "parent_entry_id"
 
-# Entry types
-ENTRY_TYPE_HUB = "hub"
-ENTRY_TYPE_ENTITY = "entity"
+SUBENTRY_TYPE_ENTITY = "entity"
 
 STATE_KEY_STATE = "state"
 
