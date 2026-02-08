@@ -304,6 +304,29 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.entity_data: dict[str, Any] = {}
 
+    async def _async_update_entry_and_reload(
+        self, new_data: dict[str, Any]
+    ) -> FlowResult:
+        """Update config entry data and reload the entry.
+        
+        Args:
+            new_data: New configuration data to update
+            
+        Returns:
+            FlowResult indicating success or error
+        """
+        try:
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+            )
+            # Reload the config entry to apply changes
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data={})
+        except Exception as err:
+            _LOGGER.error("Failed to reload config entry after update: %s", err)
+            return self.async_abort(reason="reload_failed")
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -743,14 +766,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update the config entry data directly
             new_data = dict(self.config_entry.data)
             new_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         return self.async_show_form(
@@ -772,14 +788,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update the config entry data directly
             new_data = dict(self.config_entry.data)
             new_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         
@@ -852,14 +861,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update the config entry data directly
             new_data = dict(self.config_entry.data)
             new_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         
@@ -908,14 +910,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update the config entry data directly
             new_data = dict(self.config_entry.data)
             new_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         
@@ -969,14 +964,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Update the config entry data directly
                 new_data = dict(self.config_entry.data)
                 new_data.update(user_input)
-                
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry,
-                    data=new_data,
-                )
-                # Reload the config entry to apply changes
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-                return self.async_create_entry(title="", data={})
+                return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         
@@ -1034,14 +1022,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Update the config entry data directly
             new_data = dict(self.config_entry.data)
             new_data.update(user_input)
-            
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data=new_data,
-            )
-            # Reload the config entry to apply changes
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         
@@ -1097,14 +1078,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 new_data = dict(self.config_entry.data)
                 new_data.update(user_input)
                 new_data["options"] = options
-                
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry,
-                    data=new_data,
-                )
-                # Reload the config entry to apply changes
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-                return self.async_create_entry(title="", data={})
+                return await self._async_update_entry_and_reload(new_data)
         
         entity = self.config_entry.data
         # Convert list of options to comma-separated string for display

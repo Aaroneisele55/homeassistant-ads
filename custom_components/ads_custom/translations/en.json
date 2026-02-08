@@ -255,7 +255,8 @@
     },
     "abort": {
       "entity_type_not_supported": "This entity type is not yet supported",
-      "no_entities": "No entities configured. Entities are now managed as individual config entries and can be edited directly."
+      "no_entities": "No entities configured. Entities are now managed as individual config entries and can be edited directly.",
+      "reload_failed": "Failed to reload entity after updating configuration. Please try again or restart Home Assistant."
     }
   }
 }
