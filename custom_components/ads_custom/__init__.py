@@ -26,7 +26,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_ADS_VAR, DOMAIN, AdsType, CONF_ENTRY_TYPE, ENTRY_TYPE_HUB, ENTRY_TYPE_ENTITY
+from .const import CONF_ADS_VAR, CONF_PARENT_ENTRY_ID, DOMAIN, AdsType, CONF_ENTRY_TYPE, ENTRY_TYPE_HUB, ENTRY_TYPE_ENTITY
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
