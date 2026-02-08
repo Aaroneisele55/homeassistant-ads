@@ -678,8 +678,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         
         if user_input is not None:
             entity_index = int(user_input.get("entity_index"))
-            # Store the entity index and data for confirmation
-            self.entity_data = {"index": entity_index, "entity": entities[entity_index].copy()}
+            selected_entity = entities[entity_index]
+            # Store the unique_id for safe deletion later
+            self.entity_data = {
+                "unique_id": selected_entity.get("unique_id"),
+                "entity": selected_entity.copy()
+            }
             return await self.async_step_confirm_delete()
         
         # Create list of entities with their indices
@@ -708,10 +712,21 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Confirm deletion of entity."""
         if user_input is not None:
-            # Delete the entity from the list
+            # Delete the entity from the list using unique_id for safety
             entities = list(self.config_entry.options.get("entities", []))
-            entity_index = self.entity_data["index"]
-            entities.pop(entity_index)
+            unique_id = self.entity_data.get("unique_id")
+            
+            # Find and remove the entity by unique_id
+            if unique_id:
+                entities = [e for e in entities if e.get("unique_id") != unique_id]
+            else:
+                # Fallback: if no unique_id, use entity match (for legacy entities)
+                stored_entity = self.entity_data.get("entity", {})
+                entities = [
+                    e for e in entities
+                    if not (e.get(CONF_NAME) == stored_entity.get(CONF_NAME) 
+                           and e.get(CONF_ADS_VAR) == stored_entity.get(CONF_ADS_VAR))
+                ]
             
             return self.async_create_entry(
                 title="",
