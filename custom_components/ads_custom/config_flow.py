@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from types import MappingProxyType
 from typing import Any
 
 import pyads
@@ -620,7 +621,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Switch)"
             self.hass.config_entries.async_update_subentry(
-                subentry, data=new_data, title=new_title
+                subentry, data=MappingProxyType(new_data), title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
 
@@ -645,7 +646,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
             self.hass.config_entries.async_update_subentry(
-                subentry, data=new_data, title=new_title
+                subentry, data=MappingProxyType(new_data), title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
 
@@ -701,7 +702,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
             self.hass.config_entries.async_update_subentry(
-                subentry, data=new_data, title=new_title
+                subentry, data=MappingProxyType(new_data), title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
 
@@ -738,7 +739,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Light)"
             self.hass.config_entries.async_update_subentry(
-                subentry, data=new_data, title=new_title
+                subentry, data=MappingProxyType(new_data), title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
 
@@ -784,7 +785,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
                 self.hass.config_entries.async_update_subentry(
-                    subentry, data=new_data, title=new_title
+                    subentry, data=MappingProxyType(new_data), title=new_title
                 )
                 return self.async_abort(reason="reconfigure_successful")
 
@@ -829,7 +830,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
             self.hass.config_entries.async_update_subentry(
-                subentry, data=new_data, title=new_title
+                subentry, data=MappingProxyType(new_data), title=new_title
             )
             return self.async_abort(reason="reconfigure_successful")
 
@@ -874,7 +875,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Select)"
                 self.hass.config_entries.async_update_subentry(
-                    subentry, data=new_data, title=new_title
+                    subentry, data=MappingProxyType(new_data), title=new_title
                 )
                 return self.async_abort(reason="reconfigure_successful")
 
