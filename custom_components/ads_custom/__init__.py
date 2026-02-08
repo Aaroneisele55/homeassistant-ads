@@ -245,7 +245,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
+    # Register update listener for options changes first
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    
     # Migrate any entities without unique_id (from old versions)
+    # This must happen after registering the update listener to avoid issues
     entities = entry.options.get("entities", [])
     needs_migration = False
     updated_entities = []
@@ -253,23 +257,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for entity_config in entities:
         if not entity_config.get(CONF_UNIQUE_ID):
             # Generate unique_id for entities that don't have one
-            entity_config = dict(entity_config)  # Make a copy
+            # Using dict() is sufficient as entity_config is a flat dictionary
+            entity_config = dict(entity_config)  # Shallow copy is safe here
             entity_config[CONF_UNIQUE_ID] = uuid.uuid4().hex
             needs_migration = True
             _LOGGER.info("Generated unique_id for entity: %s", entity_config.get(CONF_NAME, "unknown"))
         updated_entities.append(entity_config)
     
     # Update config entry if migration was needed
+    # Note: This triggers async_reload_entry via the update listener above
+    # The reload is expected and ensures migrated entities are properly registered
     if needs_migration:
-        _LOGGER.info("Migrating %d entities to add unique_id", len(updated_entities))
+        _LOGGER.info("Migrating %d entities to add unique_id, integration will reload", len(updated_entities))
         hass.config_entries.async_update_entry(
             entry,
             options={**entry.options, "entities": updated_entities}
         )
-        # Note: This will trigger a reload via the update listener
-    
-    # Register update listener for options changes
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+        # Early return - the reload will re-run async_setup_entry with migrated data
+        return True
     
     # Get entity registry to handle entity deletions
     entity_registry = er.async_get(hass)
