@@ -238,6 +238,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Forward setup to platforms for entities configured via UI
     entities = entry.options.get("entities", [])
+    _LOGGER.debug("async_setup_entry: Found %d entities in options", len(entities))
     if entities:
         # Group entities by platform
         platforms_to_setup = {}
@@ -250,7 +251,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         # Set up each platform
         if platforms_to_setup:
+            _LOGGER.debug("async_setup_entry: Forwarding setup to platforms: %s", list(platforms_to_setup.keys()))
             await hass.config_entries.async_forward_entry_setups(entry, list(platforms_to_setup.keys()))
+    else:
+        _LOGGER.debug("async_setup_entry: No entities to set up")
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -260,6 +264,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry when options change."""
+    _LOGGER.debug("async_reload_entry: Reloading config entry due to options change")
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -269,6 +274,7 @@ CONF_ENTITY_TYPE = "entity_type"
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    _LOGGER.debug("async_unload_entry: Unloading config entry")
     # Unload platforms first
     entities = entry.options.get("entities", [])
     if entities:
@@ -277,10 +283,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if e.get(CONF_ENTITY_TYPE) is not None
         }
         if platforms_to_unload:
+            _LOGGER.debug("async_unload_entry: Unloading platforms: %s", list(platforms_to_unload))
             unload_ok = await hass.config_entries.async_forward_entry_unloads(
                 entry, list(platforms_to_unload)
             )
             if not unload_ok:
+                _LOGGER.error("async_unload_entry: Failed to unload some platforms")
                 return False
     
     # Get the hub before we remove it
@@ -294,6 +302,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if hass.data[DOMAIN].get("connection") is ads_hub:
         hass.data[DOMAIN].pop("connection", None)
     
+    _LOGGER.debug("async_unload_entry: Successfully unloaded")
     return True
 
 
