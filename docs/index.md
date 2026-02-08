@@ -123,8 +123,8 @@ After the connection is configured:
 4. Fill in the PLC variable name, a friendly name, and any type-specific options.
 5. Click **Submit** — the entity appears immediately without a restart.
 
-Entity types currently available in the UI: **Switch, Sensor, Binary Sensor, Light**.
-Cover, Valve, and Select can be added via YAML.
+Entity types currently available in the UI: **Binary Sensor, Cover, Light, Select, Sensor, Switch, Valve**.
+The same entity types can also be defined via YAML.
 
 ### YAML entity setup
 
@@ -330,7 +330,7 @@ valve:
 |-----------|------|----------|---------|-------------|
 | `adsvar` | string | **Yes** | — | Boolean variable indicating whether the valve is open |
 | `name` | string | No | `ADS valve` | Friendly name |
-| `device_class` | string | No | — | `water` or `gas` |
+| `device_class` | string | No | — | Any Home Assistant [valve device class](https://www.home-assistant.io/integrations/valve/#device-class) (e.g. `water`, `gas`) |
 | `unique_id` | string | No | — | Unique identifier |
 
 ---
@@ -359,11 +359,11 @@ data:
 
 ## Supported data types
 
-These types can be used with the `adstype` parameter on sensors and with the `write_data_by_name` service.
+All of the types below are supported with the `write_data_by_name` service. For **YAML-configured sensors**, only numeric and boolean types are accepted (`bool` through `lreal`). The remaining types (`string`, `time`, `date`, `dt`, `tod`) can be used with UI-configured sensors and with the service call.
 
 | Type | Description | Size |
 |------|-------------|------|
-| `bool` | Boolean | 1 bit |
+| `bool` | Boolean | 8 bits (1 byte) |
 | `byte` | Unsigned byte | 8 bits |
 | `sint` | Signed short integer | 8 bits |
 | `usint` | Unsigned short integer | 8 bits |
@@ -378,7 +378,7 @@ These types can be used with the `adstype` parameter on sensors and with the `wr
 | `string` | Variable-length string | — |
 | `time` | Time duration | 32 bits |
 | `date` | Date | 32 bits |
-| `date_and_time` | Date and time | 32 bits |
+| `dt` | Date and time | 32 bits |
 | `tod` | Time of day | 32 bits |
 
 ---
