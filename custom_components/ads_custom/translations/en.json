@@ -22,253 +22,233 @@
     },
     "error": {
       "cannot_connect": "Failed to connect to the ADS device. Please check your configuration and ensure the device is reachable.",
-      "unknown": "Unexpected error occurred",
-      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
-      "no_options": "Select must have at least one option"
+      "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This ADS device is already configured",
-      "entity_type_not_supported": "This entity type is not yet supported",
-      "no_entities": "No entities configured yet"
+      "already_configured": "This ADS device is already configured"
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "ADS Options",
-        "description": "Add new entities to your ADS connection. To edit existing entities, go to Settings → Devices & Services → ADS Custom and configure each entity individually.",
-        "data": {
-          "action": "Action"
+  "config_subentries": {
+    "entity": {
+      "entry_type": "ADS Entity",
+      "initiate_flow": {
+        "user": "Add ADS Entity",
+        "reconfigure": "Reconfigure ADS Entity"
+      },
+      "step": {
+        "user": {
+          "title": "Add Entity",
+          "description": "Select the type of entity you want to add.",
+          "data": {
+            "entity_type": "Entity Type"
+          }
         },
-        "menu_options": {
-          "add_entity": "Add Entity"
-        }
-      },
-      "edit_entity": {
-        "title": "Entity Options",
-        "menu_options": {
-          "edit_entity_config": "Edit Configuration",
-          "delete_entity": "Delete Entity"
-        }
-      },
-      "delete_entity": {
-        "title": "Delete Entity",
-        "description": "Are you sure you want to delete '{entity_name}'? This action cannot be undone."
-      },
-      "add_entity": {
-        "title": "Add Entity",
-        "description": "Select the type of entity you want to add.",
-        "data": {
-          "entity_type": "Entity Type"
-        }
-      },
-      "configure_switch": {
-        "title": "Configure Switch",
-        "description": "Configure a switch entity that controls a boolean variable on your PLC.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name"
+        "configure_switch": {
+          "title": "Configure Switch",
+          "description": "Configure a switch entity that controls a boolean variable on your PLC.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable name (e.g., GVL.pump)",
+            "name": "Friendly name for the switch"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable name (e.g., GVL.pump)",
-          "name": "Friendly name for the switch"
-        }
-      },
-      "configure_sensor": {
-        "title": "Configure Sensor",
-        "description": "Configure a sensor that reads a numeric or string value from your PLC.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "unit_of_measurement": "Unit of Measurement (optional)",
-          "device_class": "Device Class (optional)",
-          "state_class": "State Class (optional)"
+        "configure_sensor": {
+          "title": "Configure Sensor",
+          "description": "Configure a sensor that reads a numeric or string value from your PLC.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "adstype": "Data Type",
+            "unit_of_measurement": "Unit of Measurement (optional)",
+            "device_class": "Device Class (optional)",
+            "state_class": "State Class (optional)"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable name (e.g., GVL.temperature)",
+            "name": "Friendly name for the sensor",
+            "adstype": "The data type of the PLC variable",
+            "unit_of_measurement": "e.g., \u00b0C, %, kW",
+            "device_class": "e.g., temperature, humidity, power",
+            "state_class": "For statistics and long-term data"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable name (e.g., GVL.temperature)",
-          "name": "Friendly name for the sensor",
-          "adstype": "The data type of the PLC variable",
-          "unit_of_measurement": "e.g., \u00b0C, %, kW",
-          "device_class": "e.g., temperature, humidity, power",
-          "state_class": "For statistics and long-term data"
-        }
-      },
-      "configure_binary_sensor": {
-        "title": "Configure Binary Sensor",
-        "description": "Configure a binary sensor that reads an on/off state from your PLC.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "device_class": "Device Class (optional)"
+        "configure_binary_sensor": {
+          "title": "Configure Binary Sensor",
+          "description": "Configure a binary sensor that reads an on/off state from your PLC.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "adstype": "Data Type",
+            "device_class": "Device Class (optional)"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable name (e.g., GVL.door_open)",
+            "name": "Friendly name for the binary sensor",
+            "adstype": "bool for boolean, real for floating-point",
+            "device_class": "e.g., door, motion, window"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable name (e.g., GVL.door_open)",
-          "name": "Friendly name for the binary sensor",
-          "adstype": "bool for boolean, real for floating-point",
-          "device_class": "e.g., door, motion, window"
-        }
-      },
-      "configure_light": {
-        "title": "Configure Light",
-        "description": "Configure a light entity that can be turned on/off and optionally dimmed.",
-        "data": {
-          "adsvar": "ADS Variable Name (On/Off)",
-          "name": "Entity Name",
-          "adsvar_brightness": "Brightness Variable (optional)",
-          "adsvar_brightness_type": "Brightness Data Type",
-          "adsvar_brightness_scale": "Brightness Scale"
+        "configure_light": {
+          "title": "Configure Light",
+          "description": "Configure a light entity that can be turned on/off and optionally dimmed.",
+          "data": {
+            "adsvar": "ADS Variable Name (On/Off)",
+            "name": "Entity Name",
+            "adsvar_brightness": "Brightness Variable (optional)",
+            "adsvar_brightness_type": "Brightness Data Type",
+            "adsvar_brightness_scale": "Brightness Scale"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable for on/off control",
+            "name": "Friendly name for the light",
+            "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
+            "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
+            "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable for on/off control",
-          "name": "Friendly name for the light",
-          "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
-          "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
-          "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)"
-        }
-      },
-      "configure_cover": {
-        "title": "Configure Cover",
-        "description": "Configure a cover entity such as blinds, shutters, or garage doors.",
-        "data": {
-          "adsvar": "Closed State Variable (optional)",
-          "name": "Entity Name",
-          "adsvar_position": "Position Variable (optional)",
-          "adsvar_position_type": "Position Data Type",
-          "adsvar_set_position": "Set Position Variable (optional)",
-          "adsvar_open": "Open Command Variable (optional)",
-          "adsvar_close": "Close Command Variable (optional)",
-          "adsvar_stop": "Stop Command Variable (optional)",
-          "inverted": "Inverted Positioning",
-          "device_class": "Device Class (optional)"
+        "configure_cover": {
+          "title": "Configure Cover",
+          "description": "Configure a cover entity such as blinds, shutters, or garage doors.",
+          "data": {
+            "adsvar": "Closed State Variable (optional)",
+            "name": "Entity Name",
+            "adsvar_position": "Position Variable (optional)",
+            "adsvar_position_type": "Position Data Type",
+            "adsvar_set_position": "Set Position Variable (optional)",
+            "adsvar_open": "Open Command Variable (optional)",
+            "adsvar_close": "Close Command Variable (optional)",
+            "adsvar_stop": "Stop Command Variable (optional)",
+            "inverted": "Inverted Positioning",
+            "device_class": "Device Class (optional)"
+          },
+          "data_description": {
+            "adsvar": "Boolean variable indicating if cover is closed",
+            "name": "Friendly name for the cover",
+            "adsvar_position": "Variable for reading current position (0-100)",
+            "adsvar_position_type": "Data type: byte (0-255) or uint (0-65535)",
+            "adsvar_set_position": "Variable for setting target position",
+            "adsvar_open": "Boolean variable to trigger open command",
+            "adsvar_close": "Boolean variable to trigger close command",
+            "adsvar_stop": "Boolean variable to trigger stop command",
+            "inverted": "If true, position 0=open and 100=closed",
+            "device_class": "e.g., blind, curtain, garage"
+          }
         },
-        "data_description": {
-          "adsvar": "Boolean variable indicating if cover is closed",
-          "name": "Friendly name for the cover",
-          "adsvar_position": "Variable for reading current position (0-100)",
-          "adsvar_position_type": "Data type: byte (0-255) or uint (0-65535)",
-          "adsvar_set_position": "Variable for setting target position",
-          "adsvar_open": "Boolean variable to trigger open command",
-          "adsvar_close": "Boolean variable to trigger close command",
-          "adsvar_stop": "Boolean variable to trigger stop command",
-          "inverted": "If true, position 0=open and 100=closed",
-          "device_class": "e.g., blind, curtain, garage"
-        }
-      },
-      "configure_valve": {
-        "title": "Configure Valve",
-        "description": "Configure a valve entity for controlling fluid flow.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "device_class": "Device Class (optional)"
+        "configure_valve": {
+          "title": "Configure Valve",
+          "description": "Configure a valve entity for controlling fluid flow.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "device_class": "Device Class (optional)"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable for valve control (true=open, false=closed)",
+            "name": "Friendly name for the valve",
+            "device_class": "e.g., gas, water"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable for valve control (true=open, false=closed)",
-          "name": "Friendly name for the valve",
-          "device_class": "e.g., gas, water"
-        }
-      },
-      "configure_select": {
-        "title": "Configure Select",
-        "description": "Configure a select entity for choosing from predefined options.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "options": "Options (comma-separated)"
+        "configure_select": {
+          "title": "Configure Select",
+          "description": "Configure a select entity for choosing from predefined options.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "options": "Options (comma-separated)"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable storing the option index (0-based integer)",
+            "name": "Friendly name for the select",
+            "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')"
+          }
         },
-        "data_description": {
-          "adsvar": "The PLC variable storing the option index (0-based integer)",
-          "name": "Friendly name for the select",
-          "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')"
+        "reconfigure_switch": {
+          "title": "Edit Switch",
+          "description": "Modify the configuration for this switch entity.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name"
+          }
+        },
+        "reconfigure_sensor": {
+          "title": "Edit Sensor",
+          "description": "Modify the configuration for this sensor entity.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "adstype": "Data Type",
+            "unit_of_measurement": "Unit of Measurement (optional)",
+            "device_class": "Device Class (optional)",
+            "state_class": "State Class (optional)"
+          }
+        },
+        "reconfigure_binary_sensor": {
+          "title": "Edit Binary Sensor",
+          "description": "Modify the configuration for this binary sensor entity.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "adstype": "Data Type",
+            "device_class": "Device Class (optional)"
+          }
+        },
+        "reconfigure_light": {
+          "title": "Edit Light",
+          "description": "Modify the configuration for this light entity.",
+          "data": {
+            "adsvar": "ADS Variable Name (On/Off)",
+            "name": "Entity Name",
+            "adsvar_brightness": "Brightness Variable (optional)",
+            "adsvar_brightness_type": "Brightness Data Type",
+            "adsvar_brightness_scale": "Brightness Scale"
+          }
+        },
+        "reconfigure_cover": {
+          "title": "Edit Cover",
+          "description": "Modify the configuration for this cover entity.",
+          "data": {
+            "adsvar": "Closed State Variable (optional)",
+            "name": "Entity Name",
+            "adsvar_position": "Position Variable (optional)",
+            "adsvar_position_type": "Position Data Type",
+            "adsvar_set_position": "Set Position Variable (optional)",
+            "adsvar_open": "Open Command Variable (optional)",
+            "adsvar_close": "Close Command Variable (optional)",
+            "adsvar_stop": "Stop Command Variable (optional)",
+            "inverted": "Inverted Positioning",
+            "device_class": "Device Class (optional)"
+          }
+        },
+        "reconfigure_valve": {
+          "title": "Edit Valve",
+          "description": "Modify the configuration for this valve entity.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "device_class": "Device Class (optional)"
+          }
+        },
+        "reconfigure_select": {
+          "title": "Edit Select",
+          "description": "Modify the configuration for this select entity.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "name": "Entity Name",
+            "options": "Options (comma-separated)"
+          }
         }
       },
-      "edit_switch_entity": {
-        "title": "Edit Switch",
-        "description": "Modify the configuration for this switch entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name"
-        }
+      "error": {
+        "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
+        "no_options": "Select must have at least one option"
       },
-      "edit_sensor_entity": {
-        "title": "Edit Sensor",
-        "description": "Modify the configuration for this sensor entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "unit_of_measurement": "Unit of Measurement (optional)",
-          "device_class": "Device Class (optional)",
-          "state_class": "State Class (optional)"
-        }
-      },
-      "edit_binary_sensor_entity": {
-        "title": "Edit Binary Sensor",
-        "description": "Modify the configuration for this binary sensor entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "adstype": "Data Type",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_light_entity": {
-        "title": "Edit Light",
-        "description": "Modify the configuration for this light entity.",
-        "data": {
-          "adsvar": "ADS Variable Name (On/Off)",
-          "name": "Entity Name",
-          "adsvar_brightness": "Brightness Variable (optional)",
-          "adsvar_brightness_type": "Brightness Data Type",
-          "adsvar_brightness_scale": "Brightness Scale"
-        }
-      },
-      "edit_cover_entity": {
-        "title": "Edit Cover",
-        "description": "Modify the configuration for this cover entity.",
-        "data": {
-          "adsvar": "Closed State Variable (optional)",
-          "name": "Entity Name",
-          "adsvar_position": "Position Variable (optional)",
-          "adsvar_position_type": "Position Data Type",
-          "adsvar_set_position": "Set Position Variable (optional)",
-          "adsvar_open": "Open Command Variable (optional)",
-          "adsvar_close": "Close Command Variable (optional)",
-          "adsvar_stop": "Stop Command Variable (optional)",
-          "inverted": "Inverted Positioning",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_valve_entity": {
-        "title": "Edit Valve",
-        "description": "Modify the configuration for this valve entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "device_class": "Device Class (optional)"
-        }
-      },
-      "edit_select_entity": {
-        "title": "Edit Select",
-        "description": "Modify the configuration for this select entity.",
-        "data": {
-          "adsvar": "ADS Variable Name",
-          "name": "Entity Name",
-          "options": "Options (comma-separated)"
-        }
+      "abort": {
+        "entity_type_not_supported": "This entity type is not yet supported",
+        "reconfigure_successful": "Entity updated successfully"
       }
-    },
-    "error": {
-      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
-      "no_options": "Select must have at least one option"
-    },
-    "abort": {
-      "entity_type_not_supported": "This entity type is not yet supported",
-      "no_entities": "No entities configured. Entities are now managed as individual config entries and can be edited directly.",
-      "reload_failed": "Failed to reload entity after updating configuration. Please try again or restart Home Assistant.",
-      "entity_deleted": "Entity deleted successfully"
     }
   }
 }
