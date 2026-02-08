@@ -336,6 +336,14 @@
           "options": "Options (comma-separated)"
         }
       }
+    },
+    "error": {
+      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
+      "no_options": "Select must have at least one option"
+    },
+    "abort": {
+      "entity_type_not_supported": "This entity type is not yet supported",
+      "no_entities": "No entities configured. Entities are now managed as individual config entries and can be edited directly."
     }
   }
 }
