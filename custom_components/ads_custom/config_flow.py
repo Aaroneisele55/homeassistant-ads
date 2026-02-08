@@ -136,6 +136,11 @@ COVER_DEVICE_CLASSES = [
     "window",
 ]
 
+VALVE_DEVICE_CLASSES = [
+    "gas",
+    "water",
+]
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_DEVICE): cv.string,
@@ -298,12 +303,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_configure_light()
             elif entity_type == "cover":
                 return await self.async_step_configure_cover()
-            # Valve and select not yet implemented via UI
+            elif entity_type == "valve":
+                return await self.async_step_configure_valve()
+            elif entity_type == "select":
+                return await self.async_step_configure_select()
             else:
                 return self.async_abort(reason="entity_type_not_supported")
 
-        # Only show implemented entity types
-        available_types = ["binary_sensor", "sensor", "switch", "light", "cover"]
+        # Show all implemented entity types
+        available_types = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
         
         return self.async_show_form(
             step_id="add_entity",
@@ -526,6 +534,80 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             },
         )
 
+    async def async_step_configure_valve(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a valve entity."""
+        if user_input is not None:
+            # Merge entity type with configuration
+            entity_config = {**self.entity_data, **user_input}
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
+            
+            # Add to entities list
+            entities = self.config_entry.options.get("entities", [])
+            entities.append(entity_config)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+
+        return self.async_show_form(
+            step_id="configure_valve",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR): cv.string,
+                vol.Required(CONF_NAME): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=VALVE_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Valve",
+            },
+        )
+
+    async def async_step_configure_select(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a select entity."""
+        if user_input is not None:
+            # Parse options from comma-separated string or list
+            options = user_input.get("options", [])
+            if isinstance(options, str):
+                options = [opt.strip() for opt in options.split(",") if opt.strip()]
+            
+            # Merge entity type with configuration
+            entity_config = {**self.entity_data, **user_input}
+            entity_config["options"] = options
+            # Auto-generate unique_id
+            entity_config["unique_id"] = uuid.uuid4().hex
+            
+            # Add to entities list
+            entities = self.config_entry.options.get("entities", [])
+            entities.append(entity_config)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+
+        return self.async_show_form(
+            step_id="configure_select",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR): cv.string,
+                vol.Required(CONF_NAME): cv.string,
+                vol.Required("options"): cv.string,
+            }),
+            description_placeholders={
+                "entity_type": "Select",
+                "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
+            },
+        )
+
     async def async_step_list_entities(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -557,7 +639,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_abort(reason="no_entities")
         
         if user_input is not None:
-            entity_index = user_input.get("entity_index")
+            entity_index = int(user_input.get("entity_index"))
             # Store the entity index and data for editing
             self.entity_data = {"index": entity_index, "entity": entities[entity_index].copy()}
             entity_type = entities[entity_index].get(CONF_ENTITY_TYPE)
@@ -573,6 +655,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_edit_light()
             elif entity_type == "cover":
                 return await self.async_step_edit_cover()
+            elif entity_type == "valve":
+                return await self.async_step_edit_valve()
+            elif entity_type == "select":
+                return await self.async_step_edit_select()
             else:
                 return self.async_abort(reason="entity_type_not_supported")
         
@@ -604,7 +690,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the entity with new values
             entities = self.config_entry.options.get("entities", [])
-            entity_index = int(self.entity_data["index"])
+            entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
             return self.async_create_entry(
@@ -631,7 +717,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the entity with new values
             entities = self.config_entry.options.get("entities", [])
-            entity_index = int(self.entity_data["index"])
+            entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
             return self.async_create_entry(
@@ -677,7 +763,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the entity with new values
             entities = self.config_entry.options.get("entities", [])
-            entity_index = int(self.entity_data["index"])
+            entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
             return self.async_create_entry(
@@ -716,7 +802,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the entity with new values
             entities = self.config_entry.options.get("entities", [])
-            entity_index = int(self.entity_data["index"])
+            entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
             return self.async_create_entry(
@@ -753,7 +839,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Update the entity with new values
             entities = self.config_entry.options.get("entities", [])
-            entity_index = int(self.entity_data["index"])
+            entity_index = self.entity_data["index"]
             entities[entity_index].update(user_input)
             
             return self.async_create_entry(
@@ -788,5 +874,75 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }),
             description_placeholders={
                 "entity_type": "Cover",
+            },
+        )
+
+    async def async_step_edit_valve(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a valve entity."""
+        if user_input is not None:
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = self.entity_data["index"]
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        return self.async_show_form(
+            step_id="edit_valve",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Optional(CONF_DEVICE_CLASS, default=entity.get(CONF_DEVICE_CLASS, "")): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=VALVE_DEVICE_CLASSES,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            description_placeholders={
+                "entity_type": "Valve",
+            },
+        )
+
+    async def async_step_edit_select(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit a select entity."""
+        if user_input is not None:
+            # Parse options from comma-separated string or list
+            options = user_input.get("options", [])
+            if isinstance(options, str):
+                options = [opt.strip() for opt in options.split(",") if opt.strip()]
+            
+            # Update the entity with new values
+            entities = self.config_entry.options.get("entities", [])
+            entity_index = self.entity_data["index"]
+            user_input["options"] = options
+            entities[entity_index].update(user_input)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        # Convert list of options to comma-separated string for display
+        options_str = ", ".join(entity.get("options", []))
+        return self.async_show_form(
+            step_id="edit_select",
+            data_schema=vol.Schema({
+                vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
+                vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                vol.Required("options", default=options_str): cv.string,
+            }),
+            description_placeholders={
+                "entity_type": "Select",
+                "options_help": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
             },
         )
