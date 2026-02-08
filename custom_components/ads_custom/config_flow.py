@@ -437,17 +437,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Auto-generate unique_id for the entity
+            entity_unique_id = uuid.uuid4().hex
+            entity_config["unique_id"] = entity_unique_id
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
+            # Mark as entity entry and link to parent hub
+            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
+            # Create a new config entry for this entity
+            title = f"{user_input[CONF_NAME]} (Sensor)"
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "entity_add"},
+                data={"entity_config": entity_config, "title": title},
             )
+            
+            return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_sensor",
@@ -486,17 +492,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Auto-generate unique_id for the entity
+            entity_unique_id = uuid.uuid4().hex
+            entity_config["unique_id"] = entity_unique_id
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
+            # Mark as entity entry and link to parent hub
+            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
+            # Create a new config entry for this entity
+            title = f"{user_input[CONF_NAME]} (Binary Sensor)"
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "entity_add"},
+                data={"entity_config": entity_config, "title": title},
             )
+            
+            return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_binary_sensor",
@@ -528,17 +540,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Auto-generate unique_id for the entity
+            entity_unique_id = uuid.uuid4().hex
+            entity_config["unique_id"] = entity_unique_id
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
+            # Mark as entity entry and link to parent hub
+            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
+            # Create a new config entry for this entity
+            title = f"{user_input[CONF_NAME]} (Light)"
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "entity_add"},
+                data={"entity_config": entity_config, "title": title},
             )
+            
+            return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_light",
@@ -580,17 +598,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if not errors:
                 # Merge entity type with configuration
                 entity_config = {**self.entity_data, **user_input}
-                # Auto-generate unique_id
-                entity_config["unique_id"] = uuid.uuid4().hex
+                # Auto-generate unique_id for the entity
+                entity_unique_id = uuid.uuid4().hex
+                entity_config["unique_id"] = entity_unique_id
                 
-                # Add to entities list
-                entities = list(self.config_entry.options.get("entities", []))
-                entities.append(entity_config)
+                # Mark as entity entry and link to parent hub
+                entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+                entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
                 
-                return self.async_create_entry(
-                    title="",
-                    data={"entities": entities},
+                # Create a new config entry for this entity
+                title = f"{user_input[CONF_NAME]} (Cover)"
+                await self.hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "entity_add"},
+                    data={"entity_config": entity_config, "title": title},
                 )
+                
+                return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_cover",
@@ -629,17 +653,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             # Merge entity type with configuration
             entity_config = {**self.entity_data, **user_input}
-            # Auto-generate unique_id
-            entity_config["unique_id"] = uuid.uuid4().hex
+            # Auto-generate unique_id for the entity
+            entity_unique_id = uuid.uuid4().hex
+            entity_config["unique_id"] = entity_unique_id
             
-            # Add to entities list
-            entities = list(self.config_entry.options.get("entities", []))
-            entities.append(entity_config)
+            # Mark as entity entry and link to parent hub
+            entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+            entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
             
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
+            # Create a new config entry for this entity
+            title = f"{user_input[CONF_NAME]} (Valve)"
+            await self.hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "entity_add"},
+                data={"entity_config": entity_config, "title": title},
             )
+            
+            return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_valve",
@@ -678,17 +708,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 # Merge entity type with configuration
                 entity_config = {**self.entity_data, **user_input}
                 entity_config["options"] = options
-                # Auto-generate unique_id
-                entity_config["unique_id"] = uuid.uuid4().hex
+                # Auto-generate unique_id for the entity
+                entity_unique_id = uuid.uuid4().hex
+                entity_config["unique_id"] = entity_unique_id
                 
-                # Add to entities list
-                entities = list(self.config_entry.options.get("entities", []))
-                entities.append(entity_config)
+                # Mark as entity entry and link to parent hub
+                entity_config[CONF_ENTRY_TYPE] = ENTRY_TYPE_ENTITY
+                entity_config[CONF_PARENT_ENTRY_ID] = self._config_entry.entry_id
                 
-                return self.async_create_entry(
-                    title="",
-                    data={"entities": entities},
+                # Create a new config entry for this entity
+                title = f"{user_input[CONF_NAME]} (Select)"
+                await self.hass.config_entries.flow.async_init(
+                    DOMAIN,
+                    context={"source": "entity_add"},
+                    data={"entity_config": entity_config, "title": title},
                 )
+                
+                return self.async_create_entry(title="", data={})
 
         return self.async_show_form(
             step_id="configure_select",

@@ -116,6 +116,55 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ADS sensor entities from a config entry."""
+    # Check if this is a hub or entity config entry
+    entry_type = entry.data.get("entry_type", "hub")
+    
+    if entry_type == "entity":
+        # This is an entity config entry - check if it's a sensor
+        if entry.data.get("entity_type") == "sensor":
+            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
+            if ads_hub is None:
+                _LOGGER.error("Parent hub not found for entity %s", entry.title)
+                return
+            
+            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entry.data.get(CONF_ADS_VAR)
+            ads_type_value = entry.data.get(CONF_ADS_TYPE, AdsType.INT)
+            ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
+            factor = entry.data.get(CONF_ADS_FACTOR)
+            device_class = entry.data.get(CONF_DEVICE_CLASS)
+            state_class = entry.data.get(CONF_STATE_CLASS)
+            unit_of_measurement = entry.data.get(CONF_UNIT_OF_MEASUREMENT)
+            unique_id = entry.data.get(CONF_UNIQUE_ID)
+            
+            # Get device info from parent hub entry
+            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
+            if parent_entry:
+                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
+                device_name = parent_entry.title
+            else:
+                device_identifiers = None
+                device_name = None
+            
+            if ads_var:
+                async_add_entities([
+                    AdsSensor(
+                        ads_hub,
+                        name,
+                        ads_var,
+                        ads_type,
+                        factor,
+                        device_class,
+                        state_class,
+                        unit_of_measurement,
+                        unique_id,
+                        device_name,
+                        device_identifiers,
+                    )
+                ])
+        return
+    
+    # This is a hub config entry - load sensors from options (backward compatibility)
     ads_hub = hass.data[DOMAIN][entry.entry_id]
     
     # Get sensor entities from config entry options
