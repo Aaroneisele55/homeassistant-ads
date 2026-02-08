@@ -21,7 +21,8 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType
@@ -246,6 +247,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    
+    # Get entity registry to handle entity deletions
+    entity_registry = er.async_get(hass)
+    
+    # Subscribe to entity registry updates to handle entity deletions
+    @callback
+    def async_registry_updated(event):
+        """Handle entity registry update events."""
+        if event.data["action"] != "remove":
+            return
+            
+        entity_id = event.data["entity_id"]
+        
+        # Check if the removed entity had our config entry ID
+        # The event includes the old entry before removal
+        old_entry = event.data.get("old")
+        if old_entry and old_entry.get("config_entry_id") == entry.entry_id:
+            # This entity belonged to our config entry
+            unique_id = old_entry.get("unique_id")
+            if unique_id:
+                _LOGGER.info("Entity %s (unique_id: %s) was removed from registry, removing from config", 
+                           entity_id, unique_id)
+                
+                # Remove from config entry options
+                entities = list(entry.options.get("entities", []))
+                updated_entities = [e for e in entities if e.get(CONF_UNIQUE_ID) != unique_id]
+                
+                if len(updated_entities) < len(entities):
+                    hass.config_entries.async_update_entry(
+                        entry,
+                        options={**entry.options, "entities": updated_entities}
+                    )
+    
+    entry.async_on_unload(
+        hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, async_registry_updated)
+    )
     
     return True
 

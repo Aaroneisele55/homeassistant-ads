@@ -277,8 +277,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_list_entities()
             elif action == "edit_entity":
                 return await self.async_step_select_entity_to_edit()
-            elif action == "delete_entity":
-                return await self.async_step_select_entity_to_delete()
 
         return self.async_show_form(
             step_id="init",
@@ -288,7 +286,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         options=[
                             {"value": "add_entity", "label": "Add Entity"},
                             {"value": "edit_entity", "label": "Edit Entity"},
-                            {"value": "delete_entity", "label": "Delete Entity"},
                             {"value": "list_entities", "label": "List Entities"},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -665,100 +662,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="list_entities",
             data_schema=vol.Schema({}),
             description_placeholders={"entity_list": entity_list},
-        )
-
-    async def async_step_select_entity_to_delete(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Select an entity to delete."""
-        entities = self.config_entry.options.get("entities", [])
-        
-        if not entities:
-            return self.async_abort(reason="no_entities")
-        
-        if user_input is not None:
-            entity_index = int(user_input["entity_index"])
-            # Validate index is in bounds
-            if entity_index < 0 or entity_index >= len(entities):
-                return self.async_abort(reason="entity_not_found")
-            
-            selected_entity = entities[entity_index]
-            # Store only necessary fields for deletion confirmation
-            self.entity_data = {
-                "unique_id": selected_entity.get("unique_id"),
-                "name": selected_entity.get(CONF_NAME, "Unnamed"),
-                "type": selected_entity.get(CONF_ENTITY_TYPE, "unknown"),
-                "adsvar": selected_entity.get(CONF_ADS_VAR, "")
-            }
-            return await self.async_step_confirm_delete()
-        
-        # Create list of entities with their indices
-        entity_options = [
-            {
-                "value": str(idx),
-                "label": f"{e.get(CONF_NAME, 'Unnamed')} ({e.get(CONF_ENTITY_TYPE, 'unknown')})"
-            }
-            for idx, e in enumerate(entities)
-        ]
-        
-        return self.async_show_form(
-            step_id="select_entity_to_delete",
-            data_schema=vol.Schema({
-                vol.Required("entity_index"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=entity_options,
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-            }),
-        )
-
-    async def async_step_confirm_delete(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Confirm deletion of entity."""
-        # Validate entity_data exists
-        if not self.entity_data or "name" not in self.entity_data:
-            return self.async_abort(reason="entity_not_found")
-        
-        if user_input is not None:
-            # Delete the entity from the list using unique_id for safety
-            entities = list(self.config_entry.options.get("entities", []))
-            unique_id = self.entity_data.get("unique_id")
-            
-            # Find and remove the entity by unique_id
-            if unique_id:
-                entities = [e for e in entities if e.get("unique_id") != unique_id]
-            else:
-                # Fallback for legacy entities without unique_id (rare case)
-                # WARNING: This matches by name AND adsvar. If multiple entities share
-                # the same name and adsvar, all matching entities will be removed.
-                # Legacy entities should be migrated to use unique_id to avoid this.
-                stored_name = self.entity_data.get("name")
-                stored_adsvar = self.entity_data.get("adsvar")
-                # Only proceed with deletion if we have valid identifiers
-                if stored_name and stored_adsvar:
-                    entities = [
-                        e for e in entities
-                        if not (e.get(CONF_NAME) == stored_name 
-                               and e.get(CONF_ADS_VAR) == stored_adsvar)
-                    ]
-            
-            return self.async_create_entry(
-                title="",
-                data={"entities": entities},
-            )
-        
-        entity_name = self.entity_data.get("name", "Unnamed")
-        entity_type = self.entity_data.get("type", "unknown")
-        
-        return self.async_show_form(
-            step_id="confirm_delete",
-            data_schema=vol.Schema({}),
-            description_placeholders={
-                "entity_name": entity_name,
-                "entity_type": entity_type,
-            },
         )
 
     async def async_step_select_entity_to_edit(
