@@ -81,6 +81,17 @@ _PLATFORM_KEYS = [
     "select",
 ]
 
+# All platforms supported by this integration
+PLATFORMS = [
+    "binary_sensor",
+    "sensor",
+    "switch",
+    "light",
+    "cover",
+    "valve",
+    "select",
+]
+
 # Keys to copy per entity type when migrating from YAML
 _ENTITY_KEYS: dict[str, list[str]] = {
     "sensor": [
@@ -238,10 +249,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Always forward all platforms so they're registered
     # Each platform's async_setup_entry will check if it has entities and return early if not
-    platforms = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
-    
     _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
-    await hass.config_entries.async_forward_entry_setups(entry, platforms)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -264,9 +273,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("async_unload_entry: Unloading config entry")
     
     # Unload all platforms that were forwarded during setup
-    platforms = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
-    _LOGGER.debug("async_unload_entry: Unloading platforms: %s", platforms)
-    unload_ok = await hass.config_entries.async_forward_entry_unloads(entry, platforms)
+    _LOGGER.debug("async_unload_entry: Unloading platforms: %s", PLATFORMS)
+    unload_ok = await hass.config_entries.async_forward_entry_unloads(entry, PLATFORMS)
     
     if not unload_ok:
         _LOGGER.error("async_unload_entry: Failed to unload some platforms")

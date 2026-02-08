@@ -612,14 +612,14 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """List configured entities."""
-        # If user submitted the form (clicked OK), close it
-        if user_input is not None:
-            return self.async_create_entry(title="", data={})
-        
         entities = self.config_entry.options.get("entities", [])
         
         if not entities:
             return self.async_abort(reason="no_entities")
+        
+        # If user submitted the form (clicked OK), return to main menu
+        if user_input is not None:
+            return await self.async_step_init()
         
         # Create a readable list of entities
         entity_list = "\n".join([
