@@ -386,7 +386,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             # Remove the config entry
             await self.hass.config_entries.async_remove(self.config_entry.entry_id)
             return self.async_abort(reason="entity_deleted")
-        
+
         # Show confirmation form
         entity_name = self.config_entry.data.get(CONF_NAME, "Entity")
         return self.async_show_form(
