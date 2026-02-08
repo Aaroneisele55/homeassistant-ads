@@ -261,20 +261,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entity_id = event.data["entity_id"]
         
         # Check if the removed entity had our config entry ID
-        # The event includes the old entry before removal
+        # The event includes the old entry before removal (EntityRegistryEntry object)
         old_entry = event.data.get("old")
-        if old_entry and old_entry.get("config_entry_id") == entry.entry_id:
+        if old_entry and old_entry.config_entry_id == entry.entry_id:
             # This entity belonged to our config entry
-            unique_id = old_entry.get("unique_id")
+            unique_id = old_entry.unique_id
             if unique_id:
-                _LOGGER.info("Entity %s (unique_id: %s) was removed from registry, removing from config", 
-                           entity_id, unique_id)
-                
                 # Remove from config entry options
                 entities = list(entry.options.get("entities", []))
                 updated_entities = [e for e in entities if e.get(CONF_UNIQUE_ID) != unique_id]
                 
                 if len(updated_entities) < len(entities):
+                    _LOGGER.info("Entity %s (unique_id: %s) removed from registry, removing from config", 
+                               entity_id, unique_id)
                     hass.config_entries.async_update_entry(
                         entry,
                         options={**entry.options, "entities": updated_entities}
