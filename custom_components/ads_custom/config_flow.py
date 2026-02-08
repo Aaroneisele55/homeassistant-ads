@@ -933,7 +933,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         
         entity = self.entity_data["entity"]
         # Convert list of options to comma-separated string for display
-        options_str = ", ".join(entity.get("options", []))
+        options = entity.get("options", [])
+        if isinstance(options, list):
+            options_str = ", ".join(options)
+        else:
+            options_str = str(options) if options else ""
         return self.async_show_form(
             step_id="edit_select",
             data_schema=vol.Schema({
