@@ -236,25 +236,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if "connection" not in hass.data[DOMAIN]:
         hass.data[DOMAIN]["connection"] = hass.data[DOMAIN][entry.entry_id]
     
-    # Forward setup to platforms for entities configured via UI
-    entities = entry.options.get("entities", [])
-    _LOGGER.debug("async_setup_entry: Found %d entities in options", len(entities))
-    if entities:
-        # Group entities by platform
-        platforms_to_setup = {}
-        for entity_config in entities:
-            entity_type = entity_config.get(CONF_ENTITY_TYPE)
-            if entity_type is not None and entity_type != "":
-                if entity_type not in platforms_to_setup:
-                    platforms_to_setup[entity_type] = []
-                platforms_to_setup[entity_type].append(entity_config)
-        
-        # Set up each platform
-        if platforms_to_setup:
-            _LOGGER.debug("async_setup_entry: Forwarding setup to platforms: %s", list(platforms_to_setup.keys()))
-            await hass.config_entries.async_forward_entry_setups(entry, list(platforms_to_setup.keys()))
-    else:
-        _LOGGER.debug("async_setup_entry: No entities to set up")
+    # Always forward all platforms so they're registered
+    # Each platform's async_setup_entry will check if it has entities and return early if not
+    platforms = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
+    
+    _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
+    await hass.config_entries.async_forward_entry_setups(entry, platforms)
     
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -275,21 +262,15 @@ CONF_ENTITY_TYPE = "entity_type"
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("async_unload_entry: Unloading config entry")
-    # Unload platforms first
-    entities = entry.options.get("entities", [])
-    if entities:
-        platforms_to_unload = {
-            e.get(CONF_ENTITY_TYPE) for e in entities 
-            if e.get(CONF_ENTITY_TYPE) is not None
-        }
-        if platforms_to_unload:
-            _LOGGER.debug("async_unload_entry: Unloading platforms: %s", list(platforms_to_unload))
-            unload_ok = await hass.config_entries.async_forward_entry_unloads(
-                entry, list(platforms_to_unload)
-            )
-            if not unload_ok:
-                _LOGGER.error("async_unload_entry: Failed to unload some platforms")
-                return False
+    
+    # Unload all platforms that were forwarded during setup
+    platforms = ["binary_sensor", "sensor", "switch", "light", "cover", "valve", "select"]
+    _LOGGER.debug("async_unload_entry: Unloading platforms: %s", platforms)
+    unload_ok = await hass.config_entries.async_forward_entry_unloads(entry, platforms)
+    
+    if not unload_ok:
+        _LOGGER.error("async_unload_entry: Failed to unload some platforms")
+        return False
     
     # Get the hub before we remove it
     ads_hub = hass.data[DOMAIN].get(entry.entry_id)
