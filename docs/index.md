@@ -202,7 +202,7 @@ cover:
 
 On/off control with optional brightness dimming.
 
-### Simple on/off light
+### Simple on/off
 
 ```yaml
 light:
