@@ -29,7 +29,8 @@
     "abort": {
       "already_configured": "This ADS device is already configured",
       "entity_type_not_supported": "This entity type is not yet supported",
-      "no_entities": "No entities configured yet"
+      "no_entities": "No entities configured yet",
+      "entity_not_found": "The selected entity could not be found"
     }
   },
   "options": {

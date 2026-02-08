@@ -678,6 +678,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         
         if user_input is not None:
             entity_index = int(user_input.get("entity_index"))
+            # Validate index is in bounds
+            if entity_index < 0 or entity_index >= len(entities):
+                return self.async_abort(reason="entity_not_found")
+            
             selected_entity = entities[entity_index]
             # Store the unique_id for safe deletion later
             self.entity_data = {
@@ -711,6 +715,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Confirm deletion of entity."""
+        # Validate entity_data exists
+        if not self.entity_data or "entity" not in self.entity_data:
+            return self.async_abort(reason="entity_not_found")
+        
         if user_input is not None:
             # Delete the entity from the list using unique_id for safety
             entities = list(self.config_entry.options.get("entities", []))
