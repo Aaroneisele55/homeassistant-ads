@@ -301,6 +301,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             len(entities_to_migrate)
         )
         
+        migrated_entities = []
+        failed_entities = []
+        
         for entity_config in entities_to_migrate:
             entity_type = entity_config.get(CONF_ENTITY_TYPE)
             entity_name = entity_config.get(CONF_NAME, "Unknown")
@@ -311,6 +314,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "Skipping migration of entity %s: missing entity_type or unique_id",
                     entity_name
                 )
+                failed_entities.append(entity_config)
                 continue
             
             # Prepare entity config for individual config entry
@@ -329,16 +333,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             
             if existing_entries:
                 _LOGGER.debug(
-                    "Entity %s already has config entry, skipping migration",
+                    "Entity %s already has config entry, marking as migrated",
                     entity_name
                 )
+                migrated_entities.append(entity_config)
                 continue
             
             # Create individual config entry for this entity
-            title = f"{entity_name} ({entity_type.replace('_', ' ').title()})"
+            # Use a safe fallback for title if entity_type is invalid
+            title = f"{entity_name} ({entity_type.replace('_', ' ').title() if entity_type else 'Entity'})"
             
             try:
-                await hass.config_entries.flow.async_init(
+                result = await hass.config_entries.flow.async_init(
                     DOMAIN,
                     context={"source": "entity_migration"},
                     data={
@@ -347,21 +353,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         "unique_id": config_entry_unique_id
                     },
                 )
-                _LOGGER.info("Migrated entity %s to individual config entry", entity_name)
+                # Verify the flow completed successfully
+                if result.get("type") == "create_entry":
+                    migrated_entities.append(entity_config)
+                    _LOGGER.info("Successfully migrated entity %s to individual config entry", entity_name)
+                else:
+                    _LOGGER.error(
+                        "Migration flow for entity %s did not complete successfully: %s",
+                        entity_name,
+                        result.get("type", "unknown")
+                    )
+                    failed_entities.append(entity_config)
             except Exception as err:
                 _LOGGER.error(
                     "Failed to migrate entity %s: %s",
                     entity_name,
                     err
                 )
+                failed_entities.append(entity_config)
         
-        # After successful migration, clear entities from hub options
-        # Keep backward compatibility by leaving the key but with empty list
-        _LOGGER.info("Migration complete, clearing entities from hub options")
-        hass.config_entries.async_update_entry(
-            entry,
-            options={**entry.options, "entities": []}
-        )
+        # Update hub options based on migration results
+        if migrated_entities:
+            if failed_entities:
+                # Some entities failed - keep only failed entities in hub options
+                _LOGGER.warning(
+                    "Migration partially complete: %d migrated, %d failed. "
+                    "Keeping failed entities in hub options for retry.",
+                    len(migrated_entities),
+                    len(failed_entities)
+                )
+                hass.config_entries.async_update_entry(
+                    entry,
+                    options={**entry.options, "entities": failed_entities}
+                )
+            else:
+                # All entities migrated successfully - clear hub options
+                _LOGGER.info(
+                    "Migration complete: all %d entities migrated successfully",
+                    len(migrated_entities)
+                )
+                hass.config_entries.async_update_entry(
+                    entry,
+                    options={**entry.options, "entities": []}
+                )
+        elif failed_entities:
+            _LOGGER.error(
+                "Migration failed: 0 entities migrated, %d failed. "
+                "Entities remain in hub options.",
+                len(failed_entities)
+            )
         # Note: No reload needed - entities are already set up via the new config entries
     
     # Get entity registry to handle entity deletions
