@@ -344,6 +344,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_edit_entity(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Show menu for editing or deleting this entity."""
+        return self.async_show_menu(
+            step_id="edit_entity",
+            menu_options=["edit_entity_config", "delete_entity"],
+        )
+
+    async def async_step_edit_entity_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Edit this entity's configuration."""
         # Get entity type from config entry
         entity_type = self.config_entry.data.get(CONF_ENTITY_TYPE)
@@ -368,6 +377,25 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_edit_select_entity()
         else:
             return self.async_abort(reason="entity_type_not_supported")
+
+    async def async_step_delete_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Delete this entity."""
+        if user_input is not None:
+            # Remove the config entry
+            await self.hass.config_entries.async_remove(self.config_entry.entry_id)
+            return self.async_abort(reason="entity_deleted")
+        
+        # Show confirmation form
+        entity_name = self.config_entry.data.get(CONF_NAME, "Entity")
+        return self.async_show_form(
+            step_id="delete_entity",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "entity_name": entity_name,
+            },
+        )
 
     async def async_step_add_entity(
         self, user_input: dict[str, Any] | None = None

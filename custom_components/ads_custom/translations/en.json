@@ -44,6 +44,17 @@
           "add_entity": "Add Entity"
         }
       },
+      "edit_entity": {
+        "title": "Entity Options",
+        "menu_options": {
+          "edit_entity_config": "Edit Configuration",
+          "delete_entity": "Delete Entity"
+        }
+      },
+      "delete_entity": {
+        "title": "Delete Entity",
+        "description": "Are you sure you want to delete '{entity_name}'? This action cannot be undone."
+      },
       "add_entity": {
         "title": "Add Entity",
         "description": "Select the type of entity you want to add.",
@@ -256,7 +267,8 @@
     "abort": {
       "entity_type_not_supported": "This entity type is not yet supported",
       "no_entities": "No entities configured. Entities are now managed as individual config entries and can be edited directly.",
-      "reload_failed": "Failed to reload entity after updating configuration. Please try again or restart Home Assistant."
+      "reload_failed": "Failed to reload entity after updating configuration. Please try again or restart Home Assistant.",
+      "entity_deleted": "Entity deleted successfully"
     }
   }
 }
