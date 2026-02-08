@@ -617,11 +617,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return self.async_update_and_abort(
-                self._get_reconfigure_subentry(),
-                data=new_data,
-                title=f"{user_input[CONF_NAME]} (Switch)",
+            subentry = self._get_reconfigure_subentry()
+            new_title = f"{user_input[CONF_NAME]} (Switch)"
+            await self.hass.config_entries.async_update_subentry(
+                subentry, data=new_data, title=new_title
             )
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         return self.async_show_form(
@@ -641,11 +642,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return self.async_update_and_abort(
-                self._get_reconfigure_subentry(),
-                data=new_data,
-                title=f"{user_input[CONF_NAME]} (Sensor)",
+            subentry = self._get_reconfigure_subentry()
+            new_title = f"{user_input[CONF_NAME]} (Sensor)"
+            await self.hass.config_entries.async_update_subentry(
+                subentry, data=new_data, title=new_title
             )
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -696,11 +698,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return self.async_update_and_abort(
-                self._get_reconfigure_subentry(),
-                data=new_data,
-                title=f"{user_input[CONF_NAME]} (Binary Sensor)",
+            subentry = self._get_reconfigure_subentry()
+            new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
+            await self.hass.config_entries.async_update_subentry(
+                subentry, data=new_data, title=new_title
             )
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -732,11 +735,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return self.async_update_and_abort(
-                self._get_reconfigure_subentry(),
-                data=new_data,
-                title=f"{user_input[CONF_NAME]} (Light)",
+            subentry = self._get_reconfigure_subentry()
+            new_title = f"{user_input[CONF_NAME]} (Light)"
+            await self.hass.config_entries.async_update_subentry(
+                subentry, data=new_data, title=new_title
             )
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         light_schema: dict[Any, Any] = {
@@ -777,11 +781,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if not errors:
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
-                return self.async_update_and_abort(
-                    self._get_reconfigure_subentry(),
-                    data=new_data,
-                    title=f"{user_input[CONF_NAME]} (Cover)",
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Cover)"
+                await self.hass.config_entries.async_update_subentry(
+                    subentry, data=new_data, title=new_title
                 )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -821,11 +826,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            return self.async_update_and_abort(
-                self._get_reconfigure_subentry(),
-                data=new_data,
-                title=f"{user_input[CONF_NAME]} (Valve)",
+            subentry = self._get_reconfigure_subentry()
+            new_title = f"{user_input[CONF_NAME]} (Valve)"
+            await self.hass.config_entries.async_update_subentry(
+                subentry, data=new_data, title=new_title
             )
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -865,11 +871,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
                 new_data["options"] = options
-                return self.async_update_and_abort(
-                    self._get_reconfigure_subentry(),
-                    data=new_data,
-                    title=f"{user_input[CONF_NAME]} (Select)",
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Select)"
+                await self.hass.config_entries.async_update_subentry(
+                    subentry, data=new_data, title=new_title
                 )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         options = entity.get("options", [])
