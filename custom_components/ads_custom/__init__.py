@@ -292,6 +292,7 @@ async def _async_migrate_to_subentries(hass: HomeAssistant) -> None:
                 unique_id=entity_unique_id,
             )
             hass.config_entries.async_add_subentry(hub_entry, subentry)
+            existing_unique_ids.add(entity_unique_id)
             _LOGGER.info(
                 "Migrated options entity '%s' to subentry on hub '%s'",
                 entity_name,

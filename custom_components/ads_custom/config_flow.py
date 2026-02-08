@@ -56,7 +56,7 @@ ENTITY_TYPES = [
 BINARY_SENSOR_DEVICE_CLASSES = [
     "battery",
     "battery_charging",
-    "co",
+    "carbon_monoxide",
     "cold",
     "connectivity",
     "door",
