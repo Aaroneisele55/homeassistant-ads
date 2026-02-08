@@ -260,6 +260,81 @@
       "list_entities": {
         "title": "Configured Entities",
         "description": "List of entities configured via UI:\n\n{entity_list}"
+      },
+      "edit_switch_entity": {
+        "title": "Edit Switch",
+        "description": "Modify the configuration for this switch entity.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name"
+        }
+      },
+      "edit_sensor_entity": {
+        "title": "Edit Sensor",
+        "description": "Modify the configuration for this sensor entity.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "unit_of_measurement": "Unit of Measurement (optional)",
+          "device_class": "Device Class (optional)",
+          "state_class": "State Class (optional)"
+        }
+      },
+      "edit_binary_sensor_entity": {
+        "title": "Edit Binary Sensor",
+        "description": "Modify the configuration for this binary sensor entity.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "device_class": "Device Class (optional)"
+        }
+      },
+      "edit_light_entity": {
+        "title": "Edit Light",
+        "description": "Modify the configuration for this light entity.",
+        "data": {
+          "adsvar": "ADS Variable Name (On/Off)",
+          "name": "Entity Name",
+          "adsvar_brightness": "Brightness Variable (optional)",
+          "adsvar_brightness_type": "Brightness Data Type",
+          "adsvar_brightness_scale": "Brightness Scale"
+        }
+      },
+      "edit_cover_entity": {
+        "title": "Edit Cover",
+        "description": "Modify the configuration for this cover entity.",
+        "data": {
+          "adsvar": "Closed State Variable (optional)",
+          "name": "Entity Name",
+          "adsvar_position": "Position Variable (optional)",
+          "adsvar_position_type": "Position Data Type",
+          "adsvar_set_position": "Set Position Variable (optional)",
+          "adsvar_open": "Open Command Variable (optional)",
+          "adsvar_close": "Close Command Variable (optional)",
+          "adsvar_stop": "Stop Command Variable (optional)",
+          "inverted": "Inverted Positioning",
+          "device_class": "Device Class (optional)"
+        }
+      },
+      "edit_valve_entity": {
+        "title": "Edit Valve",
+        "description": "Modify the configuration for this valve entity.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "device_class": "Device Class (optional)"
+        }
+      },
+      "edit_select_entity": {
+        "title": "Edit Select",
+        "description": "Modify the configuration for this select entity.",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "options": "Options (comma-separated)"
+        }
       }
     }
   }

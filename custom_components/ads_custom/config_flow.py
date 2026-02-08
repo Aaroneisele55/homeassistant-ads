@@ -417,7 +417,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entity_config": entity_config, "title": title},
             )
             
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_switch",
@@ -453,7 +453,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entity_config": entity_config, "title": title},
             )
             
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_sensor",
@@ -508,7 +508,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entity_config": entity_config, "title": title},
             )
             
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_binary_sensor",
@@ -556,7 +556,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entity_config": entity_config, "title": title},
             )
             
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_light",
@@ -614,7 +614,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     data={"entity_config": entity_config, "title": title},
                 )
                 
-                return self.async_create_entry(title="", data={})
+                return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_cover",
@@ -669,7 +669,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entity_config": entity_config, "title": title},
             )
             
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_valve",
@@ -724,7 +724,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     data={"entity_config": entity_config, "title": title},
                 )
                 
-                return self.async_create_entry(title="", data={})
+                return self.async_create_entry(title="", data=dict(self.config_entry.options))
 
         return self.async_show_form(
             step_id="configure_select",
