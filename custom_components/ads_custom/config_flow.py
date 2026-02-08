@@ -677,16 +677,18 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_abort(reason="no_entities")
         
         if user_input is not None:
-            entity_index = int(user_input.get("entity_index"))
+            entity_index = int(user_input["entity_index"])
             # Validate index is in bounds
             if entity_index < 0 or entity_index >= len(entities):
                 return self.async_abort(reason="entity_not_found")
             
             selected_entity = entities[entity_index]
-            # Store the unique_id for safe deletion later
+            # Store only necessary fields for deletion confirmation
             self.entity_data = {
                 "unique_id": selected_entity.get("unique_id"),
-                "entity": selected_entity.copy()
+                "name": selected_entity.get(CONF_NAME, "Unnamed"),
+                "type": selected_entity.get(CONF_ENTITY_TYPE, "unknown"),
+                "adsvar": selected_entity.get(CONF_ADS_VAR, "")
             }
             return await self.async_step_confirm_delete()
         
@@ -716,7 +718,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Confirm deletion of entity."""
         # Validate entity_data exists
-        if not self.entity_data or "entity" not in self.entity_data:
+        if not self.entity_data or "name" not in self.entity_data:
             return self.async_abort(reason="entity_not_found")
         
         if user_input is not None:
@@ -728,12 +730,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             if unique_id:
                 entities = [e for e in entities if e.get("unique_id") != unique_id]
             else:
-                # Fallback: if no unique_id, use entity match (for legacy entities)
-                stored_entity = self.entity_data.get("entity", {})
+                # Fallback for legacy entities without unique_id
+                # Note: This matches by name AND adsvar. If multiple entities share
+                # the same name and adsvar (which should be rare), all will be removed.
+                # This is acceptable since such duplicates would be problematic anyway.
+                stored_name = self.entity_data.get("name")
+                stored_adsvar = self.entity_data.get("adsvar")
                 entities = [
                     e for e in entities
-                    if not (e.get(CONF_NAME) == stored_entity.get(CONF_NAME) 
-                           and e.get(CONF_ADS_VAR) == stored_entity.get(CONF_ADS_VAR))
+                    if not (e.get(CONF_NAME) == stored_name 
+                           and e.get(CONF_ADS_VAR) == stored_adsvar)
                 ]
             
             return self.async_create_entry(
@@ -741,9 +747,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data={"entities": entities},
             )
         
-        entity = self.entity_data["entity"]
-        entity_name = entity.get(CONF_NAME, "Unnamed")
-        entity_type = entity.get(CONF_ENTITY_TYPE, "unknown")
+        entity_name = self.entity_data.get("name", "Unnamed")
+        entity_type = self.entity_data.get("type", "unknown")
         
         return self.async_show_form(
             step_id="confirm_delete",
