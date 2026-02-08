@@ -336,20 +336,28 @@ sensor:
 
 ### Supported Data Types
 
-The following ADS/PLC data types are supported for sensors:
+The following ADS/PLC data types are supported for YAML-configured sensors:
 
 - `bool` - Boolean (True/False)
 - `byte` - Byte (0-255)
-- `int` - Integer (16-bit, -32768 to 32767)
-- `uint` - Unsigned Integer (16-bit, 0 to 65535)
 - `sint` - Short Integer (8-bit, -128 to 127)
 - `usint` - Unsigned Short Integer (8-bit, 0 to 255)
+- `int` - Integer (16-bit, -32768 to 32767)
+- `uint` - Unsigned Integer (16-bit, 0 to 65535)
+- `word` - Word (16-bit, 0 to 65535)
 - `dint` - Double Integer (32-bit, -2147483648 to 2147483647)
 - `udint` - Unsigned Double Integer (32-bit, 0 to 4294967295)
-- `word` - Word (16-bit, 0 to 65535)
 - `dword` - Double Word (32-bit, 0 to 4294967295)
 - `real` - Real (32-bit float)
 - `lreal` - Long Real (64-bit float)
+
+Additional types available via UI-configured sensors and the `write_data_by_name` service:
+
+- `string` - Variable-length string
+- `time` - Time duration (32-bit)
+- `date` - Date (32-bit)
+- `dt` - Date and time (32-bit)
+- `tod` - Time of day (32-bit)
 
 ### Supported Device Classes
 
