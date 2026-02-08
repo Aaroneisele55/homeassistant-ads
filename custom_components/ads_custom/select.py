@@ -79,9 +79,6 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    device_identifiers = {(DOMAIN, entry.entry_id)}
-    device_name = entry.title
-
     entities = []
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
@@ -94,7 +91,11 @@ async def async_setup_entry(
         options = subentry.data.get(CONF_OPTIONS, [])
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
-        if ads_var and options:
+        if ads_var and options and unique_id:
+            # Each subentry entity gets its own device
+            device_identifiers = {(DOMAIN, unique_id)}
+            device_name = name
+            
             entities.append(
                 AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers)
             )
