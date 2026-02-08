@@ -266,7 +266,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Unload all platforms that were forwarded during setup
     _LOGGER.debug("async_unload_entry: Unloading platforms: %s", PLATFORMS)
-    unload_ok = await hass.config_entries.async_forward_entry_unloads(entry, PLATFORMS)
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+            ]
+        )
+    )
     
     if not unload_ok:
         _LOGGER.error("async_unload_entry: Failed to unload some platforms")
