@@ -70,17 +70,6 @@ CONF_ADS_FACTOR = "factor"
 CONF_ADS_TYPE = "adstype"
 CONF_ADS_VALUE = "value"
 
-# Platform YAML keys to scan for entity migration
-_PLATFORM_KEYS = [
-    "binary_sensor",
-    "sensor",
-    "switch",
-    "light",
-    "cover",
-    "valve",
-    "select",
-]
-
 # All platforms supported by this integration
 PLATFORMS = [
     "binary_sensor",
@@ -91,6 +80,9 @@ PLATFORMS = [
     "valve",
     "select",
 ]
+
+# Platform YAML keys to scan for entity migration (same as PLATFORMS)
+_PLATFORM_KEYS = PLATFORMS
 
 # Keys to copy per entity type when migrating from YAML
 _ENTITY_KEYS: dict[str, list[str]] = {
