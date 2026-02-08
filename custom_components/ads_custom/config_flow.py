@@ -623,7 +623,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self.hass.config_entries.async_update_subentry(
                 subentry, data=MappingProxyType(new_data), title=new_title
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         return self.async_show_form(
@@ -648,7 +648,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self.hass.config_entries.async_update_subentry(
                 subentry, data=MappingProxyType(new_data), title=new_title
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -704,7 +704,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self.hass.config_entries.async_update_subentry(
                 subentry, data=MappingProxyType(new_data), title=new_title
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -741,7 +741,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self.hass.config_entries.async_update_subentry(
                 subentry, data=MappingProxyType(new_data), title=new_title
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         light_schema: dict[Any, Any] = {
@@ -787,7 +787,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 self.hass.config_entries.async_update_subentry(
                     subentry, data=MappingProxyType(new_data), title=new_title
                 )
-                return self.async_create_entry(title="", data={})
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -832,7 +832,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self.hass.config_entries.async_update_subentry(
                 subentry, data=MappingProxyType(new_data), title=new_title
             )
-            return self.async_create_entry(title="", data={})
+            return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -877,7 +877,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 self.hass.config_entries.async_update_subentry(
                     subentry, data=MappingProxyType(new_data), title=new_title
                 )
-                return self.async_create_entry(title="", data={})
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         options = entity.get("options", [])
