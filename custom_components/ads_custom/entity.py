@@ -5,9 +5,10 @@ from asyncio import timeout
 import logging
 from typing import Any
 
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 
-from .const import STATE_KEY_STATE
+from .const import STATE_KEY_STATE, DOMAIN
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,6 +25,8 @@ class AdsEntity(Entity):
         name: str,
         ads_var: str,
         unique_id: str | None = None,
+        device_name: str | None = None,
+        device_identifiers: set | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
         self._state_dict: dict[str, Any] = {}
@@ -34,6 +37,15 @@ class AdsEntity(Entity):
         if unique_id is not None:
             self._attr_unique_id = unique_id
         self._attr_name = name
+        
+        # Set up device info if identifiers provided
+        if device_identifiers is not None:
+            self._attr_device_info = DeviceInfo(
+                identifiers=device_identifiers,
+                name=device_name if device_name else "ADS Connection",
+                manufacturer="Beckhoff",
+                model="TwinCAT PLC",
+            )
 
     async def async_initialize_device(
         self,

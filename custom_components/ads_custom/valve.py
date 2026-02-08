@@ -82,6 +82,10 @@ async def async_setup_entry(
     if not valves:
         return
     
+    # Create device identifiers based on the ADS connection
+    device_identifiers = {(DOMAIN, entry.entry_id)}
+    device_name = entry.title
+    
     valve_entities = []
     for valve_config in valves:
         name = valve_config.get(CONF_NAME, DEFAULT_NAME)
@@ -91,7 +95,7 @@ async def async_setup_entry(
         
         if ads_var:
             valve_entities.append(
-                AdsValve(ads_hub, ads_var, name, device_class, unique_id)
+                AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers)
             )
     
     if valve_entities:
@@ -110,9 +114,11 @@ class AdsValve(AdsEntity, ValveEntity):
         name: str,
         device_class: ValveDeviceClass | None,
         unique_id: str | None,
+        device_name: str | None = None,
+        device_identifiers: set | None = None,
     ) -> None:
         """Initialize AdsValve entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
         self._configured_device_class = device_class
         self._attr_reports_position = False
 

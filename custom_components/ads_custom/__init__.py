@@ -21,7 +21,8 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType
@@ -244,8 +245,71 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
-    # Register update listener for options changes
+    # Register update listener for options changes first
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    
+    # Migrate any entities without unique_id (from old versions)
+    # This must happen after registering the update listener to avoid issues
+    entities = entry.options.get("entities", [])
+    needs_migration = False
+    updated_entities = []
+    
+    for entity_config in entities:
+        if not entity_config.get(CONF_UNIQUE_ID):
+            # Generate unique_id for entities that don't have one
+            # Using dict() is sufficient as entity_config is a flat dictionary
+            entity_config = dict(entity_config)  # Shallow copy is safe here
+            entity_config[CONF_UNIQUE_ID] = uuid.uuid4().hex
+            needs_migration = True
+            _LOGGER.info("Generated unique_id for entity: %s", entity_config.get(CONF_NAME, "unknown"))
+        updated_entities.append(entity_config)
+    
+    # Update config entry if migration was needed
+    # Note: This triggers async_reload_entry via the update listener above
+    # The reload is expected and ensures migrated entities are properly registered
+    if needs_migration:
+        _LOGGER.info("Migrating %d entities to add unique_id, integration will reload", len(updated_entities))
+        hass.config_entries.async_update_entry(
+            entry,
+            options={**entry.options, "entities": updated_entities}
+        )
+        # Early return - the reload will re-run async_setup_entry with migrated data
+        return True
+    
+    # Get entity registry to handle entity deletions
+    entity_registry = er.async_get(hass)
+    
+    # Subscribe to entity registry updates to handle entity deletions
+    @callback
+    def async_registry_updated(event):
+        """Handle entity registry update events."""
+        if event.data["action"] != "remove":
+            return
+            
+        entity_id = event.data["entity_id"]
+        
+        # Check if the removed entity had our config entry ID
+        # The event includes the old entry before removal (EntityRegistryEntry object)
+        old_entry = event.data.get("old")
+        if old_entry and old_entry.config_entry_id == entry.entry_id:
+            # This entity belonged to our config entry
+            unique_id = old_entry.unique_id
+            if unique_id:
+                # Remove from config entry options
+                entities = list(entry.options.get("entities", []))
+                updated_entities = [e for e in entities if e.get(CONF_UNIQUE_ID) != unique_id]
+                
+                if len(updated_entities) < len(entities):
+                    _LOGGER.info("Entity %s (unique_id: %s) removed from registry, removing from config", 
+                               entity_id, unique_id)
+                    hass.config_entries.async_update_entry(
+                        entry,
+                        options={**entry.options, "entities": updated_entities}
+                    )
+    
+    entry.async_on_unload(
+        hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, async_registry_updated)
+    )
     
     return True
 
