@@ -50,7 +50,7 @@ Copy the `custom_components/ads_custom` folder into your Home Assistant `custom_
 3. After the connection succeeds, click **Configure → Add Entity** to create switches, sensors, binary sensors, or lights directly in the UI — no restart needed.
 
 ### Option B – YAML setup
-
+This integration is fully compatible with YAML configurations created for the core `ads` integration. Just change the domain to `ads_custom` and it will work!
 ```yaml
 # configuration.yaml
 ads_custom:
@@ -74,10 +74,6 @@ switch:
 ```
 
 Restart Home Assistant after editing YAML.
-
-### Option C – Mix both
-
-Use the UI for the connection and YAML for entities (or vice-versa). Both methods share the same underlying ADS hub so they work together seamlessly.
 
 ## Documentation
 
