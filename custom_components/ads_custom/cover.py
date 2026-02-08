@@ -116,6 +116,85 @@ def setup_platform(
     )
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS cover entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get cover entities from config entry options
+    entities = entry.options.get("entities", [])
+    covers = [e for e in entities if e.get("entity_type") == "cover"]
+    
+    if not covers:
+        return
+    
+    cover_entities = []
+    for cover_config in covers:
+        name = cover_config.get(CONF_NAME, DEFAULT_NAME)
+        
+        # Normalize ADS variable fields: strip and convert empty strings to None
+        ads_var_is_closed = cover_config.get(CONF_ADS_VAR)
+        if isinstance(ads_var_is_closed, str):
+            ads_var_is_closed = ads_var_is_closed.strip() or None
+        
+        ads_var_position = cover_config.get(CONF_ADS_VAR_POSITION)
+        if isinstance(ads_var_position, str):
+            ads_var_position = ads_var_position.strip() or None
+        
+        ads_var_pos_set = cover_config.get(CONF_ADS_VAR_SET_POS)
+        if isinstance(ads_var_pos_set, str):
+            ads_var_pos_set = ads_var_pos_set.strip() or None
+        
+        ads_var_open = cover_config.get(CONF_ADS_VAR_OPEN)
+        if isinstance(ads_var_open, str):
+            ads_var_open = ads_var_open.strip() or None
+        
+        ads_var_close = cover_config.get(CONF_ADS_VAR_CLOSE)
+        if isinstance(ads_var_close, str):
+            ads_var_close = ads_var_close.strip() or None
+        
+        ads_var_stop = cover_config.get(CONF_ADS_VAR_STOP)
+        if isinstance(ads_var_stop, str):
+            ads_var_stop = ads_var_stop.strip() or None
+        
+        ads_var_position_type = cover_config.get(CONF_ADS_VAR_POSITION_TYPE, DEFAULT_POSITION_TYPE)
+        inverted = cover_config.get(CONF_INVERTED, False)
+        device_class = cover_config.get(CONF_DEVICE_CLASS)
+        unique_id = cover_config.get(CONF_UNIQUE_ID)
+        
+        # Validate that at least one state variable is provided
+        if not ads_var_is_closed and not ads_var_position:
+            _LOGGER.warning(
+                "Cover configuration for '%s' must include either 'adsvar' (closed state) "
+                "or 'adsvar_position' (position feedback). Skipping.",
+                name
+            )
+            continue
+        
+        cover_entities.append(
+            AdsCover(
+                ads_hub,
+                ads_var_is_closed,
+                ads_var_position,
+                ads_var_position_type,
+                ads_var_pos_set,
+                ads_var_open,
+                ads_var_close,
+                ads_var_stop,
+                inverted,
+                name,
+                device_class,
+                unique_id,
+            )
+        )
+    
+    if cover_entities:
+        async_add_entities(cover_entities)
+
+
 class AdsCover(AdsEntity, CoverEntity):
     """Representation of ADS cover."""
 

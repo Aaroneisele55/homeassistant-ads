@@ -67,6 +67,37 @@ def setup_platform(
     add_entities([entity])
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS valve entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get valve entities from config entry options
+    entities = entry.options.get("entities", [])
+    valves = [e for e in entities if e.get("entity_type") == "valve"]
+    
+    if not valves:
+        return
+    
+    valve_entities = []
+    for valve_config in valves:
+        name = valve_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = valve_config.get(CONF_ADS_VAR)
+        device_class = valve_config.get(CONF_DEVICE_CLASS)
+        unique_id = valve_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var:
+            valve_entities.append(
+                AdsValve(ads_hub, ads_var, name, device_class, unique_id)
+            )
+    
+    if valve_entities:
+        async_add_entities(valve_entities)
+
+
 class AdsValve(AdsEntity, ValveEntity):
     """Representation of an ADS valve entity."""
 

@@ -69,6 +69,42 @@ def setup_platform(
     add_entities([entity])
 
 
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up ADS select entities from a config entry."""
+    ads_hub = hass.data[DOMAIN][entry.entry_id]
+    
+    # Get select entities from config entry options
+    entities = entry.options.get("entities", [])
+    selects = [e for e in entities if e.get("entity_type") == "select"]
+    
+    if not selects:
+        return
+    
+    select_entities = []
+    for select_config in selects:
+        name = select_config.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = select_config.get(CONF_ADS_VAR)
+        options = select_config.get(CONF_OPTIONS, [])
+        unique_id = select_config.get(CONF_UNIQUE_ID)
+        
+        if ads_var and options:
+            select_entities.append(
+                AdsSelect(ads_hub, ads_var, name, options, unique_id)
+            )
+        else:
+            _LOGGER.warning(
+                "Select configuration for '%s' must include 'adsvar' and 'options'. Skipping.",
+                name
+            )
+    
+    if select_entities:
+        async_add_entities(select_entities)
+
+
 class AdsSelect(AdsEntity, SelectEntity):
     """Representation of an ADS select entity."""
 
