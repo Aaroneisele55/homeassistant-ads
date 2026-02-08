@@ -75,6 +75,43 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ADS select entities from a config entry."""
+    # Check if this is a hub or entity config entry
+    entry_type = entry.data.get("entry_type", "hub")
+    
+    if entry_type == "entity":
+        # This is an entity config entry - check if it's a select
+        if entry.data.get("entity_type") == "select":
+            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
+            if ads_hub is None:
+                _LOGGER.error("Parent hub not found for entity %s", entry.title)
+                return
+            
+            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entry.data.get(CONF_ADS_VAR)
+            options = entry.data.get(CONF_OPTIONS, [])
+            unique_id = entry.data.get(CONF_UNIQUE_ID)
+            
+            # Get device info from parent hub entry
+            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
+            if parent_entry:
+                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
+                device_name = parent_entry.title
+            else:
+                device_identifiers = None
+                device_name = None
+            
+            if ads_var and options:
+                async_add_entities([
+                    AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers)
+                ])
+            else:
+                _LOGGER.warning(
+                    "Select configuration for '%s' must include 'adsvar' and 'options'. Skipping.",
+                    name
+                )
+        return
+    
+    # This is a hub config entry - load selects from options (backward compatibility)
     ads_hub = hass.data[DOMAIN][entry.entry_id]
     
     # Get select entities from config entry options
