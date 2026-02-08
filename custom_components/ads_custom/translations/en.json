@@ -173,10 +173,6 @@
           "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')"
         }
       },
-      "list_entities": {
-        "title": "Configured Entities",
-        "description": "List of entities configured via UI:\n\n{entity_list}"
-      },
       "edit_switch_entity": {
         "title": "Edit Switch",
         "description": "Modify the configuration for this switch entity.",
