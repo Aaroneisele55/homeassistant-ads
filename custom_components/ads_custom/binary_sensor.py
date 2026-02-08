@@ -95,8 +95,8 @@ async def async_setup_entry(
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
         if ads_var and unique_id:
-            # Each subentry entity gets its own device
-            device_identifiers = {(DOMAIN, unique_id)}
+            # Each subentry gets its own device using the subentry's unique_id
+            device_identifiers = {(DOMAIN, subentry.unique_id)}
             device_name = name
             
             entities.append(
