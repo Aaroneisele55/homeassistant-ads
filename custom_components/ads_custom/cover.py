@@ -131,6 +131,10 @@ async def async_setup_entry(
     if not covers:
         return
     
+    # Create device identifiers based on the ADS connection
+    device_identifiers = {(DOMAIN, entry.entry_id)}
+    device_name = entry.title
+    
     cover_entities = []
     for cover_config in covers:
         name = cover_config.get(CONF_NAME, DEFAULT_NAME)
@@ -188,6 +192,8 @@ async def async_setup_entry(
                 name,
                 device_class,
                 unique_id,
+                device_name,
+                device_identifiers,
             )
         )
     
@@ -212,9 +218,11 @@ class AdsCover(AdsEntity, CoverEntity):
         name: str,
         device_class: CoverDeviceClass | None,
         unique_id: str | None,
+        device_name: str | None = None,
+        device_identifiers: set | None = None,
     ) -> None:
         """Initialize AdsCover entity."""
-        super().__init__(ads_hub, name, ads_var_closed_state, unique_id)
+        super().__init__(ads_hub, name, ads_var_closed_state, unique_id, device_name, device_identifiers)
         if self._attr_unique_id is None:
             if ads_var_position is not None:
                 self._attr_unique_id = ads_var_position

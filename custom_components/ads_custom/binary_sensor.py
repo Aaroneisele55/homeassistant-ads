@@ -85,6 +85,10 @@ async def async_setup_entry(
     if not binary_sensors:
         return
     
+    # Create device identifiers based on the ADS connection
+    device_identifiers = {(DOMAIN, entry.entry_id)}
+    device_name = entry.title
+    
     binary_sensor_entities = []
     for sensor_config in binary_sensors:
         name = sensor_config.get(CONF_NAME, DEFAULT_NAME)
@@ -97,7 +101,7 @@ async def async_setup_entry(
         
         if ads_var:
             binary_sensor_entities.append(
-                AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id)
+                AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id, device_name, device_identifiers)
             )
     
     if binary_sensor_entities:
@@ -115,9 +119,11 @@ class AdsBinarySensor(AdsEntity, BinarySensorEntity):
         ads_type: AdsType,
         device_class: BinarySensorDeviceClass | None,
         unique_id: str | None,
+        device_name: str | None = None,
+        device_identifiers: set | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
-        super().__init__(ads_hub, name, ads_var, unique_id)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
         self._ads_type = ads_type
         self._configured_device_class = device_class
 

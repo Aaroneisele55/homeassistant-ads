@@ -75,6 +75,10 @@ async def async_setup_entry(
     if not switches:
         return
     
+    # Create device identifiers based on the ADS connection
+    device_identifiers = {(DOMAIN, entry.entry_id)}
+    device_name = entry.title
+    
     switch_entities = []
     for switch_config in switches:
         name = switch_config.get(CONF_NAME, DEFAULT_NAME)
@@ -82,7 +86,7 @@ async def async_setup_entry(
         unique_id = switch_config.get(CONF_UNIQUE_ID)
         
         if ads_var:
-            switch_entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id))
+            switch_entities.append(AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers))
     
     if switch_entities:
         async_add_entities(switch_entities)
@@ -90,6 +94,18 @@ async def async_setup_entry(
 
 class AdsSwitch(AdsEntity, SwitchEntity):
     """Representation of an ADS switch device."""
+    
+    def __init__(
+        self,
+        ads_hub,
+        name: str,
+        ads_var: str,
+        unique_id: str | None,
+        device_name: str | None = None,
+        device_identifiers: set | None = None,
+    ) -> None:
+        """Initialize AdsSwitch entity."""
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
