@@ -22,6 +22,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_STOP,
 )
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
@@ -32,9 +33,6 @@ _LOGGER = logging.getLogger(__name__)
 
 # Helper constant for entity configuration
 CONF_ENTITY_TYPE = "entity_type"
-
-# Flow result type constant
-FLOW_RESULT_TYPE_CREATE_ENTRY = "create_entry"
 
 # Config schema for YAML configuration
 CONFIG_SCHEMA = vol.Schema(
@@ -356,7 +354,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     },
                 )
                 # Verify the flow completed successfully
-                if result.get("type") == FLOW_RESULT_TYPE_CREATE_ENTRY:
+                if result.get("type") == FlowResultType.CREATE_ENTRY:
                     migrated_entities.append(entity_config)
                     _LOGGER.info("Successfully migrated entity %s to individual config entry", entity_name)
                 else:

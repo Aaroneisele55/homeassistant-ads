@@ -278,11 +278,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entity_config = data["entity_config"]
         title = data["title"]
         unique_id = data["unique_id"]
-        
+
         # Set unique ID for the entity config entry
         await self.async_set_unique_id(unique_id)
         self._abort_if_unique_id_configured()
-        
+
         return self.async_create_entry(
             title=title,
             data=entity_config,
