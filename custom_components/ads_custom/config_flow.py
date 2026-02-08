@@ -277,6 +277,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 return await self.async_step_list_entities()
             elif action == "edit_entity":
                 return await self.async_step_select_entity_to_edit()
+            elif action == "delete_entity":
+                return await self.async_step_select_entity_to_delete()
 
         return self.async_show_form(
             step_id="init",
@@ -286,6 +288,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         options=[
                             {"value": "add_entity", "label": "Add Entity"},
                             {"value": "edit_entity", "label": "Edit Entity"},
+                            {"value": "delete_entity", "label": "Delete Entity"},
                             {"value": "list_entities", "label": "List Entities"},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
@@ -662,6 +665,70 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="list_entities",
             data_schema=vol.Schema({}),
             description_placeholders={"entity_list": entity_list},
+        )
+
+    async def async_step_select_entity_to_delete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select an entity to delete."""
+        entities = self.config_entry.options.get("entities", [])
+        
+        if not entities:
+            return self.async_abort(reason="no_entities")
+        
+        if user_input is not None:
+            entity_index = int(user_input.get("entity_index"))
+            # Store the entity index and data for confirmation
+            self.entity_data = {"index": entity_index, "entity": entities[entity_index].copy()}
+            return await self.async_step_confirm_delete()
+        
+        # Create list of entities with their indices
+        entity_options = [
+            {
+                "value": str(idx),
+                "label": f"{e.get(CONF_NAME, 'Unnamed')} ({e.get(CONF_ENTITY_TYPE, 'unknown')})"
+            }
+            for idx, e in enumerate(entities)
+        ]
+        
+        return self.async_show_form(
+            step_id="select_entity_to_delete",
+            data_schema=vol.Schema({
+                vol.Required("entity_index"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+        )
+
+    async def async_step_confirm_delete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Confirm deletion of entity."""
+        if user_input is not None:
+            # Delete the entity from the list
+            entities = list(self.config_entry.options.get("entities", []))
+            entity_index = self.entity_data["index"]
+            entities.pop(entity_index)
+            
+            return self.async_create_entry(
+                title="",
+                data={"entities": entities},
+            )
+        
+        entity = self.entity_data["entity"]
+        entity_name = entity.get(CONF_NAME, "Unnamed")
+        entity_type = entity.get(CONF_ENTITY_TYPE, "unknown")
+        
+        return self.async_show_form(
+            step_id="confirm_delete",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "entity_name": entity_name,
+                "entity_type": entity_type,
+            },
         )
 
     async def async_step_select_entity_to_edit(

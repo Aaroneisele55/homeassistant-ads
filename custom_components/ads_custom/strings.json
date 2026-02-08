@@ -43,6 +43,7 @@
         "menu_options": {
           "add_entity": "Add Entity",
           "edit_entity": "Edit Entity",
+          "delete_entity": "Delete Entity",
           "list_entities": "List Entities"
         }
       },
@@ -256,6 +257,17 @@
           "name": "Entity Name",
           "options": "Options (comma-separated)"
         }
+      },
+      "select_entity_to_delete": {
+        "title": "Select Entity to Delete",
+        "description": "Choose an entity to delete from the list below.",
+        "data": {
+          "entity_index": "Entity"
+        }
+      },
+      "confirm_delete": {
+        "title": "Confirm Deletion",
+        "description": "Are you sure you want to delete this entity?\n\nEntity: {entity_name}\nType: {entity_type}\n\nThis action cannot be undone."
       },
       "list_entities": {
         "title": "Configured Entities",
