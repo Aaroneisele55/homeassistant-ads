@@ -66,6 +66,35 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ADS switch entities from a config entry."""
+    # Check if this is a hub or entity config entry
+    entry_type = entry.data.get("entry_type", "hub")
+    
+    if entry_type == "entity":
+        # This is an entity config entry - check if it's a switch
+        if entry.data.get("entity_type") == "switch":
+            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
+            if ads_hub is None:
+                _LOGGER.error("Parent hub not found for entity %s", entry.title)
+                return
+            
+            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entry.data.get(CONF_ADS_VAR)
+            unique_id = entry.data.get(CONF_UNIQUE_ID)
+            
+            # Get device info from parent hub entry
+            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
+            if parent_entry:
+                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
+                device_name = parent_entry.title
+            else:
+                device_identifiers = None
+                device_name = None
+            
+            if ads_var:
+                async_add_entities([AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)])
+        return
+    
+    # This is a hub config entry - load switches from options (backward compatibility)
     ads_hub = hass.data[DOMAIN][entry.entry_id]
     
     # Get switch entities from config entry options

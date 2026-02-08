@@ -122,6 +122,88 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ADS cover entities from a config entry."""
+    # Check if this is a hub or entity config entry
+    entry_type = entry.data.get("entry_type", "hub")
+    
+    if entry_type == "entity":
+        # This is an entity config entry - check if it's a cover
+        if entry.data.get("entity_type") == "cover":
+            ads_hub = hass.data[DOMAIN].get(entry.data.get("parent_entry_id"))
+            if ads_hub is None:
+                _LOGGER.error("Parent hub not found for entity %s", entry.title)
+                return
+            
+            name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+            
+            # Normalize ADS variable fields
+            ads_var_is_closed = entry.data.get(CONF_ADS_VAR)
+            if isinstance(ads_var_is_closed, str):
+                ads_var_is_closed = ads_var_is_closed.strip() or None
+            
+            ads_var_position = entry.data.get(CONF_ADS_VAR_POSITION)
+            if isinstance(ads_var_position, str):
+                ads_var_position = ads_var_position.strip() or None
+            
+            ads_var_pos_set = entry.data.get(CONF_ADS_VAR_SET_POS)
+            if isinstance(ads_var_pos_set, str):
+                ads_var_pos_set = ads_var_pos_set.strip() or None
+            
+            ads_var_open = entry.data.get(CONF_ADS_VAR_OPEN)
+            if isinstance(ads_var_open, str):
+                ads_var_open = ads_var_open.strip() or None
+            
+            ads_var_close = entry.data.get(CONF_ADS_VAR_CLOSE)
+            if isinstance(ads_var_close, str):
+                ads_var_close = ads_var_close.strip() or None
+            
+            ads_var_stop = entry.data.get(CONF_ADS_VAR_STOP)
+            if isinstance(ads_var_stop, str):
+                ads_var_stop = ads_var_stop.strip() or None
+            
+            ads_var_position_type = entry.data.get(CONF_ADS_VAR_POSITION_TYPE, DEFAULT_POSITION_TYPE)
+            inverted = entry.data.get(CONF_INVERTED, False)
+            device_class = entry.data.get(CONF_DEVICE_CLASS)
+            unique_id = entry.data.get(CONF_UNIQUE_ID)
+            
+            # Get device info from parent hub entry
+            parent_entry = hass.config_entries.async_get_entry(entry.data.get("parent_entry_id"))
+            if parent_entry:
+                device_identifiers = {(DOMAIN, parent_entry.entry_id)}
+                device_name = parent_entry.title
+            else:
+                device_identifiers = None
+                device_name = None
+            
+            # Validate that at least one state variable is provided
+            if not ads_var_is_closed and not ads_var_position:
+                _LOGGER.warning(
+                    "Cover configuration for '%s' must include either 'adsvar' (closed state) "
+                    "or 'adsvar_position' (position feedback). Skipping.",
+                    name
+                )
+                return
+            
+            async_add_entities([
+                AdsCover(
+                    ads_hub,
+                    ads_var_is_closed,
+                    ads_var_position,
+                    ads_var_position_type,
+                    ads_var_pos_set,
+                    ads_var_open,
+                    ads_var_close,
+                    ads_var_stop,
+                    inverted,
+                    name,
+                    device_class,
+                    unique_id,
+                    device_name,
+                    device_identifiers,
+                )
+            ])
+        return
+    
+    # This is a hub config entry - load covers from options (backward compatibility)
     ads_hub = hass.data[DOMAIN][entry.entry_id]
     
     # Get cover entities from config entry options
