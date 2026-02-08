@@ -245,6 +245,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("async_setup_entry: Forwarding setup to all platforms")
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
+    # Migrate any entities without unique_id (from old versions)
+    entities = entry.options.get("entities", [])
+    needs_migration = False
+    updated_entities = []
+    
+    for entity_config in entities:
+        if not entity_config.get(CONF_UNIQUE_ID):
+            # Generate unique_id for entities that don't have one
+            entity_config = dict(entity_config)  # Make a copy
+            entity_config[CONF_UNIQUE_ID] = uuid.uuid4().hex
+            needs_migration = True
+            _LOGGER.info("Generated unique_id for entity: %s", entity_config.get(CONF_NAME, "unknown"))
+        updated_entities.append(entity_config)
+    
+    # Update config entry if migration was needed
+    if needs_migration:
+        _LOGGER.info("Migrating %d entities to add unique_id", len(updated_entities))
+        hass.config_entries.async_update_entry(
+            entry,
+            options={**entry.options, "entities": updated_entities}
+        )
+        # Note: This will trigger a reload via the update listener
+    
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     
