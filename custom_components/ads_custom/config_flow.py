@@ -27,6 +27,16 @@ CONF_DEVICE_CLASS = "device_class"
 CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_STATE_CLASS = "state_class"
 
+# Cover ADS variable field names (for sanitization)
+COVER_ADS_VAR_FIELDS = [
+    CONF_ADS_VAR,
+    "adsvar_position",
+    "adsvar_set_position",
+    "adsvar_open",
+    "adsvar_close",
+    "adsvar_stop",
+]
+
 ENTITY_TYPES = [
     "binary_sensor",
     "sensor",
@@ -494,8 +504,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         
         if user_input is not None:
             # Sanitize optional ADS variable fields - convert empty strings to None
-            ads_vars = [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]
-            for var in ads_vars:
+            for var in COVER_ADS_VAR_FIELDS:
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
             
@@ -926,8 +935,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Edit a cover entity."""
         if user_input is not None:
             # Sanitize optional ADS variable fields - remove empty strings
-            ads_vars = [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]
-            for var in ads_vars:
+            for var in COVER_ADS_VAR_FIELDS:
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
             
@@ -956,7 +964,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         }
         
         # Add optional string fields with defaults only if they have values
-        for field in [CONF_ADS_VAR, "adsvar_position", "adsvar_set_position", "adsvar_open", "adsvar_close", "adsvar_stop"]:
+        for field in COVER_ADS_VAR_FIELDS:
             value = entity.get(field)
             if value:
                 schema_dict[vol.Optional(field, default=value)] = cv.string
