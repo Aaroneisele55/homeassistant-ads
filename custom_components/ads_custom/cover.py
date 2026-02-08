@@ -126,9 +126,6 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    device_identifiers = {(DOMAIN, entry.entry_id)}
-    device_name = entry.title
-
     entities = []
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
@@ -177,24 +174,29 @@ async def async_setup_entry(
             )
             continue
 
-        entities.append(
-            AdsCover(
-                ads_hub,
-                ads_var_is_closed,
-                ads_var_position,
-                ads_var_position_type,
-                ads_var_pos_set,
-                ads_var_open,
-                ads_var_close,
-                ads_var_stop,
-                inverted,
-                name,
-                device_class,
-                unique_id,
-                device_name,
-                device_identifiers,
+        if unique_id:
+            # Each subentry entity gets its own device
+            device_identifiers = {(DOMAIN, unique_id)}
+            device_name = name
+            
+            entities.append(
+                AdsCover(
+                    ads_hub,
+                    ads_var_is_closed,
+                    ads_var_position,
+                    ads_var_position_type,
+                    ads_var_pos_set,
+                    ads_var_open,
+                    ads_var_close,
+                    ads_var_stop,
+                    inverted,
+                    name,
+                    device_class,
+                    unique_id,
+                    device_name,
+                    device_identifiers,
+                )
             )
-        )
 
     if entities:
         async_add_entities(entities)

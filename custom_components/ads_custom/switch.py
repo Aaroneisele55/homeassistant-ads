@@ -70,9 +70,6 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    device_identifiers = {(DOMAIN, entry.entry_id)}
-    device_name = entry.title
-
     entities = []
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
@@ -84,7 +81,11 @@ async def async_setup_entry(
         ads_var = subentry.data.get(CONF_ADS_VAR)
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
-        if ads_var:
+        if ads_var and unique_id:
+            # Each subentry entity gets its own device
+            device_identifiers = {(DOMAIN, unique_id)}
+            device_name = name
+            
             entities.append(
                 AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
             )
