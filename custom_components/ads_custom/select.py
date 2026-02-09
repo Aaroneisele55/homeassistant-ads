@@ -97,7 +97,7 @@ async def async_setup_entry(
             device_name = name
             
             entities.append(
-                AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers)
+                AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers, entry.entry_id)
             )
         else:
             _LOGGER.warning(
@@ -121,9 +121,10 @@ class AdsSelect(AdsEntity, SelectEntity):
         unique_id: str | None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize the AdsSelect entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id)
         # Ensure options is a valid non-empty list
         if not options or not isinstance(options, list):
             raise ValueError(f"Select entity {name} must have a non-empty list of options")

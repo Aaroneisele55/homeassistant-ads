@@ -87,7 +87,7 @@ async def async_setup_entry(
             device_name = name
             
             entities.append(
-                AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
+                AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id)
             )
 
     if entities:
@@ -105,9 +105,10 @@ class AdsSwitch(AdsEntity, SwitchEntity):
         unique_id: str | None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize AdsSwitch entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id)
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""

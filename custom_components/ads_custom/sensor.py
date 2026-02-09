@@ -155,6 +155,7 @@ async def async_setup_entry(
                     unique_id,
                     device_name,
                     device_identifiers,
+                    entry.entry_id,
                 )
             )
 
@@ -178,9 +179,10 @@ class AdsSensor(AdsEntity, SensorEntity):
         unique_id: str | None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize AdsSensor entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id)
         self._ads_type = ads_type
         self._factor = factor
         self._configured_device_class = device_class

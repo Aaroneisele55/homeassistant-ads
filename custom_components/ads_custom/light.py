@@ -110,7 +110,7 @@ async def async_setup_entry(
             device_name = name
             
             entities.append(
-                AdsLight(ads_hub, ads_var, ads_var_brightness, brightness_scale, brightness_type, name, unique_id, device_name, device_identifiers)
+                AdsLight(ads_hub, ads_var, ads_var_brightness, brightness_scale, brightness_type, name, unique_id, device_name, device_identifiers, entry.entry_id)
             )
 
     if entities:
@@ -131,9 +131,10 @@ class AdsLight(AdsEntity, LightEntity):
         unique_id: str | None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize AdsLight entity."""
-        super().__init__(ads_hub, name, ads_var_enable, unique_id, device_name, device_identifiers)
+        super().__init__(ads_hub, name, ads_var_enable, unique_id, device_name, device_identifiers, config_entry_id)
         self._state_dict[STATE_KEY_BRIGHTNESS] = None
         self._ads_var_brightness = ads_var_brightness
         self._brightness_scale = brightness_scale
