@@ -376,12 +376,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Migrate entity registry entries to have proper config_entry_id
     await _async_migrate_entity_config_entries(hass)
 
-    # Migrate old entity config entries / hub options to subentries
-    await _async_migrate_to_subentries(hass)
-    
-    # Migrate entity registry entries to have proper config_entry_id
-    await _async_migrate_entity_config_entries(hass)
-
     if DOMAIN not in config:
         # No YAML configuration, but config entries may exist
         _LOGGER.debug("No YAML configuration found, waiting for config entries")
