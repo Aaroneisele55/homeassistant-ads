@@ -269,6 +269,11 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     _entity_data: dict[str, Any]
 
+    @property
+    def entry(self) -> ConfigEntry:
+        """Return the config entry linked to this subentry flow."""
+        return self._get_entry()
+
     # ── Add new entity ──────────────────────────────────────────────
 
     async def async_step_user(
