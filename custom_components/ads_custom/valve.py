@@ -95,7 +95,7 @@ async def async_setup_entry(
             device_name = name
             
             entities.append(
-                AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers)
+                AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers, entry.entry_id)
             )
 
     if entities:
@@ -116,9 +116,10 @@ class AdsValve(AdsEntity, ValveEntity):
         unique_id: str | None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize AdsValve entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id)
         self._configured_device_class = device_class
         self._attr_reports_position = False
 

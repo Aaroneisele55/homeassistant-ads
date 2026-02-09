@@ -27,6 +27,7 @@ class AdsEntity(Entity):
         unique_id: str | None = None,
         device_name: str | None = None,
         device_identifiers: set | None = None,
+        config_entry_id: str | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
         self._state_dict: dict[str, Any] = {}
@@ -37,6 +38,10 @@ class AdsEntity(Entity):
         if unique_id is not None:
             self._attr_unique_id = unique_id
         self._attr_name = name
+        
+        # Set config entry ID for proper association
+        if config_entry_id is not None:
+            self._attr_config_entry_id = config_entry_id
         
         # Set up device info if identifiers provided
         if device_identifiers is not None:
