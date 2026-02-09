@@ -175,9 +175,9 @@ async def async_setup_entry(
             continue
 
         if unique_id:
-            # Each subentry gets its own device using the subentry's unique_id
-            device_identifiers = {(DOMAIN, subentry.unique_id)}
-            device_name = name
+            # All entities share the hub device using the entry's entry_id
+            device_identifiers = {(DOMAIN, entry.entry_id)}
+            device_name = entry.title
             
             entities.append(
                 AdsCover(
