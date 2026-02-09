@@ -134,8 +134,7 @@ class AdsValve(AdsEntity, ValveEntity):
         Checks entity registry for custom device_class first,
         then falls back to configured value.
         """
-        if self.registry_entry and self.registry_entry.original_device_class is not None:
-            # Entity has been registered with a device_class, use the (possibly customized) value
+        if self.registry_entry and self.registry_entry.device_class:
             return self.registry_entry.device_class
         return self._configured_device_class
 
