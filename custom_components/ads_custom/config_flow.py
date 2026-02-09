@@ -657,13 +657,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            # Explicitly set optional fields to None if not provided to allow clearing
-            if CONF_DEVICE_CLASS not in user_input:
-                new_data[CONF_DEVICE_CLASS] = None
-            if CONF_UNIT_OF_MEASUREMENT not in user_input:
-                new_data[CONF_UNIT_OF_MEASUREMENT] = None
-            if CONF_STATE_CLASS not in user_input:
-                new_data[CONF_STATE_CLASS] = None
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
             self.hass.config_entries.async_update_subentry(
@@ -720,9 +713,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            # Explicitly set device_class to None if not provided to allow clearing
-            if CONF_DEVICE_CLASS not in user_input:
-                new_data[CONF_DEVICE_CLASS] = None
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
             self.hass.config_entries.async_update_subentry(
@@ -806,9 +796,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if not errors:
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
-                # Explicitly set device_class to None if not provided to allow clearing
-                if CONF_DEVICE_CLASS not in user_input:
-                    new_data[CONF_DEVICE_CLASS] = None
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
                 self.hass.config_entries.async_update_subentry(
@@ -854,9 +841,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
-            # Explicitly set device_class to None if not provided to allow clearing
-            if CONF_DEVICE_CLASS not in user_input:
-                new_data[CONF_DEVICE_CLASS] = None
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
             self.hass.config_entries.async_update_subentry(
