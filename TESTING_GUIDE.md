@@ -7,25 +7,26 @@ This guide outlines the testing steps to verify the functionality of the ADS Cus
 - At least one Beckhoff PLC/ADS device configured
 - Access to Settings → Devices & Services
 
-## Test 1: Verify Device Association Fix (Critical Fix)
+## Test 1: Verify Entity Assignment to Hub Device
 
 ### Test 1.1: Check Entity Device Association
 1. Go to Settings → Devices & Services
 2. Click on "ADS Custom"
 3. View the list of devices
-4. **Expected**: Should see one device per entity (named after the entity)
-5. **Not Expected**: Should NOT see all entities grouped under a single hub device
-6. Click on an entity's device
-7. **Expected**: Should see that entity (and ONLY that entity) listed under its device
+4. **Expected**: Should see one hub device (named after the ADS connection/config entry)
+5. **Expected**: All entities should be grouped under this single hub device
+6. Click on the hub device
+7. **Expected**: Should see ALL entities from that config entry listed under the hub device
 
 ### Test 1.2: Verify Device Registry
 1. Go to Settings → Devices & Services → Devices (or `/config/devices/dashboard`)
-2. Search for your ADS entities
-3. **Expected**: Each entity should have its own device entry
-4. **Expected**: Device name should match the entity name
-5. **Not Expected**: Should NOT see all entities under one "ADS Connection" or hub device
+2. Search for your ADS integration
+3. **Expected**: Should see one device per ADS connection (hub)
+4. **Expected**: Device name should match the hub/connection name (e.g., "PLC Connection")
+5. **Expected**: All entities should be listed under their respective hub device
+6. **Not Expected**: Should NOT see separate devices for each entity
 
-**Success Criteria**: Each entity has its own device in the device registry, properly associated based on its subentry unique_id.
+**Success Criteria**: All entities are grouped under their hub device in the device registry, similar to how MQTT integration organizes entities.
 
 ## Test 2: Verify Subentry Edit Functionality (Critical Fix)
 
@@ -118,7 +119,7 @@ Repeat the edit test for:
 
 ### Issue: Device Shows as "Subdevice"
 **Symptom**: Hub device shows as child of itself in device registry
-**Status**: Under investigation - may require additional code changes
+**Status**: Fixed - Entities now correctly group under hub device using entry.entry_id
 
 ## Reporting Results
 
