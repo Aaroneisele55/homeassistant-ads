@@ -271,7 +271,16 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     @property
     def entry(self) -> ConfigEntry:
-        """Return the config entry linked to this subentry flow."""
+        """Return the config entry linked to this subentry flow.
+        
+        Tries to use public API first (handler.config_entry), then falls back
+        to protected method for compatibility with older HA versions.
+        """
+        # Try modern public API first (HA 2024.2+)
+        if hasattr(self, "handler") and hasattr(self.handler, "config_entry"):
+            return self.handler.config_entry
+        
+        # Fall back to protected method for older versions
         return self._get_entry()
 
     # ── Add new entity ──────────────────────────────────────────────
