@@ -864,29 +864,18 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         else:
             schema_dict[vol.Optional(CONF_UNIT_OF_MEASUREMENT)] = cv.string
 
-        device_class = entity.get(CONF_DEVICE_CLASS)
-        if device_class:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
-        else:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
+        schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
+        )
 
-        state_class = entity.get(CONF_STATE_CLASS)
-        if state_class:
-            schema_dict[vol.Optional(CONF_STATE_CLASS, default=state_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
-            )
-        else:
-            schema_dict[vol.Optional(CONF_STATE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
-            )
+        schema_dict[vol.Optional(CONF_STATE_CLASS)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
+        )
 
         return self.async_show_form(
             step_id="reconfigure_sensor",
             data_schema=vol.Schema(schema_dict),
+            suggested_values=entity,
         )
 
     async def async_step_reconfigure_binary_sensor(
@@ -923,19 +912,14 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 selector.SelectSelectorConfig(options=["bool", "real"], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
         }
-        device_class = entity.get(CONF_DEVICE_CLASS)
-        if device_class:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
-        else:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
+        schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
+        )
 
         return self.async_show_form(
             step_id="reconfigure_binary_sensor",
             data_schema=vol.Schema(schema_dict),
+            suggested_values=entity,
         )
 
     async def async_step_reconfigure_light(
@@ -1032,20 +1016,15 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             else:
                 schema_dict[vol.Optional(field)] = cv.string
 
-        device_class = entity.get(CONF_DEVICE_CLASS)
-        if device_class:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
-        else:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
+        schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
+        )
 
         return self.async_show_form(
             step_id="reconfigure_cover",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
+            suggested_values=entity,
         )
 
     async def async_step_reconfigure_valve(
@@ -1079,19 +1058,14 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
             vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
         }
-        device_class = entity.get(CONF_DEVICE_CLASS)
-        if device_class:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS, default=device_class)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
-        else:
-            schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
-                selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
-            )
+        schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
+            selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
+        )
 
         return self.async_show_form(
             step_id="reconfigure_valve",
             data_schema=vol.Schema(schema_dict),
+            suggested_values=entity,
         )
 
     async def async_step_reconfigure_select(
