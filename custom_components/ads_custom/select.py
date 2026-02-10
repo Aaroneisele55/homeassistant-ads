@@ -101,7 +101,7 @@ async def async_setup_entry(
             )
         else:
             _LOGGER.warning(
-                "Select configuration for '%s' must include 'adsvar' and 'options'. Skipping.",
+                "Select configuration for '%s' must include 'adsvar', 'options', and 'unique_id'. Skipping.",
                 name
             )
 

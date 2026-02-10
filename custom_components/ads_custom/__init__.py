@@ -390,7 +390,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 entity_entry.entity_id,
                 subentry_unique_id,
                 subentry.title,
-                hub_entry.entry_id,
+                hub_entry.title,
             )
             entity_registry.async_update_entity(
                 entity_entry.entity_id,
