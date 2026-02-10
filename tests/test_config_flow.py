@@ -112,6 +112,74 @@ class TestDeviceClassLists:
                             return
         pytest.fail("VALVE_DEVICE_CLASSES not found in config_flow.py")
 
+    def test_all_binary_sensor_device_classes_are_dicts(self):
+        """Test that all binary sensor device class options are in dict format."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "BINARY_SENSOR_DEVICE_CLASSES":
+                        if isinstance(node.value, ast.List):
+                            # Check all elements are dicts
+                            for elem in node.value.elts:
+                                assert isinstance(elem, ast.Dict), "All device class options must be dicts"
+                            return
+        pytest.fail("BINARY_SENSOR_DEVICE_CLASSES not found in config_flow.py")
+
+    def test_all_sensor_device_classes_are_dicts(self):
+        """Test that all sensor device class options are in dict format."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "SENSOR_DEVICE_CLASSES":
+                        if isinstance(node.value, ast.List):
+                            # Check all elements are dicts
+                            for elem in node.value.elts:
+                                assert isinstance(elem, ast.Dict), "All device class options must be dicts"
+                            return
+        pytest.fail("SENSOR_DEVICE_CLASSES not found in config_flow.py")
+
+    def test_all_cover_device_classes_are_dicts(self):
+        """Test that all cover device class options are in dict format."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "COVER_DEVICE_CLASSES":
+                        if isinstance(node.value, ast.List):
+                            # Check all elements are dicts
+                            for elem in node.value.elts:
+                                assert isinstance(elem, ast.Dict), "All device class options must be dicts"
+                            return
+        pytest.fail("COVER_DEVICE_CLASSES not found in config_flow.py")
+
+    def test_all_valve_device_classes_are_dicts(self):
+        """Test that all valve device class options are in dict format."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "VALVE_DEVICE_CLASSES":
+                        if isinstance(node.value, ast.List):
+                            # Check all elements are dicts
+                            for elem in node.value.elts:
+                                assert isinstance(elem, ast.Dict), "All device class options must be dicts"
+                            return
+        pytest.fail("VALVE_DEVICE_CLASSES not found in config_flow.py")
+
 
 class TestRemoveEmptyOptionalFields:
     """Tests for _remove_empty_optional_fields helper method."""
