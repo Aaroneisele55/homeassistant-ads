@@ -284,11 +284,11 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self._get_entry()
 
     def _update_device_name_if_changed(
-        self, subentry_unique_id: str, old_name: str, new_name: str
+        self, subentry_unique_id: str, old_name: str | None, new_name: str
     ) -> None:
         """Update device registry name when subentry name changes."""
-        # Skip if names are the same
-        if old_name == new_name:
+        # Skip if old_name is None or names are the same
+        if not old_name or old_name == new_name:
             return
 
         # Get the device registry
