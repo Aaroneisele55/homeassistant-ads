@@ -19,7 +19,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import selector
+from homeassistant.helpers import device_registry as dr, selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
@@ -272,16 +272,70 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     @property
     def entry(self) -> ConfigEntry:
         """Return the config entry linked to this subentry flow.
-        
+
         Tries to use public API first (handler.config_entry), then falls back
         to protected method for compatibility with older HA versions.
         """
         # Try modern public API first (HA 2024.2+)
         if hasattr(self, "handler") and hasattr(self.handler, "config_entry"):
             return self.handler.config_entry
-        
+
         # Fall back to protected method for older versions
         return self._get_entry()
+
+    def _update_device_name_if_changed(
+        self, subentry_unique_id: str, old_name: str | None, new_name: str
+    ) -> None:
+        """Update device registry name when subentry name changes."""
+        # Skip if old_name is None or names are the same
+        if not old_name or old_name == new_name:
+            return
+
+        # Get the device registry
+        device_registry = dr.async_get(self.hass)
+
+        # Find the device by identifier
+        device = device_registry.async_get_device(
+            identifiers={(DOMAIN, subentry_unique_id)}
+        )
+
+        if not device:
+            _LOGGER.debug(
+                "No device found for subentry '%s', skipping device name update",
+                subentry_unique_id,
+            )
+            return
+
+        # Only update if the current device name matches the old subentry name
+        # This prevents overwriting user-customized device names
+        current_device_name = device.name_by_user or device.name
+        if current_device_name != old_name:
+            _LOGGER.debug(
+                "Device name '%s' differs from old subentry name '%s', skipping update",
+                current_device_name,
+                old_name,
+            )
+            return
+
+        _LOGGER.info(
+            "Subentry '%s' renamed to '%s', updating device",
+            old_name,
+            new_name,
+        )
+
+        # Update the appropriate name field
+        # If name_by_user is set and matches old_name, update it
+        # Otherwise update the base name field
+        if device.name_by_user and device.name_by_user == old_name:
+            device_registry.async_update_device(
+                device.id,
+                name_by_user=new_name,
+            )
+        else:
+            device_registry.async_update_device(
+                device.id,
+                name=new_name,
+            )
 
     # ── Add new entity ──────────────────────────────────────────────
 
@@ -656,6 +710,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Switch)"
+
+            # Update device name if changed
+            old_name = self._entity_data.get(CONF_NAME)
+            new_name = user_input[CONF_NAME]
+            if subentry.unique_id:
+                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
             self.hass.config_entries.async_update_subentry(
                 self.entry, subentry, data=MappingProxyType(new_data), title=new_title
             )
@@ -681,6 +742,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
+
+            # Update device name if changed
+            old_name = self._entity_data.get(CONF_NAME)
+            new_name = user_input[CONF_NAME]
+            if subentry.unique_id:
+                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
             self.hass.config_entries.async_update_subentry(
                 self.entry, subentry, data=MappingProxyType(new_data), title=new_title
             )
@@ -737,6 +805,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
+
+            # Update device name if changed
+            old_name = self._entity_data.get(CONF_NAME)
+            new_name = user_input[CONF_NAME]
+            if subentry.unique_id:
+                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
             self.hass.config_entries.async_update_subentry(
                 self.entry, subentry, data=MappingProxyType(new_data), title=new_title
             )
@@ -774,6 +849,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Light)"
+
+            # Update device name if changed
+            old_name = self._entity_data.get(CONF_NAME)
+            new_name = user_input[CONF_NAME]
+            if subentry.unique_id:
+                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
             self.hass.config_entries.async_update_subentry(
                 self.entry, subentry, data=MappingProxyType(new_data), title=new_title
             )
@@ -820,6 +902,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data.update(user_input)
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
+
+                # Update device name if changed
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
                 )
@@ -865,6 +954,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data.update(user_input)
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
+
+            # Update device name if changed
+            old_name = self._entity_data.get(CONF_NAME)
+            new_name = user_input[CONF_NAME]
+            if subentry.unique_id:
+                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
             self.hass.config_entries.async_update_subentry(
                 self.entry, subentry, data=MappingProxyType(new_data), title=new_title
             )
@@ -910,6 +1006,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data["options"] = options
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Select)"
+
+                # Update device name if changed
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
                 )
