@@ -40,12 +40,12 @@ class TestDeviceClassLists:
     
     def test_empty_device_class_removed_in_configure_sensor(self):
         """Test that configure_sensor removes empty device_class."""
-        # Check for the code pattern that removes empty device_class
-        assert 'if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:' in self.file_content
-        assert 'user_input.pop(CONF_DEVICE_CLASS)' in self.file_content
+        # Check for the helper method usage pattern
+        assert '_remove_empty_optional_fields' in self.file_content
+        assert 'self._remove_empty_optional_fields(\n                user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS\n            )' in self.file_content
     
     def test_empty_device_class_removed_in_reconfigure_sensor(self):
         """Test that reconfigure_sensor removes empty device_class."""
-        # Check for the code pattern that removes empty device_class in reconfigure
-        assert 'if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:' in self.file_content
-        assert 'new_data.pop(CONF_DEVICE_CLASS)' in self.file_content
+        # Check for the helper method usage pattern in reconfigure
+        assert '_remove_empty_optional_fields' in self.file_content
+        assert 'self._remove_empty_optional_fields(\n                new_data, CONF_DEVICE_CLASS, CONF_STATE_CLASS\n            )' in self.file_content

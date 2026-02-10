@@ -287,6 +287,18 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         # Fall back to protected method for older versions
         return self._get_entry()
 
+    @staticmethod
+    def _remove_empty_optional_fields(data: dict[str, Any], *field_names: str) -> None:
+        """Remove optional fields with empty values from data dictionary.
+        
+        Args:
+            data: Dictionary to modify in-place
+            *field_names: Names of fields to check and remove if empty
+        """
+        for field_name in field_names:
+            if field_name in data and not data[field_name]:
+                data.pop(field_name)
+
     def _update_device_name_if_changed(
         self, subentry_unique_id: str, old_name: str | None, new_name: str
     ) -> None:
@@ -437,11 +449,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a sensor entity."""
         if user_input is not None:
-            # Remove empty device_class and state_class to allow clearing
-            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
-                user_input.pop(CONF_DEVICE_CLASS)
-            if CONF_STATE_CLASS in user_input and not user_input[CONF_STATE_CLASS]:
-                user_input.pop(CONF_STATE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(
+                user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS
+            )
             
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
@@ -488,9 +499,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a binary sensor entity."""
         if user_input is not None:
-            # Remove empty device_class to allow clearing
-            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
-                user_input.pop(CONF_DEVICE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(user_input, CONF_DEVICE_CLASS)
             
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
@@ -573,9 +583,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
             
-            # Remove empty device_class to allow clearing
-            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
-                user_input.pop(CONF_DEVICE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(user_input, CONF_DEVICE_CLASS)
 
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
@@ -626,9 +635,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a valve entity."""
         if user_input is not None:
-            # Remove empty device_class to allow clearing
-            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
-                user_input.pop(CONF_DEVICE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(user_input, CONF_DEVICE_CLASS)
             
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
@@ -763,11 +771,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data = dict(self._entity_data)
             new_data.update(user_input)
             
-            # Remove empty device_class and state_class to allow clearing
-            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
-                new_data.pop(CONF_DEVICE_CLASS)
-            if CONF_STATE_CLASS in new_data and not new_data[CONF_STATE_CLASS]:
-                new_data.pop(CONF_STATE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(
+                new_data, CONF_DEVICE_CLASS, CONF_STATE_CLASS
+            )
             
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
@@ -833,9 +840,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data = dict(self._entity_data)
             new_data.update(user_input)
             
-            # Remove empty device_class to allow clearing
-            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
-                new_data.pop(CONF_DEVICE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
             
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
@@ -935,9 +941,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
                 
-                # Remove empty device_class to allow clearing
-                if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
-                    new_data.pop(CONF_DEVICE_CLASS)
+                # Remove empty optional fields to allow clearing
+                self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
                 
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
@@ -992,9 +997,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_data = dict(self._entity_data)
             new_data.update(user_input)
             
-            # Remove empty device_class to allow clearing
-            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
-                new_data.pop(CONF_DEVICE_CLASS)
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
             
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
