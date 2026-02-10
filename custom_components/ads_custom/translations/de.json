@@ -22,7 +22,7 @@
     },
     "error": {
       "cannot_connect": "Verbindung zum ADS-Gerät fehlgeschlagen. Bitte überprüfen Sie Ihre Konfiguration und stellen Sie sicher, dass das Gerät erreichbar ist.",
-      "unknown": "Unerwarteter Fehler aufgetreten"
+      "unknown": "Unerwarteter Fehler ist aufgetreten"
     },
     "abort": {
       "already_configured": "Dieses ADS-Gerät ist bereits konfiguriert"
