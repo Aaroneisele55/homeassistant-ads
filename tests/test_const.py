@@ -32,7 +32,7 @@ class TestAdsType:
 
     def test_enum_count(self):
         """Guard against accidentally removing a type."""
-        assert len(AdsType) == 17
+        assert len(AdsType) >= 17, "AdsType count decreased, types may have been removed"
 
     def test_ads_type_is_str_enum(self):
         """AdsType members should be usable as plain strings."""

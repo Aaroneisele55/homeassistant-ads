@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import ctypes
-import pyads
+
 import pytest
 import voluptuous as vol
 
@@ -118,11 +116,10 @@ class TestAdsTypemap:
         from custom_components.ads_custom import ADS_TYPEMAP
 
         for ads_type, plc_type in ADS_TYPEMAP.items():
-            assert isinstance(plc_type, type) and issubclass(
-                plc_type, ctypes.Structure
-            ) or issubclass(type(plc_type), type(ctypes.c_int)), (
-                f"ADS_TYPEMAP[{ads_type}] = {plc_type} is not a valid ctypes type"
-            )
+            assert isinstance(plc_type, type) and (
+                issubclass(plc_type, ctypes.Structure)
+                or issubclass(type(plc_type), type(ctypes.c_int))
+            ), f"ADS_TYPEMAP[{ads_type}] = {plc_type} is not a valid ctypes type"
 
 
 class TestConfigSchema:

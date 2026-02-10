@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import ctypes
 import struct
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pyads
-import pytest
 
-from custom_components.ads_custom.hub import AdsHub, NotificationItem
+from custom_components.ads_custom.hub import AdsHub
 
 
 # ---------------------------------------------------------------------------
@@ -21,7 +20,7 @@ class TestAdsHubLifecycle:
 
     def test_constructor_opens_connection(self, mock_ads_client):
         """AdsHub.__init__ must call client.open()."""
-        hub = AdsHub(mock_ads_client)
+        AdsHub(mock_ads_client)
         mock_ads_client.open.assert_called_once()
 
     def test_shutdown_closes_connection(self, ads_hub, mock_ads_client):
@@ -303,3 +302,15 @@ class TestNotificationCallback:
         data = struct.pack("<i", 1609459200)
         cb = self._register_and_fire(ads_hub, pyads.PLCTYPE_DATE, data)
         cb.assert_called_once_with("GVL.test", 1609459200)
+
+    def test_dt_value(self, ads_hub):
+        """DATE_AND_TIME / DT (DINT seconds since epoch) notification."""
+        data = struct.pack("<i", 1609459200)
+        cb = self._register_and_fire(ads_hub, pyads.PLCTYPE_DT, data)
+        cb.assert_called_once_with("GVL.test", 1609459200)
+
+    def test_tod_value(self, ads_hub):
+        """TOD / time-of-day (DINT milliseconds since midnight) notification."""
+        data = struct.pack("<i", 43200000)
+        cb = self._register_and_fire(ads_hub, pyads.PLCTYPE_TOD, data)
+        cb.assert_called_once_with("GVL.test", 43200000)
