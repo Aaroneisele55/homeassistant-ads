@@ -103,12 +103,57 @@ The `AdsType` enum in `const.py` defines supported PLC data types: `BOOL`, `BYTE
 
 ## Testing
 
-There is no automated test suite. Changes are tested manually against a real Home Assistant instance with a Beckhoff PLC. When making changes:
+### Automated Tests (pytest)
+
+The project has a pytest-based test suite under `tests/`. **Always run existing tests before and after making changes, and add new tests for any new or modified functionality.**
+
+**Install dependencies and run tests:**
+
+```bash
+pip install -r requirements_test.txt
+python -m pytest tests/ -v
+```
+
+Test configuration lives in `pyproject.toml` (`[tool.pytest.ini_options]`). Dependencies are listed in `requirements_test.txt`.
+
+### Test Structure
+
+```
+tests/
+├── __init__.py        # Package marker
+├── conftest.py        # Shared fixtures (mock_ads_client, ads_hub) and HA compatibility shim
+├── test_const.py      # AdsType enum completeness, constant values
+├── test_hub.py        # AdsHub lifecycle, read/write, notification callbacks, data parsing
+├── test_init.py       # _collect_yaml_entities helper, ADS_TYPEMAP, CONFIG_SCHEMA, service schema
+└── test_light.py      # AdsLight brightness scaling, turn on/off, color modes
+```
+
+### Test Conventions
+
+- **Always** use `from __future__ import annotations` at the top of every test file
+- Use `MagicMock` from `unittest.mock` to mock `pyads.Connection` — never open real ADS connections in tests
+- Use the shared fixtures from `conftest.py`: `mock_ads_client` (mock pyads Connection) and `ads_hub` (AdsHub wired to mock client)
+- Group related tests in classes (e.g., `TestAdsHubLifecycle`, `TestReadWrite`)
+- Add docstrings to every test method describing what is being verified
+- Name test files `test_<module>.py` to match the source module being tested
+- Import from `custom_components.ads_custom` (the tests run from the repo root)
+
+### When to Add Tests
+
+- **New entity platforms**: Add a `test_<platform>.py` file testing entity construction, state properties, and action methods (turn_on/turn_off/etc.)
+- **New ADS data types**: Add notification callback parsing tests in `test_hub.py` (see `TestNotificationCallback`)
+- **New helpers or schemas**: Add tests in `test_init.py` or a new test file
+- **Bug fixes**: Add a regression test that would have caught the bug
+
+### Manual Testing
+
+For integration-level testing that cannot be automated (config flow UI, real PLC communication):
 
 - Test with a real PLC if possible
 - Verify all entity types still work
 - Check Home Assistant logs for errors
 - Test both new installations and upgrades
+- See `TESTING_GUIDE.md` for detailed manual test procedures
 
 ## Documentation
 
