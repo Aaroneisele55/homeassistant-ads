@@ -373,11 +373,16 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                     device.id,
                     remove_config_entry_id=hub_entry.entry_id,
                 )
-                device_registry.async_update_device(
-                    device.id,
-                    add_config_entry_id=hub_entry.entry_id,
-                    add_config_subentry_id=subentry_id,
+                # Re-fetch device after removal as it may have been removed if it had no other associations
+                device = device_registry.async_get_device(
+                    identifiers={(DOMAIN, subentry_unique_id)}
                 )
+                if device is not None:
+                    device_registry.async_update_device(
+                        device.id,
+                        add_config_entry_id=hub_entry.entry_id,
+                        add_config_subentry_id=subentry_id,
+                    )
             elif needs_subentry:
                 _LOGGER.info(
                     "Migrating device '%s' to subentry '%s' on hub '%s'",
