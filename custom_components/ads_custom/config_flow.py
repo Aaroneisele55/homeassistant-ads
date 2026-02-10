@@ -323,11 +323,19 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             new_name,
         )
 
-        # Update the device name
-        device_registry.async_update_device(
-            device.id,
-            name=new_name,
-        )
+        # Update the appropriate name field
+        # If name_by_user is set and matches old_name, update it
+        # Otherwise update the base name field
+        if device.name_by_user and device.name_by_user == old_name:
+            device_registry.async_update_device(
+                device.id,
+                name_by_user=new_name,
+            )
+        else:
+            device_registry.async_update_device(
+                device.id,
+                name=new_name,
+            )
 
     # ── Add new entity ──────────────────────────────────────────────
 
