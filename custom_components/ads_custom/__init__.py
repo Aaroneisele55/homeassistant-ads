@@ -339,13 +339,38 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         if not subentry_unique_id:
             continue
 
-        # Migrate device: associate existing device with its subentry
+        # Migrate device: ensure device is properly associated with subentry
+        # For existing users who already have the duplicate display issue,
+        # we need to clean up and re-associate properly
         device = device_registry.async_get_device(
             identifiers={(DOMAIN, subentry_unique_id)}
         )
         if device is not None:
             subentry_ids = device.config_entries_subentries.get(hub_entry.entry_id)
-            if subentry_ids is None or subentry.subentry_id not in subentry_ids:
+            needs_subentry = subentry_ids is None or subentry.subentry_id not in subentry_ids
+            has_hub_association = hub_entry.entry_id in device.config_entries
+            
+            # For existing users: if device is already associated with both hub and subentry,
+            # we need to clean it up by removing and re-adding to fix duplicate display
+            if has_hub_association and not needs_subentry:
+                _LOGGER.info(
+                    "Cleaning up device '%s' associations for subentry '%s' on hub '%s' (fixing duplicate display)",
+                    device.name,
+                    subentry.title,
+                    hub_entry.title,
+                )
+                # Remove the direct hub association and re-add via subentry
+                # This fixes the duplicate display issue for existing users
+                device_registry.async_update_device(
+                    device.id,
+                    remove_config_entry_id=hub_entry.entry_id,
+                )
+                device_registry.async_update_device(
+                    device.id,
+                    add_config_entry_id=hub_entry.entry_id,
+                    add_config_subentry_id=subentry.subentry_id,
+                )
+            elif needs_subentry:
                 _LOGGER.info(
                     "Migrating device '%s' to subentry '%s' on hub '%s'",
                     device.name,
