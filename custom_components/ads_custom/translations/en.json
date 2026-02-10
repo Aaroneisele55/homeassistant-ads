@@ -39,8 +39,14 @@
         "user": {
           "title": "Add Entity",
           "description": "Select the type of entity you want to add.",
-          "data": {
-            "entity_type": "Entity Type"
+          "menu_options": {
+            "add_switch": "Switch",
+            "add_sensor": "Sensor",
+            "add_binary_sensor": "Binary Sensor",
+            "add_light": "Light",
+            "add_cover": "Cover",
+            "add_valve": "Valve",
+            "add_select": "Select"
           }
         },
         "configure_switch": {
