@@ -352,9 +352,10 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                     subentry.title,
                     hub_entry.title,
                 )
+                # Device is already associated with hub via entity's device_info
+                # Just add the subentry association to nest it properly in the UI
                 device_registry.async_update_device(
                     device.id,
-                    add_config_entry_id=hub_entry.entry_id,
                     add_config_subentry_id=subentry.subentry_id,
                 )
         
