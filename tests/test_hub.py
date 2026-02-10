@@ -219,9 +219,12 @@ class TestNotificationCallback:
     def test_udint_value(self, ads_hub):
         """UDINT (unsigned 32-bit) notification.
 
-        Note: Due to pyads PLCTYPE_UDINT/DWORD/DATE/DT/TIME sharing the same
-        ctypes identity (c_uint), the last dict entry (TIME: "<i") wins,
-        causing unsigned types to be unpacked as signed.
+        Note: In hub.py ``_device_notification_callback``, the
+        ``unpack_formats`` dict maps several pyads PLC types that share the
+        same ``ctypes.c_uint`` identity (UDINT, DWORD, DATE, DT, TIME).
+        Because TIME is listed last with format ``"<i"`` (signed), it
+        overwrites the unsigned ``"<I"`` for UDINT/DWORD.  We test with a
+        value that fits in both signed and unsigned 32-bit range.
         """
         data = struct.pack("<I", 100)
         cb = self._register_and_fire(ads_hub, pyads.PLCTYPE_UDINT, data)
@@ -276,7 +279,9 @@ class TestNotificationCallback:
     def test_dword_value(self, ads_hub):
         """DWORD (unsigned 32-bit) notification.
 
-        See test_udint_value for explanation of signed unpacking.
+        Same ``unpack_formats`` dict-key collision as UDINT; see
+        ``test_udint_value`` for details.  Uses a small value that is
+        identical in both signed and unsigned representation.
         """
         data = struct.pack("<I", 42)
         cb = self._register_and_fire(ads_hub, pyads.PLCTYPE_DWORD, data)

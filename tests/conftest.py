@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 # ---------------------------------------------------------------------------
-# Patch missing Home Assistant APIs that are only available in HA >= 2025.7
+# Patch missing Home Assistant APIs that are unavailable in older HA versions.
+# ConfigSubentry was added in a later HA release; this shim allows tests to
+# run against the version of HA installable on Python 3.12.
 # This must happen before any custom_components imports.
 # ---------------------------------------------------------------------------
 import homeassistant.config_entries as _ce
