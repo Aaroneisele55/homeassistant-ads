@@ -348,19 +348,27 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         if device is not None:
             subentry_ids = device.config_entries_subentries.get(hub_entry.entry_id)
             needs_subentry = subentry_ids is None or subentry.subentry_id not in subentry_ids
-            has_hub_association = hub_entry.entry_id in device.config_entries
+            has_subentry_association = not needs_subentry  # Inverse: True if subentry already exists
+            has_direct_hub_association = hub_entry.entry_id in device.config_entries
             
-            # For existing users: if device is already associated with both hub and subentry,
-            # we need to clean it up by removing and re-adding to fix duplicate display
-            if has_hub_association and not needs_subentry:
+            # Identify devices with duplicate display issue:
+            # - Has direct hub association (device.config_entries contains hub_id)
+            # - Has subentry association (needs_subentry is False, meaning subentry already exists)
+            # This happens when old migration called add_config_entry_id explicitly,
+            # creating a redundant direct association separate from the proper parent relationship
+            has_duplicate_display = has_direct_hub_association and has_subentry_association
+            
+            if has_duplicate_display:
                 _LOGGER.info(
                     "Cleaning up device '%s' associations for subentry '%s' on hub '%s' (fixing duplicate display)",
                     device.name,
                     subentry.title,
                     hub_entry.title,
                 )
-                # Remove the direct hub association and re-add via subentry
-                # This fixes the duplicate display issue for existing users
+                # Fix: Remove redundant direct hub association, then re-add properly with subentry
+                # This resets the device association to the correct state
+                # Note: Two separate calls are needed because async_update_device doesn't support
+                # remove and add of the same entry_id in a single call
                 device_registry.async_update_device(
                     device.id,
                     remove_config_entry_id=hub_entry.entry_id,
