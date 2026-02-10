@@ -55,6 +55,7 @@ ENTITY_TYPES = [
 
 # Device class options for dropdowns
 BINARY_SENSOR_DEVICE_CLASSES = [
+    "",  # Empty option to allow clearing device_class
     "battery",
     "battery_charging",
     "carbon_monoxide",
@@ -86,6 +87,7 @@ BINARY_SENSOR_DEVICE_CLASSES = [
 ]
 
 SENSOR_DEVICE_CLASSES = [
+    "",  # Empty option to allow clearing device_class
     "apparent_power",
     "aqi",
     "atmospheric_pressure",
@@ -140,6 +142,7 @@ SENSOR_DEVICE_CLASSES = [
 ]
 
 COVER_DEVICE_CLASSES = [
+    "",  # Empty option to allow clearing device_class
     "awning",
     "blind",
     "curtain",
@@ -153,6 +156,7 @@ COVER_DEVICE_CLASSES = [
 ]
 
 VALVE_DEVICE_CLASSES = [
+    "",  # Empty option to allow clearing device_class
     "gas",
     "water",
 ]
@@ -433,6 +437,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a sensor entity."""
         if user_input is not None:
+            # Remove empty device_class and state_class to allow clearing
+            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
+                user_input.pop(CONF_DEVICE_CLASS)
+            if CONF_STATE_CLASS in user_input and not user_input[CONF_STATE_CLASS]:
+                user_input.pop(CONF_STATE_CLASS)
+            
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
                 title=f"{user_input[CONF_NAME]} (Sensor)",
@@ -478,6 +488,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a binary sensor entity."""
         if user_input is not None:
+            # Remove empty device_class to allow clearing
+            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
+                user_input.pop(CONF_DEVICE_CLASS)
+            
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
                 title=f"{user_input[CONF_NAME]} (Binary Sensor)",
@@ -558,6 +572,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             for var in COVER_ADS_VAR_FIELDS:
                 if var in user_input and isinstance(user_input[var], str) and not user_input[var].strip():
                     user_input.pop(var)
+            
+            # Remove empty device_class to allow clearing
+            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
+                user_input.pop(CONF_DEVICE_CLASS)
 
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
@@ -608,6 +626,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Configure a valve entity."""
         if user_input is not None:
+            # Remove empty device_class to allow clearing
+            if CONF_DEVICE_CLASS in user_input and not user_input[CONF_DEVICE_CLASS]:
+                user_input.pop(CONF_DEVICE_CLASS)
+            
             unique_id = uuid.uuid4().hex
             return self.async_create_entry(
                 title=f"{user_input[CONF_NAME]} (Valve)",
@@ -740,6 +762,13 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
+            
+            # Remove empty device_class and state_class to allow clearing
+            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
+                new_data.pop(CONF_DEVICE_CLASS)
+            if CONF_STATE_CLASS in new_data and not new_data[CONF_STATE_CLASS]:
+                new_data.pop(CONF_STATE_CLASS)
+            
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
 
@@ -803,6 +832,11 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
+            
+            # Remove empty device_class to allow clearing
+            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
+                new_data.pop(CONF_DEVICE_CLASS)
+            
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
 
@@ -900,6 +934,11 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if not errors:
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
+                
+                # Remove empty device_class to allow clearing
+                if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
+                    new_data.pop(CONF_DEVICE_CLASS)
+                
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
 
@@ -952,6 +991,11 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         if user_input is not None:
             new_data = dict(self._entity_data)
             new_data.update(user_input)
+            
+            # Remove empty device_class to allow clearing
+            if CONF_DEVICE_CLASS in new_data and not new_data[CONF_DEVICE_CLASS]:
+                new_data.pop(CONF_DEVICE_CLASS)
+            
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"
 
