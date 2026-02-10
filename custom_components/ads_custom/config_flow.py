@@ -289,11 +289,16 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     @staticmethod
     def _remove_empty_optional_fields(data: dict[str, Any], *field_names: str) -> None:
-        """Remove optional fields with empty values from data dictionary.
+        """Remove optional fields with empty/falsy values from data dictionary.
+        
+        This method removes fields that evaluate to False in a boolean context,
+        including empty strings (""), None, empty lists ([]), 0, and False.
+        This is primarily used to allow users to clear optional configuration
+        fields like device_class by selecting an empty option in the UI.
         
         Args:
             data: Dictionary to modify in-place
-            *field_names: Names of fields to check and remove if empty
+            *field_names: Names of fields to check and remove if empty/falsy
         """
         for field_name in field_names:
             if field_name in data and not data[field_name]:
