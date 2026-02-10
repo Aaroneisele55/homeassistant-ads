@@ -59,7 +59,7 @@ def setup_platform(
         _LOGGER.error("Missing required field adsvar in valve configuration")
         return
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
-    device_class: ValveDeviceClass | None = config.get(CONF_DEVICE_CLASS)
+    device_class: ValveDeviceClass | None = config.get(CONF_DEVICE_CLASS) or None
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     entity = AdsValve(ads_hub, ads_var, name, device_class, unique_id)
@@ -85,7 +85,7 @@ async def async_setup_entry(
 
         name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
         ads_var = subentry.data.get(CONF_ADS_VAR)
-        device_class = subentry.data.get(CONF_DEVICE_CLASS)
+        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
         if ads_var and unique_id:

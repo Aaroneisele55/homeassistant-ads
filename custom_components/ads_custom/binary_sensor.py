@@ -63,7 +63,7 @@ def setup_platform(
         return
     ads_type: AdsType = config.get(CONF_ADS_TYPE, AdsType.BOOL)
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
-    device_class: BinarySensorDeviceClass | None = config.get(CONF_DEVICE_CLASS)
+    device_class: BinarySensorDeviceClass | None = config.get(CONF_DEVICE_CLASS) or None
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
     ads_sensor = AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id)
@@ -90,7 +90,7 @@ async def async_setup_entry(
         ads_var = subentry.data.get(CONF_ADS_VAR)
         ads_type_value = subentry.data.get(CONF_ADS_TYPE, AdsType.BOOL)
         ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
-        device_class = subentry.data.get(CONF_DEVICE_CLASS)
+        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
         if ads_var and unique_id:
