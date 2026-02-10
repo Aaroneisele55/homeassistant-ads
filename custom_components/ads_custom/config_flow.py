@@ -285,44 +285,50 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     # ── Add new entity ──────────────────────────────────────────────
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> SubentryFlowResult:
+    async def async_step_user(self) -> SubentryFlowResult:
         """Select entity type to add."""
-        if user_input is not None:
-            self._entity_data = user_input
-            entity_type = user_input[CONF_ENTITY_TYPE]
-
-            if entity_type == "switch":
-                return await self.async_step_configure_switch()
-            if entity_type == "sensor":
-                return await self.async_step_configure_sensor()
-            if entity_type == "binary_sensor":
-                return await self.async_step_configure_binary_sensor()
-            if entity_type == "light":
-                return await self.async_step_configure_light()
-            if entity_type == "cover":
-                return await self.async_step_configure_cover()
-            if entity_type == "valve":
-                return await self.async_step_configure_valve()
-            if entity_type == "select":
-                return await self.async_step_configure_select()
-
-            return self.async_abort(reason="entity_type_not_supported")
-
-        return self.async_show_form(
+        return self.async_show_menu(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_ENTITY_TYPE): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=ENTITY_TYPES,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
-                }
-            ),
+            menu_options=[
+                "add_switch",
+                "add_sensor",
+                "add_binary_sensor",
+                "add_light",
+                "add_cover",
+                "add_valve",
+                "add_select",
+            ],
         )
+
+    # ── Menu handlers for entity type selection ──────────────────────
+
+    async def async_step_add_switch(self) -> SubentryFlowResult:
+        """Route to switch configuration."""
+        return await self.async_step_configure_switch()
+
+    async def async_step_add_sensor(self) -> SubentryFlowResult:
+        """Route to sensor configuration."""
+        return await self.async_step_configure_sensor()
+
+    async def async_step_add_binary_sensor(self) -> SubentryFlowResult:
+        """Route to binary sensor configuration."""
+        return await self.async_step_configure_binary_sensor()
+
+    async def async_step_add_light(self) -> SubentryFlowResult:
+        """Route to light configuration."""
+        return await self.async_step_configure_light()
+
+    async def async_step_add_cover(self) -> SubentryFlowResult:
+        """Route to cover configuration."""
+        return await self.async_step_configure_cover()
+
+    async def async_step_add_valve(self) -> SubentryFlowResult:
+        """Route to valve configuration."""
+        return await self.async_step_configure_valve()
+
+    async def async_step_add_select(self) -> SubentryFlowResult:
+        """Route to select configuration."""
+        return await self.async_step_configure_select()
 
     # ── Configure new entities ──────────────────────────────────────
 
