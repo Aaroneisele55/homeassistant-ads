@@ -112,6 +112,32 @@ class TestDeviceClassLists:
                             return
         pytest.fail("VALVE_DEVICE_CLASSES not found in config_flow.py")
 
+    @pytest.mark.parametrize(
+        "constant_name",
+        [
+            "BINARY_SENSOR_DEVICE_CLASSES",
+            "SENSOR_DEVICE_CLASSES",
+            "COVER_DEVICE_CLASSES",
+            "VALVE_DEVICE_CLASSES",
+        ],
+    )
+    def test_all_device_class_options_are_dicts(self, constant_name: str):
+        """Test that all device class options are in dict format for proper SelectSelector validation."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == constant_name:
+                        if isinstance(node.value, ast.List):
+                            # Check all elements are dicts
+                            for elem in node.value.elts:
+                                assert isinstance(elem, ast.Dict), f"All options in {constant_name} must be dicts"
+                            return
+        pytest.fail(f"{constant_name} not found in config_flow.py")
+
 
 class TestRemoveEmptyOptionalFields:
     """Tests for _remove_empty_optional_fields helper method."""
