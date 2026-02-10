@@ -1,0 +1,260 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ADS-Verbindung",
+        "description": "Konfigurieren Sie die Verbindung zu Ihrem ADS-Gerät (TwinCAT-SPS).",
+        "data": {
+          "device": "AMS Net ID",
+          "ip_address": "IP-Adresse (optional)",
+          "port": "AMS-Port"
+        },
+        "data_description": {
+          "device": "Die AMS Net ID Ihres ADS-Geräts (z.B. 192.168.1.100.1.1)",
+          "ip_address": "Die IP-Adresse Ihres ADS-Geräts (optional, wenn Routing konfiguriert ist)",
+          "port": "Die AMS-Port-Nummer (Standard: 48898)"
+        }
+      },
+      "import": {
+        "title": "Import aus YAML",
+        "description": "Ihre YAML-Konfiguration für ADS Custom wurde automatisch importiert. Sie können nun den Abschnitt `ads_custom:` und die zugehörigen Plattform-Einträge aus Ihrer configuration.yaml-Datei entfernen."
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum ADS-Gerät fehlgeschlagen. Bitte überprüfen Sie Ihre Konfiguration und stellen Sie sicher, dass das Gerät erreichbar ist.",
+      "unknown": "Unerwarteter Fehler aufgetreten"
+    },
+    "abort": {
+      "already_configured": "Dieses ADS-Gerät ist bereits konfiguriert"
+    }
+  },
+  "config_subentries": {
+    "entity": {
+      "entry_type": "ADS-Entität",
+      "initiate_flow": {
+        "user": "ADS-Entität hinzufügen",
+        "reconfigure": "ADS-Entität neu konfigurieren"
+      },
+      "step": {
+        "user": {
+          "title": "Entität hinzufügen",
+          "description": "Wählen Sie den Typ der Entität aus, die Sie hinzufügen möchten.",
+          "menu_options": {
+            "add_switch": "Schalter",
+            "add_sensor": "Sensor",
+            "add_binary_sensor": "Binärer Sensor",
+            "add_light": "Licht",
+            "add_cover": "Rollladen/Abdeckung",
+            "add_valve": "Ventil",
+            "add_select": "Auswahl"
+          }
+        },
+        "configure_switch": {
+          "title": "Schalter konfigurieren",
+          "description": "Konfigurieren Sie eine Schalter-Entität, die eine boolesche Variable auf Ihrer SPS steuert.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname"
+          },
+          "data_description": {
+            "adsvar": "Der SPS-Variablenname (z.B. GVL.pumpe)",
+            "name": "Anzeigename für den Schalter"
+          }
+        },
+        "configure_sensor": {
+          "title": "Sensor konfigurieren",
+          "description": "Konfigurieren Sie einen Sensor, der einen numerischen oder Text-Wert von Ihrer SPS liest.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "adstype": "Datentyp",
+            "unit_of_measurement": "Maßeinheit (optional)",
+            "device_class": "Geräteklasse (optional)",
+            "state_class": "Zustandsklasse (optional)"
+          },
+          "data_description": {
+            "adsvar": "Der SPS-Variablenname (z.B. GVL.temperatur)",
+            "name": "Anzeigename für den Sensor",
+            "adstype": "Der Datentyp der SPS-Variable",
+            "unit_of_measurement": "z.B. °C, %, kW",
+            "device_class": "z.B. temperature, humidity, power",
+            "state_class": "Für Statistiken und Langzeitdaten"
+          }
+        },
+        "configure_binary_sensor": {
+          "title": "Binären Sensor konfigurieren",
+          "description": "Konfigurieren Sie einen binären Sensor, der einen Ein/Aus-Zustand von Ihrer SPS liest.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "adstype": "Datentyp",
+            "device_class": "Geräteklasse (optional)"
+          },
+          "data_description": {
+            "adsvar": "Der SPS-Variablenname (z.B. GVL.tuer_offen)",
+            "name": "Anzeigename für den binären Sensor",
+            "adstype": "bool für boolesch, real für Gleitkomma",
+            "device_class": "z.B. door, motion, window"
+          }
+        },
+        "configure_light": {
+          "title": "Licht konfigurieren",
+          "description": "Konfigurieren Sie eine Licht-Entität, die ein- und ausgeschaltet und optional gedimmt werden kann.",
+          "data": {
+            "adsvar": "ADS-Variablenname (Ein/Aus)",
+            "name": "Entitätsname",
+            "adsvar_brightness": "Helligkeitsvariable (optional)",
+            "adsvar_brightness_type": "Helligkeitsdatentyp",
+            "adsvar_brightness_scale": "Helligkeitsskala"
+          },
+          "data_description": {
+            "adsvar": "Die SPS-Variable für die Ein/Aus-Steuerung",
+            "name": "Anzeigename für das Licht",
+            "adsvar_brightness": "SPS-Variable für Helligkeit (leer lassen für nur Ein/Aus)",
+            "adsvar_brightness_type": "Datentyp: byte (0-255) oder uint (0-65535)",
+            "adsvar_brightness_scale": "Maximaler Helligkeitswert (255 für HA-Standard, 100 für Beckhoff)"
+          }
+        },
+        "configure_cover": {
+          "title": "Rollladen/Abdeckung konfigurieren",
+          "description": "Konfigurieren Sie eine Rollladen-Entität wie Jalousien, Rollläden oder Garagentore.",
+          "data": {
+            "adsvar": "Geschlossen-Zustandsvariable (optional)",
+            "name": "Entitätsname",
+            "adsvar_position": "Positionsvariable (optional)",
+            "adsvar_position_type": "Positionsdatentyp",
+            "adsvar_set_position": "Sollpositionsvariable (optional)",
+            "adsvar_open": "Öffnen-Befehlsvariable (optional)",
+            "adsvar_close": "Schließen-Befehlsvariable (optional)",
+            "adsvar_stop": "Stopp-Befehlsvariable (optional)",
+            "inverted": "Invertierte Positionierung",
+            "device_class": "Geräteklasse (optional)"
+          },
+          "data_description": {
+            "adsvar": "Boolesche Variable, die anzeigt, ob die Abdeckung geschlossen ist",
+            "name": "Anzeigename für die Abdeckung",
+            "adsvar_position": "Variable zum Lesen der aktuellen Position (0-100)",
+            "adsvar_position_type": "Datentyp: byte (0-255) oder uint (0-65535)",
+            "adsvar_set_position": "Variable zum Setzen der Zielposition",
+            "adsvar_open": "Boolesche Variable zum Auslösen des Öffnungsbefehls",
+            "adsvar_close": "Boolesche Variable zum Auslösen des Schließbefehls",
+            "adsvar_stop": "Boolesche Variable zum Auslösen des Stoppbefehls",
+            "inverted": "Wenn wahr, Position 0=offen und 100=geschlossen",
+            "device_class": "z.B. blind, curtain, garage"
+          }
+        },
+        "configure_valve": {
+          "title": "Ventil konfigurieren",
+          "description": "Konfigurieren Sie eine Ventil-Entität zur Steuerung des Flüssigkeitsflusses.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "device_class": "Geräteklasse (optional)"
+          },
+          "data_description": {
+            "adsvar": "Die SPS-Variable für die Ventilsteuerung (true=offen, false=geschlossen)",
+            "name": "Anzeigename für das Ventil",
+            "device_class": "z.B. gas, water"
+          }
+        },
+        "configure_select": {
+          "title": "Auswahl konfigurieren",
+          "description": "Konfigurieren Sie eine Auswahl-Entität zur Auswahl aus vordefinierten Optionen.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "options": "Optionen (durch Komma getrennt)"
+          },
+          "data_description": {
+            "adsvar": "Die SPS-Variable, die den Optionsindex speichert (0-basierte Ganzzahl)",
+            "name": "Anzeigename für die Auswahl",
+            "options": "Geben Sie Optionen getrennt durch Kommas ein (z.B. 'Aus, Auto, Manuell')"
+          }
+        },
+        "reconfigure_switch": {
+          "title": "Schalter bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Schalter-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname"
+          }
+        },
+        "reconfigure_sensor": {
+          "title": "Sensor bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Sensor-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "adstype": "Datentyp",
+            "unit_of_measurement": "Maßeinheit (optional)",
+            "device_class": "Geräteklasse (optional)",
+            "state_class": "Zustandsklasse (optional)"
+          }
+        },
+        "reconfigure_binary_sensor": {
+          "title": "Binären Sensor bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese binäre Sensor-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "adstype": "Datentyp",
+            "device_class": "Geräteklasse (optional)"
+          }
+        },
+        "reconfigure_light": {
+          "title": "Licht bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Licht-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname (Ein/Aus)",
+            "name": "Entitätsname",
+            "adsvar_brightness": "Helligkeitsvariable (optional)",
+            "adsvar_brightness_type": "Helligkeitsdatentyp",
+            "adsvar_brightness_scale": "Helligkeitsskala"
+          }
+        },
+        "reconfigure_cover": {
+          "title": "Rollladen/Abdeckung bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Rollladen-Entität.",
+          "data": {
+            "adsvar": "Geschlossen-Zustandsvariable (optional)",
+            "name": "Entitätsname",
+            "adsvar_position": "Positionsvariable (optional)",
+            "adsvar_position_type": "Positionsdatentyp",
+            "adsvar_set_position": "Sollpositionsvariable (optional)",
+            "adsvar_open": "Öffnen-Befehlsvariable (optional)",
+            "adsvar_close": "Schließen-Befehlsvariable (optional)",
+            "adsvar_stop": "Stopp-Befehlsvariable (optional)",
+            "inverted": "Invertierte Positionierung",
+            "device_class": "Geräteklasse (optional)"
+          }
+        },
+        "reconfigure_valve": {
+          "title": "Ventil bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Ventil-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "device_class": "Geräteklasse (optional)"
+          }
+        },
+        "reconfigure_select": {
+          "title": "Auswahl bearbeiten",
+          "description": "Ändern Sie die Konfiguration für diese Auswahl-Entität.",
+          "data": {
+            "adsvar": "ADS-Variablenname",
+            "name": "Entitätsname",
+            "options": "Optionen (durch Komma getrennt)"
+          }
+        }
+      },
+      "error": {
+        "no_state_var": "Abdeckung muss entweder eine Geschlossen-Zustandsvariable (adsvar) oder eine Positionsvariable (adsvar_position) haben",
+        "no_options": "Auswahl muss mindestens eine Option haben"
+      },
+      "abort": {
+        "entity_type_not_supported": "Dieser Entitätstyp wird noch nicht unterstützt",
+        "reconfigure_successful": "Entität erfolgreich aktualisiert"
+      }
+    }
+  }
+}
