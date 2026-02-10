@@ -90,8 +90,8 @@ def setup_platform(
     ads_type: AdsType = config.get(CONF_ADS_TYPE, AdsType.INT)
     name: str = config.get(CONF_NAME, DEFAULT_NAME)
     factor: int | None = config.get(CONF_ADS_FACTOR)
-    device_class: SensorDeviceClass | None = config.get(CONF_DEVICE_CLASS)
-    state_class: SensorStateClass | None = config.get(CONF_STATE_CLASS)
+    device_class: SensorDeviceClass | None = config.get(CONF_DEVICE_CLASS) or None
+    state_class: SensorStateClass | None = config.get(CONF_STATE_CLASS) or None
     unit_of_measurement: str | None = config.get(CONF_UNIT_OF_MEASUREMENT)
     unique_id: str | None = config.get(CONF_UNIQUE_ID)
 
@@ -131,8 +131,8 @@ async def async_setup_entry(
         ads_type_value = subentry.data.get(CONF_ADS_TYPE, AdsType.INT)
         ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
         factor = subentry.data.get(CONF_ADS_FACTOR)
-        device_class = subentry.data.get(CONF_DEVICE_CLASS)
-        state_class = subentry.data.get(CONF_STATE_CLASS)
+        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
+        state_class = subentry.data.get(CONF_STATE_CLASS) or None
         unit_of_measurement = subentry.data.get(CONF_UNIT_OF_MEASUREMENT)
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
