@@ -213,7 +213,7 @@ class AdsSensor(AdsEntity, SensorEntity):
         if isinstance(value, str) and self._attr_state_class is not None:
             try:
                 return float(value)
-            except (ValueError, TypeError):
+            except ValueError:
                 _LOGGER.warning(
                     "Sensor %s received non-numeric value '%s' but has "
                     "state_class '%s'; returning None",
