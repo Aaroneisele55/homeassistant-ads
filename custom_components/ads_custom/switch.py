@@ -70,7 +70,7 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    for subentry in entry.subentries.values():
+    for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
         if subentry.data.get("entity_type") != "switch":
@@ -87,7 +87,7 @@ async def async_setup_entry(
             
             async_add_entities(
                 [AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id)],
-                config_subentry_id=subentry.subentry_id,
+                config_subentry_id=subentry_id,
             )
 
 

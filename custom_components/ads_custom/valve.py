@@ -77,7 +77,7 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    for subentry in entry.subentries.values():
+    for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
         if subentry.data.get("entity_type") != "valve":
@@ -95,7 +95,7 @@ async def async_setup_entry(
             
             async_add_entities(
                 [AdsValve(ads_hub, ads_var, name, device_class, unique_id, device_name, device_identifiers, entry.entry_id)],
-                config_subentry_id=subentry.subentry_id,
+                config_subentry_id=subentry_id,
             )
 
 
