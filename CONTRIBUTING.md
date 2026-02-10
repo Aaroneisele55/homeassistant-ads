@@ -66,10 +66,16 @@ When making changes that affect users:
 
 Before submitting:
 
-1. Test with a real PLC if possible
-2. Verify all entity types still work
-3. Check Home Assistant logs for errors
-4. Test both new installations and upgrades
+1. **Run the automated test suite:**
+   ```bash
+   pip install -r requirements_test.txt
+   python -m pytest tests/ -v
+   ```
+2. Add new tests for any new or modified functionality (see `tests/` for examples)
+3. Test with a real PLC if possible
+4. Verify all entity types still work
+5. Check Home Assistant logs for errors
+6. Test both new installations and upgrades
 
 ## Questions?
 
