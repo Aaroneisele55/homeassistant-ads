@@ -80,7 +80,6 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    entities = []
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
@@ -99,12 +98,10 @@ async def async_setup_entry(
             device_identifiers = {(DOMAIN, subentry.unique_id)}
             device_name = name
             
-            entities.append(
-                AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id, device_name, device_identifiers, entry.entry_id)
+            async_add_entities(
+                [AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id, device_name, device_identifiers, entry.entry_id)],
+                config_subentry_id=subentry.subentry_id,
             )
-
-    if entities:
-        async_add_entities(entities)
 
 
 class AdsBinarySensor(AdsEntity, BinarySensorEntity):
