@@ -331,7 +331,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
     device_registry = dr.async_get(hass)
     
     # Get all entities that belong to this hub's subentries
-    for subentry in hub_entry.subentries.values():
+    for subentry_id, subentry in hub_entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
         
@@ -347,7 +347,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         )
         if device is not None:
             subentry_ids = device.config_entries_subentries.get(hub_entry.entry_id)
-            needs_subentry = subentry_ids is None or subentry.subentry_id not in subentry_ids
+            needs_subentry = subentry_ids is None or subentry_id not in subentry_ids
             has_subentry_association = not needs_subentry  # Inverse: True if subentry already exists
             has_direct_hub_association = hub_entry.entry_id in device.config_entries
             
@@ -376,7 +376,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 device_registry.async_update_device(
                     device.id,
                     add_config_entry_id=hub_entry.entry_id,
-                    add_config_subentry_id=subentry.subentry_id,
+                    add_config_subentry_id=subentry_id,
                 )
             elif needs_subentry:
                 _LOGGER.info(
@@ -389,7 +389,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 # Just add the subentry association to nest it properly in the UI
                 device_registry.async_update_device(
                     device.id,
-                    add_config_subentry_id=subentry.subentry_id,
+                    add_config_subentry_id=subentry_id,
                 )
         
         # Migrate entity: associate existing entity with its subentry
@@ -414,8 +414,8 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
             update_kwargs["config_entry_id"] = hub_entry.entry_id
             needs_update = True
 
-        if entity_entry.config_subentry_id != subentry.subentry_id:
-            update_kwargs["config_subentry_id"] = subentry.subentry_id
+        if entity_entry.config_subentry_id != subentry_id:
+            update_kwargs["config_subentry_id"] = subentry_id
             needs_update = True
 
         if needs_update:
