@@ -285,7 +285,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     # ── Add new entity ──────────────────────────────────────────────
 
-    async def async_step_user(self) -> SubentryFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Select entity type to add."""
         return self.async_show_menu(
             step_id="user",
@@ -302,31 +304,45 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
     # ── Menu handlers for entity type selection ──────────────────────
 
-    async def async_step_add_switch(self) -> SubentryFlowResult:
+    async def async_step_add_switch(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to switch configuration."""
         return await self.async_step_configure_switch()
 
-    async def async_step_add_sensor(self) -> SubentryFlowResult:
+    async def async_step_add_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to sensor configuration."""
         return await self.async_step_configure_sensor()
 
-    async def async_step_add_binary_sensor(self) -> SubentryFlowResult:
+    async def async_step_add_binary_sensor(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to binary sensor configuration."""
         return await self.async_step_configure_binary_sensor()
 
-    async def async_step_add_light(self) -> SubentryFlowResult:
+    async def async_step_add_light(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to light configuration."""
         return await self.async_step_configure_light()
 
-    async def async_step_add_cover(self) -> SubentryFlowResult:
+    async def async_step_add_cover(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to cover configuration."""
         return await self.async_step_configure_cover()
 
-    async def async_step_add_valve(self) -> SubentryFlowResult:
+    async def async_step_add_valve(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to valve configuration."""
         return await self.async_step_configure_valve()
 
-    async def async_step_add_select(self) -> SubentryFlowResult:
+    async def async_step_add_select(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
         """Route to select configuration."""
         return await self.async_step_configure_select()
 
