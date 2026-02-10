@@ -79,7 +79,6 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    entities = []
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
@@ -96,17 +95,15 @@ async def async_setup_entry(
             device_identifiers = {(DOMAIN, subentry.unique_id)}
             device_name = name
             
-            entities.append(
-                AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers, entry.entry_id)
+            async_add_entities(
+                [AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers, entry.entry_id)],
+                config_subentry_id=subentry.subentry_id,
             )
         else:
             _LOGGER.warning(
-                "Select configuration for '%s' must include 'adsvar' and 'options'. Skipping.",
+                "Select configuration for '%s' must include 'adsvar', 'options', and 'unique_id'. Skipping.",
                 name
             )
-
-    if entities:
-        async_add_entities(entities)
 
 
 class AdsSelect(AdsEntity, SelectEntity):
