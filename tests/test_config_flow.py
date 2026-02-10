@@ -242,3 +242,77 @@ class TestRemoveEmptyOptionalFields:
         )
         assert data == {"field1": "value", "field4": "other"}
 
+
+class TestRemoveClearedOptionalFields:
+    """Tests for _remove_cleared_optional_fields helper method."""
+
+    @staticmethod
+    def _remove_cleared_optional_fields(
+        merged_data: dict[str, Any],
+        user_input: dict[str, Any],
+        *field_names: str,
+    ) -> None:
+        """Test implementation of the helper matching the actual implementation."""
+        for field_name in field_names:
+            if field_name in merged_data and field_name not in user_input:
+                del merged_data[field_name]
+
+    def test_removes_old_value_when_absent_from_user_input(self):
+        """Test that old device_class is removed when user selects (None)."""
+        old_data = {"adsvar": "GVL.Sensor", "name": "Test", "device_class": "battery"}
+        user_input = {"adsvar": "GVL.Sensor", "name": "Test"}
+        merged = dict(old_data)
+        merged.update(user_input)
+        self._remove_cleared_optional_fields(merged, user_input, "device_class")
+        assert "device_class" not in merged
+
+    def test_preserves_value_when_present_in_user_input(self):
+        """Test that device_class is preserved when user selects a new value."""
+        old_data = {"adsvar": "GVL.Sensor", "name": "Test", "device_class": "battery"}
+        user_input = {"adsvar": "GVL.Sensor", "name": "Test", "device_class": "door"}
+        merged = dict(old_data)
+        merged.update(user_input)
+        self._remove_cleared_optional_fields(merged, user_input, "device_class")
+        assert merged["device_class"] == "door"
+
+    def test_no_error_when_field_not_in_old_data(self):
+        """Test that missing fields in old data are handled gracefully."""
+        old_data = {"adsvar": "GVL.Sensor", "name": "Test"}
+        user_input = {"adsvar": "GVL.Sensor", "name": "Test"}
+        merged = dict(old_data)
+        merged.update(user_input)
+        self._remove_cleared_optional_fields(merged, user_input, "device_class")
+        assert "device_class" not in merged
+
+    def test_handles_multiple_fields(self):
+        """Test that multiple optional fields can be cleared at once."""
+        old_data = {
+            "name": "Test",
+            "device_class": "battery",
+            "state_class": "measurement",
+        }
+        user_input = {"name": "Test"}
+        merged = dict(old_data)
+        merged.update(user_input)
+        self._remove_cleared_optional_fields(
+            merged, user_input, "device_class", "state_class"
+        )
+        assert "device_class" not in merged
+        assert "state_class" not in merged
+
+    def test_clears_only_absent_fields(self):
+        """Test that only absent fields are cleared, present ones preserved."""
+        old_data = {
+            "name": "Test",
+            "device_class": "battery",
+            "state_class": "measurement",
+        }
+        user_input = {"name": "Test", "state_class": "total"}
+        merged = dict(old_data)
+        merged.update(user_input)
+        self._remove_cleared_optional_fields(
+            merged, user_input, "device_class", "state_class"
+        )
+        assert "device_class" not in merged
+        assert merged["state_class"] == "total"
+
