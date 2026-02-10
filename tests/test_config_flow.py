@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import Any
 
 import pytest
+
+from custom_components.ads_custom.config_flow import AdsEntitySubentryFlowHandler
 
 
 class TestDeviceClassLists:
@@ -142,28 +143,9 @@ class TestDeviceClassLists:
 class TestRemoveEmptyOptionalFields:
     """Tests for _remove_empty_optional_fields helper method."""
 
-    @staticmethod
-    def _remove_empty_optional_fields(data: dict[str, Any], *field_names: str) -> None:
-        """Test implementation of the helper matching the actual implementation."""
-        for field_name in field_names:
-            if field_name not in data:
-                continue
-
-            value = data[field_name]
-
-            # Remove explicit None
-            if value is None:
-                data.pop(field_name)
-                continue
-
-            # Remove empty or whitespace-only strings
-            if isinstance(value, str) and not value.strip():
-                data.pop(field_name)
-                continue
-
-            # Remove empty collections (but keep 0/False etc.)
-            if isinstance(value, (list, dict, set, tuple)) and not value:
-                data.pop(field_name)
+    _remove_empty_optional_fields = staticmethod(
+        AdsEntitySubentryFlowHandler._remove_empty_optional_fields
+    )
 
     def test_removes_none_value(self):
         """Test that None values are removed."""
@@ -246,16 +228,9 @@ class TestRemoveEmptyOptionalFields:
 class TestRemoveClearedOptionalFields:
     """Tests for _remove_cleared_optional_fields helper method."""
 
-    @staticmethod
-    def _remove_cleared_optional_fields(
-        merged_data: dict[str, Any],
-        user_input: dict[str, Any],
-        *field_names: str,
-    ) -> None:
-        """Test implementation of the helper matching the actual implementation."""
-        for field_name in field_names:
-            if field_name in merged_data and field_name not in user_input:
-                del merged_data[field_name]
+    _remove_cleared_optional_fields = staticmethod(
+        AdsEntitySubentryFlowHandler._remove_cleared_optional_fields
+    )
 
     def test_removes_old_value_when_absent_from_user_input(self):
         """Test that old device_class is removed when user selects (None)."""
