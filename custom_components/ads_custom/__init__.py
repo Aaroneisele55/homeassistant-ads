@@ -22,8 +22,9 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     EVENT_HOMEASSISTANT_STOP,
 )
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import Event, HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.device_registry import EVENT_DEVICE_REGISTRY_UPDATED
 from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
@@ -476,6 +477,90 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return await _async_setup_connection(hass, conf, "connection")
 
 
+async def _async_handle_device_registry_update(
+    hass: HomeAssistant, entry: ConfigEntry, event: Event
+) -> None:
+    """Handle device registry updates to sync device renames to subentries."""
+    event_data = event.data
+    
+    # Only handle update events, not create or remove
+    if event_data.get("action") != "update":
+        return
+    
+    # Check if the device name was changed
+    changes = event_data.get("changes", {})
+    if "name" not in changes and "name_by_user" not in changes:
+        return
+    
+    device_id = event_data.get("device_id")
+    if not device_id:
+        return
+    
+    # Get the device registry and find the device
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get(device_id)
+    
+    if not device:
+        return
+    
+    # Check if this device belongs to our integration
+    device_identifiers = device.identifiers
+    our_identifier = None
+    for identifier in device_identifiers:
+        if identifier[0] == DOMAIN:
+            our_identifier = identifier[1]
+            break
+    
+    if not our_identifier:
+        return
+    
+    # Find the subentry with matching unique_id
+    matching_subentry = None
+    
+    for subentry_id, subentry in entry.subentries.items():
+        if subentry.subentry_type == SUBENTRY_TYPE_ENTITY and subentry.unique_id == our_identifier:
+            matching_subentry = subentry
+            break
+    
+    if not matching_subentry:
+        return
+    
+    # Get the new device name (prefer name_by_user over name)
+    new_device_name = device.name_by_user or device.name
+    if not new_device_name:
+        return
+    
+    # Get the old name from the subentry data
+    old_name = matching_subentry.data.get(CONF_NAME)
+    
+    # If the name hasn't changed, no need to update
+    if old_name == new_device_name:
+        return
+    
+    _LOGGER.info(
+        "Device '%s' renamed to '%s', updating subentry",
+        old_name,
+        new_device_name,
+    )
+    
+    # Update the subentry data with the new name
+    new_data = dict(matching_subentry.data)
+    new_data[CONF_NAME] = new_device_name
+    
+    # Update the subentry title
+    entity_type = new_data.get(CONF_ENTITY_TYPE, "entity")
+    entity_type_display = entity_type.replace("_", " ").title()
+    new_title = f"{new_device_name} ({entity_type_display})"
+    
+    # Update the subentry
+    hass.config_entries.async_update_subentry(
+        entry,
+        matching_subentry,
+        data=MappingProxyType(new_data),
+        title=new_title,
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ADS from a config entry (hub only)."""
     # Initialize data storage
@@ -510,6 +595,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Reload when config entry is updated (e.g. subentry added/removed)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    
+    # Listen for device registry updates to sync device renames to subentries
+    async def device_registry_updated(event: Event) -> None:
+        """Handle device registry update events."""
+        await _async_handle_device_registry_update(hass, entry, event)
+    
+    entry.async_on_unload(
+        hass.bus.async_listen(EVENT_DEVICE_REGISTRY_UPDATED, device_registry_updated)
+    )
 
     return True
 
