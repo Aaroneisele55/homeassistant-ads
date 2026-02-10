@@ -329,6 +329,30 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if isinstance(value, (list, dict, set, tuple)) and not value:
                 data.pop(field_name)
 
+    @staticmethod
+    def _remove_cleared_optional_fields(
+        merged_data: dict[str, Any],
+        user_input: dict[str, Any],
+        *field_names: str,
+    ) -> None:
+        """Remove optional fields that were cleared during reconfiguration.
+
+        When reconfiguring, old entity data is merged with user input via
+        ``dict.update()``.  If the user selects a blank / "(None)" option
+        for an ``Optional`` select field, voluptuous may strip the empty
+        value so the key is absent from *user_input*.  The old value then
+        survives the merge.  This helper detects that situation and removes
+        such stale keys from *merged_data*.
+
+        Args:
+            merged_data: Dictionary resulting from old data merged with user input.
+            user_input: The raw user input from the form submission.
+            *field_names: Names of optional fields that support clearing.
+        """
+        for field_name in field_names:
+            if field_name in merged_data and field_name not in user_input:
+                del merged_data[field_name]
+
     def _update_device_name_if_changed(
         self, subentry_unique_id: str, old_name: str | None, new_name: str
     ) -> None:
@@ -805,6 +829,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             self._remove_empty_optional_fields(
                 new_data, CONF_DEVICE_CLASS, CONF_STATE_CLASS
             )
+            self._remove_cleared_optional_fields(
+                new_data, user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS
+            )
 
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Sensor)"
@@ -872,6 +899,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             # Remove empty optional fields to allow clearing
             self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
+            self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
 
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
@@ -973,6 +1001,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
                 # Remove empty optional fields to allow clearing
                 self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
+                self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
 
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
@@ -1029,6 +1058,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             # Remove empty optional fields to allow clearing
             self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
+            self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
 
             subentry = self._get_reconfigure_subentry()
             new_title = f"{user_input[CONF_NAME]} (Valve)"

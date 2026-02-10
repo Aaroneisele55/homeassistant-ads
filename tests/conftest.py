@@ -20,6 +20,16 @@ if not hasattr(_ce, "ConfigSubentry"):
 
     _ce.ConfigSubentry = _ConfigSubentry  # type: ignore[attr-defined]
 
+if not hasattr(_ce, "ConfigSubentryFlow"):
+
+    class _ConfigSubentryFlow:  # noqa: D101
+        pass
+
+    _ce.ConfigSubentryFlow = _ConfigSubentryFlow  # type: ignore[attr-defined]
+
+if not hasattr(_ce, "SubentryFlowResult"):
+    _ce.SubentryFlowResult = dict  # type: ignore[attr-defined]
+
 # ---------------------------------------------------------------------------
 
 from unittest.mock import MagicMock
