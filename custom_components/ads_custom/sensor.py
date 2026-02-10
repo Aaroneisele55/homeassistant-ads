@@ -209,4 +209,17 @@ class AdsSensor(AdsEntity, SensorEntity):
     @property
     def native_value(self) -> StateType:
         """Return the state of the device."""
-        return self._state_dict.get(STATE_KEY_STATE)
+        value = self._state_dict.get(STATE_KEY_STATE)
+        if isinstance(value, str) and self._attr_state_class is not None:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                _LOGGER.warning(
+                    "Sensor %s received non-numeric value '%s' but has "
+                    "state_class '%s'; returning None",
+                    self._ads_var,
+                    value,
+                    self._attr_state_class,
+                )
+                return None
+        return value
