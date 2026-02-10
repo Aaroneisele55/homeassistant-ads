@@ -374,7 +374,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
             continue
 
         needs_update = False
-        update_kwargs: dict = {}
+        update_kwargs: dict[str, str] = {}
 
         if entity_entry.config_entry_id != hub_entry.entry_id:
             update_kwargs["config_entry_id"] = hub_entry.entry_id
