@@ -71,11 +71,11 @@ jobs:
           elif echo "$LABELS" | grep -iq "patch"; then
             BUMP_TYPE="patch"
           # Check PR title/commit message
-          elif echo "$MESSAGE" | grep -iE '\[major\]|breaking|BREAKING CHANGE'; then
+          elif echo "$MESSAGE" | grep -iqE '\[major\]|breaking|BREAKING CHANGE'; then
             BUMP_TYPE="major"
-          elif echo "$MESSAGE" | grep -iE '\[minor\]|feat:|feature:'; then
+          elif echo "$MESSAGE" | grep -iqE '\[minor\]|feat:|feature:'; then
             BUMP_TYPE="minor"
-          elif echo "$MESSAGE" | grep -iE '\[patch\]|fix:|bugfix:|hotfix:'; then
+          elif echo "$MESSAGE" | grep -iqE '\[patch\]|fix:|bugfix:|hotfix:'; then
             BUMP_TYPE="patch"
           # Check for conventional commits
           elif echo "$MESSAGE" | grep -E '^feat(\(.+\))?!:'; then
@@ -98,6 +98,7 @@ jobs:
           echo "Determined bump type: $BUMP_TYPE"
       
       - name: Bump version
+        id: bump_version
         if: steps.bump_type.outputs.skip != 'true'
         run: |
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
