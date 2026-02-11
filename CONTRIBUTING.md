@@ -24,11 +24,15 @@ If you find a bug or have a feature request:
    - Follow the existing code style
    - Add/update documentation as needed
    - Test your changes thoroughly
-3. **Commit your changes** with clear, descriptive commit messages
+   - **Update CHANGELOG.md** - Add your changes under the `[Unreleased]` section
+3. **Commit your changes** with clear, descriptive commit messages:
+   - Use prefixes like `feat:`, `fix:`, or `[minor]`, `[patch]` to trigger automatic versioning
+   - See [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) for details
 4. **Submit a pull request** with:
    - Description of what changed and why
    - Reference to any related issues
    - Testing performed
+   - Appropriate label (`minor` for features, `patch` for bug fixes, `major` for breaking changes)
 
 ### Development Setup
 
@@ -61,6 +65,20 @@ When making changes that affect users:
 - Update [ENTITY_PARAMETERS.md](ENTITY_PARAMETERS.md) for parameter details
 - Update [example_configuration.yaml](example_configuration.yaml) with examples
 - Update [README.md](README.md) if needed
+- **Update [CHANGELOG.md](CHANGELOG.md)** - Add your changes under `[Unreleased]` section
+
+### Versioning
+
+This project uses **automated version management**:
+
+- Version numbers follow [Semantic Versioning](https://semver.org/)
+- Versions are automatically bumped based on commit messages or PR labels
+- See [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) for complete details
+- Always add changes to the `[Unreleased]` section in CHANGELOG.md
+- Use appropriate commit prefixes:
+  - `feat:` or `[minor]` for new features
+  - `fix:` or `[patch]` for bug fixes
+  - `BREAKING CHANGE` or `[major]` for breaking changes
 
 ### Testing
 

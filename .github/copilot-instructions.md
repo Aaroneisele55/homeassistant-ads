@@ -163,3 +163,59 @@ When making user-facing changes, update:
 - `ENTITY_PARAMETERS.md` — entity parameter reference
 - `example_configuration.yaml` — YAML configuration examples
 - `README.md` — if the change affects the project overview
+
+## Version Management
+
+This project uses **automated version management** with Semantic Versioning (SemVer 2.0.0).
+
+### For AI Agents: Version Bumping Rules
+
+When completing a task that adds features or fixes bugs, you **MUST**:
+
+1. **Update CHANGELOG.md** - Add your changes under the `[Unreleased]` section using these categories:
+   - `Added` - New features
+   - `Changed` - Changes to existing functionality
+   - `Fixed` - Bug fixes
+   - `Removed` - Removed features
+   - `Security` - Security fixes
+
+2. **Use appropriate commit message prefixes** or **PR labels** to trigger automatic version bumps:
+   - **Patch bump** (bug fixes): `fix:`, `bugfix:`, `hotfix:`, `[patch]`, or label `patch`
+   - **Minor bump** (new features): `feat:`, `feature:`, `[minor]`, or label `minor`
+   - **Major bump** (breaking changes): `BREAKING CHANGE`, `breaking`, `feat!:`, `[major]`, or label `major`
+
+3. **Default behavior**: If no indicator is present, the system defaults to a **patch** bump.
+
+### Version Files
+
+Version is stored in two files (kept in sync automatically):
+- `custom_components/ads_custom/manifest.json` - Primary version source
+- `pyproject.toml` - Python project version
+
+### What NOT to Do
+
+- ❌ **Don't manually edit version numbers** - automation handles this
+- ❌ **Don't create git tags manually** - automation creates them
+- ❌ **Don't skip CHANGELOG updates** - always document changes
+
+### Manual Version Bumping (if needed)
+
+```bash
+# For testing or manual control
+python bump_version.py [major|minor|patch]
+python bump_version.py patch --dry-run  # Preview changes
+```
+
+### More Information
+
+See `VERSION_MANAGEMENT.md` for complete documentation on:
+- Detailed version bump detection rules
+- CHANGELOG management
+- Conventional commit formats
+- Troubleshooting
+
+The GitHub Actions workflow automatically:
+- Detects version bump type from commits/PRs
+- Updates version files and CHANGELOG
+- Creates git tags
+- Commits and pushes changes

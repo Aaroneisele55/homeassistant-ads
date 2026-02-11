@@ -1,0 +1,137 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'custom_components/**'
+      - 'tests/**'
+      - '**.py'
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  bump-version:
+    # Only run on merged PRs or direct pushes to main
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Determine version bump type
+        id: bump_type
+        run: |
+          # Get the commit message or PR title
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            MESSAGE="${{ github.event.pull_request.title }}"
+            BODY="${{ github.event.pull_request.body }}"
+            LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+          else
+            MESSAGE="$(git log -1 --pretty=%B)"
+            BODY=""
+            LABELS=""
+          fi
+          
+          echo "Commit/PR message: $MESSAGE"
+          echo "Labels: $LABELS"
+          
+          # Check for version bump indicators (case insensitive)
+          BUMP_TYPE="patch"  # Default to patch
+          
+          # Check labels first (highest priority)
+          if echo "$LABELS" | grep -iq "major"; then
+            BUMP_TYPE="major"
+          elif echo "$LABELS" | grep -iq "minor"; then
+            BUMP_TYPE="minor"
+          elif echo "$LABELS" | grep -iq "patch"; then
+            BUMP_TYPE="patch"
+          # Check PR title/commit message
+          elif echo "$MESSAGE" | grep -iqE '\[major\]|breaking|BREAKING CHANGE'; then
+            BUMP_TYPE="major"
+          elif echo "$MESSAGE" | grep -iqE '\[minor\]|feat:|feature:'; then
+            BUMP_TYPE="minor"
+          elif echo "$MESSAGE" | grep -iqE '\[patch\]|fix:|bugfix:|hotfix:'; then
+            BUMP_TYPE="patch"
+          # Check for conventional commits
+          elif echo "$MESSAGE" | grep -E '^feat(\(.+\))?!:'; then
+            BUMP_TYPE="major"
+          elif echo "$MESSAGE" | grep -E '^feat(\(.+\))?:'; then
+            BUMP_TYPE="minor"
+          elif echo "$MESSAGE" | grep -E '^(fix|bugfix|hotfix)(\(.+\))?:'; then
+            BUMP_TYPE="patch"
+          fi
+          
+          # Check if this commit is a version bump itself (prevent loops)
+          if echo "$MESSAGE" | grep -q "Bump version to"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "This is a version bump commit, skipping..."
+            exit 0
+          fi
+          
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Determined bump type: $BUMP_TYPE"
+      
+      - name: Bump version
+        id: bump_version
+        if: steps.bump_type.outputs.skip != 'true'
+        run: |
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          echo "Bumping version with type: $BUMP_TYPE"
+          
+          # Run the bump script
+          python bump_version.py "$BUMP_TYPE" --no-tag
+          
+          # Get the new version
+          NEW_VERSION=$(python -c "import json; print(json.load(open('custom_components/ads_custom/manifest.json'))['version'])")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+      
+      - name: Commit and push changes
+        if: steps.bump_type.outputs.skip != 'true'
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          
+          # Check if there are changes to commit
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          # Commit the version bump
+          git add custom_components/ads_custom/manifest.json pyproject.toml CHANGELOG.md
+          git commit -m "Bump version to $NEW_VERSION [skip ci]"
+          
+          # Create tag
+          git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+          
+          # Push changes and tags
+          git push origin main
+          git push origin "v$NEW_VERSION"
+          
+          echo "✅ Version bumped to $NEW_VERSION and pushed to repository"
