@@ -100,6 +100,38 @@ class TestAdsCoverOpeningClosingStates:
         assert cover.is_opening is False
         assert cover.is_closing is False
 
+    def test_not_closing_when_fully_closed_normal_mode(self):
+        """is_closing should be False when cover reaches position 0 (normal mode)."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 5
+        cover._state_dict[STATE_KEY_POSITION] = 0
+        assert cover.is_closing is False
+        assert cover.is_closed is True
+
+    def test_not_opening_when_fully_open_normal_mode(self):
+        """is_opening should be False when cover reaches position 100 (normal mode)."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 95
+        cover._state_dict[STATE_KEY_POSITION] = 100
+        assert cover.is_opening is False
+        assert cover.is_closed is False
+
+    def test_not_closing_when_fully_closed_inverted_mode(self):
+        """is_closing should be False when cover reaches position 100 (inverted mode)."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=True)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 95
+        cover._state_dict[STATE_KEY_POSITION] = 100
+        assert cover.is_closing is False
+        assert cover.is_closed is True
+
+    def test_not_opening_when_fully_open_inverted_mode(self):
+        """is_opening should be False when cover reaches position 0 (inverted mode)."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=True)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 5
+        cover._state_dict[STATE_KEY_POSITION] = 0
+        assert cover.is_opening is False
+        assert cover.is_closed is False
+
 
 class TestAdsCoverPositionProperties:
     """Tests for AdsCover position-related properties."""

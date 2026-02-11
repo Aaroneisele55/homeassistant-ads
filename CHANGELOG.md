@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Cover state stuck on "opening"/"closing" after reaching fully open/closed position
+
 ## [1.1.3] - 2026-02-11
 
 ## [1.1.2] - 2026-02-11

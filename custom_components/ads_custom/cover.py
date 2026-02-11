@@ -363,9 +363,15 @@ class AdsCover(AdsEntity, CoverEntity):
         # Opening means moving toward open position
         if self._inverted:
             # When inverted: PLC 0=open, so opening means moving toward 0
+            # If already at 0 (fully open), cover has finished opening
+            if current_position == 0:
+                return False
             return current_position < prev_position
         else:
             # Normal mode: PLC 100=open, so opening means moving toward 100
+            # If already at 100 (fully open), cover has finished opening
+            if current_position == 100:
+                return False
             return current_position > prev_position
 
     @property
@@ -385,9 +391,15 @@ class AdsCover(AdsEntity, CoverEntity):
         # Closing means moving toward closed position
         if self._inverted:
             # When inverted: PLC 100=closed, so closing means moving toward 100
+            # If already at 100 (fully closed), cover has finished closing
+            if current_position == 100:
+                return False
             return current_position > prev_position
         else:
             # Normal mode: PLC 0=closed, so closing means moving toward 0
+            # If already at 0 (fully closed), cover has finished closing
+            if current_position == 0:
+                return False
             return current_position < prev_position
 
     def stop_cover(self, **kwargs: Any) -> None:
