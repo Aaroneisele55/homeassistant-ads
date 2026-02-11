@@ -1,6 +1,6 @@
 [project]
 name = "homeassistant-ads-custom"
-version = "2.0.0"
+version = "1.0.0"
 description = "Home Assistant custom integration for Beckhoff ADS"
 requires-python = ">=3.12"
 

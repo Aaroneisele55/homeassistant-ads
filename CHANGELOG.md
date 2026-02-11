@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Automated version management system with bump_version.py script
+- GitHub Actions workflow for automatic version bumping on pushes to main
+- VERSION_MANAGEMENT.md documentation for AI agents and developers
+- Support for version bump detection via commit messages, PR labels, and conventional commits
+- Automatic CHANGELOG.md updates with version sections
+
 ## [1.0.0] - 2026-02-08
 
 ### Added

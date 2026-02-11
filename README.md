@@ -92,6 +92,13 @@ Restart Home Assistant after editing YAML.
 
 Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines.
 
+### Version Management
+
+This project uses automated version management:
+- See **[VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)** for details on the versioning system
+- Versions are automatically bumped based on commit messages or PR labels
+- Always update `CHANGELOG.md` with your changes under the `[Unreleased]` section
+
 ## License
 
 Apache License 2.0
