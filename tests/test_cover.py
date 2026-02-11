@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pyads
 
-from custom_components.ads_custom.cover import AdsCover, STATE_KEY_POSITION, STATE_KEY_PREV_POSITION
+from custom_components.ads_custom.cover import (
+    AdsCover,
+    STATE_KEY_POSITION,
+    STATE_KEY_PREV_POSITION,
+    _MOVEMENT_TIMEOUT,
+)
 
 
 def _make_cover(
     ads_var_position: str | None = None,
     ads_var_position_type: str = "byte",
     inverted: bool = False,
+    ads_var_stop: str | None = None,
 ) -> tuple[AdsCover, MagicMock]:
     """Create an AdsCover with a mock hub, returning (cover, hub_mock)."""
     hub = MagicMock()
@@ -24,7 +30,7 @@ def _make_cover(
         ads_var_pos_set="GVL.cover_set_pos",
         ads_var_open="GVL.cover_open",
         ads_var_close="GVL.cover_close",
-        ads_var_stop=None,
+        ads_var_stop=ads_var_stop,
         inverted=inverted,
         name="Test Cover",
         device_class=None,
@@ -203,3 +209,64 @@ class TestAdsCoverActions:
         cover, hub = _make_cover(ads_var_position="GVL.position")
         cover.close_cover()
         hub.write_by_name.assert_any_call("GVL.cover_close", True, pyads.PLCTYPE_BOOL)
+
+    def test_stop_cover_resets_movement_state(self):
+        """stop_cover should reset prev_position so is_opening/is_closing return False."""
+        cover, hub = _make_cover(
+            ads_var_position="GVL.position", ads_var_stop="GVL.cover_stop"
+        )
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 30
+        cover._state_dict[STATE_KEY_POSITION] = 50
+        # Cover appears to be opening
+        assert cover.is_opening is True
+        # Stop the cover
+        cover.stop_cover()
+        # After stop, prev_position == current_position → not moving
+        assert cover.is_opening is False
+        assert cover.is_closing is False
+
+
+class TestAdsCoverMovementTimeout:
+    """Tests for movement timeout detection at intermediate positions."""
+
+    def test_is_opening_false_after_timeout(self):
+        """is_opening should be False when no position update arrives within timeout."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 30
+        cover._state_dict[STATE_KEY_POSITION] = 50
+        # Simulate position update that happened long ago
+        cover._position_last_updated = 0.0
+        with patch("custom_components.ads_custom.cover.time") as mock_time:
+            mock_time.monotonic.return_value = _MOVEMENT_TIMEOUT + 1.0
+            assert cover.is_opening is False
+
+    def test_is_closing_false_after_timeout(self):
+        """is_closing should be False when no position update arrives within timeout."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 70
+        cover._state_dict[STATE_KEY_POSITION] = 50
+        # Simulate position update that happened long ago
+        cover._position_last_updated = 0.0
+        with patch("custom_components.ads_custom.cover.time") as mock_time:
+            mock_time.monotonic.return_value = _MOVEMENT_TIMEOUT + 1.0
+            assert cover.is_closing is False
+
+    def test_is_opening_true_within_timeout(self):
+        """is_opening should still be True when position update is recent."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 30
+        cover._state_dict[STATE_KEY_POSITION] = 50
+        # Simulate recent position update
+        cover._position_last_updated = 100.0
+        with patch("custom_components.ads_custom.cover.time") as mock_time:
+            mock_time.monotonic.return_value = 100.5  # 0.5s < timeout
+            assert cover.is_opening is True
+
+    def test_timeout_not_triggered_without_timestamp(self):
+        """Timeout should not trigger if no position update timestamp exists."""
+        cover, _ = _make_cover(ads_var_position="GVL.position", inverted=False)
+        cover._state_dict[STATE_KEY_PREV_POSITION] = 30
+        cover._state_dict[STATE_KEY_POSITION] = 50
+        cover._position_last_updated = None
+        # Without timestamp, should still report opening based on direction
+        assert cover.is_opening is True

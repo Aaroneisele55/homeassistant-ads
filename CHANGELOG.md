@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Cover state stuck on "opening"/"closing" after reaching fully open/closed position
+- Cover state stuck on "opening"/"closing" after stopping at intermediate position (via stop command or external stop)
 
 ## [1.1.3] - 2026-02-11
 
