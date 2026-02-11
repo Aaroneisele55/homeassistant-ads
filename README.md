@@ -35,6 +35,8 @@ Because the domain is `ads_custom`, both integrations can coexist in the same Ho
 
 Copy the `custom_components/ads_custom` folder into your Home Assistant `custom_components/` directory, then restart.
 
+> **Note**: After installation, if the integration icon doesn't appear in Home Assistant or HACS, see the **[Icon Setup Guide](docs/ICON_SETUP.md)** for troubleshooting steps.
+
 ## Getting started
 
 ### Prerequisites
