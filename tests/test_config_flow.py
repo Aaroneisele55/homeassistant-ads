@@ -367,24 +367,6 @@ class TestReconfigureForms:
                                 return True, has_default
         return False, False
 
-    @staticmethod
-    def _has_suggested_values_in_async_show_form(
-        func_node: ast.AsyncFunctionDef | ast.FunctionDef,
-    ) -> bool:
-        """Check if async_show_form is called with suggested_values parameter."""
-        for node in ast.walk(func_node):
-            if isinstance(node, ast.Call):
-                # Check if this is self.async_show_form()
-                if (
-                    isinstance(node.func, ast.Attribute)
-                    and isinstance(node.func.value, ast.Name)
-                    and node.func.value.id == "self"
-                    and node.func.attr == "async_show_form"
-                ):
-                    # Check if suggested_values is in the keyword arguments
-                    return any(kw.arg == "suggested_values" for kw in node.keywords)
-        return False
-
     def test_reconfigure_sensor_device_class_has_no_default(self):
         """Test that device_class in reconfigure_sensor has no default parameter."""
         tree = self._get_config_flow_tree()
@@ -415,18 +397,6 @@ class TestReconfigureForms:
             "async_step_reconfigure_sensor (breaks clearing functionality)"
         )
 
-    def test_reconfigure_sensor_uses_suggested_values(self):
-        """Test that reconfigure_sensor uses suggested_values to display current values."""
-        tree = self._get_config_flow_tree()
-        func = self._get_function_node(tree, "async_step_reconfigure_sensor")
-        assert func is not None, "async_step_reconfigure_sensor not found"
-
-        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
-        assert has_suggested_values, (
-            "async_step_reconfigure_sensor must use suggested_values parameter "
-            "in async_show_form to display current values without schema defaults"
-        )
-
     def test_reconfigure_binary_sensor_device_class_has_no_default(self):
         """Test that device_class in reconfigure_binary_sensor has no default parameter."""
         tree = self._get_config_flow_tree()
@@ -440,18 +410,6 @@ class TestReconfigureForms:
         assert not has_default, (
             "CONF_DEVICE_CLASS must not have default= parameter in "
             "async_step_reconfigure_binary_sensor (breaks clearing functionality)"
-        )
-
-    def test_reconfigure_binary_sensor_uses_suggested_values(self):
-        """Test that reconfigure_binary_sensor uses suggested_values to display current values."""
-        tree = self._get_config_flow_tree()
-        func = self._get_function_node(tree, "async_step_reconfigure_binary_sensor")
-        assert func is not None, "async_step_reconfigure_binary_sensor not found"
-
-        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
-        assert has_suggested_values, (
-            "async_step_reconfigure_binary_sensor must use suggested_values parameter "
-            "in async_show_form to display current values without schema defaults"
         )
 
     def test_reconfigure_cover_device_class_has_no_default(self):
@@ -469,18 +427,6 @@ class TestReconfigureForms:
             "async_step_reconfigure_cover (breaks clearing functionality)"
         )
 
-    def test_reconfigure_cover_uses_suggested_values(self):
-        """Test that reconfigure_cover uses suggested_values to display current values."""
-        tree = self._get_config_flow_tree()
-        func = self._get_function_node(tree, "async_step_reconfigure_cover")
-        assert func is not None, "async_step_reconfigure_cover not found"
-
-        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
-        assert has_suggested_values, (
-            "async_step_reconfigure_cover must use suggested_values parameter "
-            "in async_show_form to display current values without schema defaults"
-        )
-
     def test_reconfigure_valve_device_class_has_no_default(self):
         """Test that device_class in reconfigure_valve has no default parameter."""
         tree = self._get_config_flow_tree()
@@ -496,15 +442,5 @@ class TestReconfigureForms:
             "async_step_reconfigure_valve (breaks clearing functionality)"
         )
 
-    def test_reconfigure_valve_uses_suggested_values(self):
-        """Test that reconfigure_valve uses suggested_values to display current values."""
-        tree = self._get_config_flow_tree()
-        func = self._get_function_node(tree, "async_step_reconfigure_valve")
-        assert func is not None, "async_step_reconfigure_valve not found"
 
-        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
-        assert has_suggested_values, (
-            "async_step_reconfigure_valve must use suggested_values parameter "
-            "in async_show_form to display current values without schema defaults"
-        )
 

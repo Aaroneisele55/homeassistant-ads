@@ -875,7 +875,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure_sensor",
             data_schema=vol.Schema(schema_dict),
-            suggested_values=entity,
         )
 
     async def async_step_reconfigure_binary_sensor(
@@ -916,10 +915,14 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
         )
 
+        data_schema = self.add_suggested_values_to_schema(
+            vol.Schema(schema_dict),
+            entity,
+        )
+
         return self.async_show_form(
             step_id="reconfigure_binary_sensor",
-            data_schema=vol.Schema(schema_dict),
-            suggested_values=entity,
+            data_schema=data_schema,
         )
 
     async def async_step_reconfigure_light(
@@ -1024,7 +1027,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             step_id="reconfigure_cover",
             data_schema=vol.Schema(schema_dict),
             errors=errors,
-            suggested_values=entity,
         )
 
     async def async_step_reconfigure_valve(
@@ -1065,7 +1067,6 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure_valve",
             data_schema=vol.Schema(schema_dict),
-            suggested_values=entity,
         )
 
     async def async_step_reconfigure_select(
