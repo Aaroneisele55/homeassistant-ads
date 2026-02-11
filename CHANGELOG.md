@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Cover state stuck on "opening"/"closing" after reaching fully open/closed position
+- Cover state stuck on "opening"/"closing" after stopping at intermediate position (via stop command or external stop)
 - HACS version detection - automated workflow now creates GitHub Releases (not just git tags) so HACS can properly detect and display available versions
 
 ## [1.1.3] - 2026-02-11

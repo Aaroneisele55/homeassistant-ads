@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 import pyads
@@ -41,6 +42,9 @@ CONF_INVERTED = "inverted"
 
 STATE_KEY_POSITION = "position"
 STATE_KEY_PREV_POSITION = "prev_position"
+
+# If no position update arrives within this window, the cover is considered stopped
+_MOVEMENT_TIMEOUT = 2.0
 
 # Default to BYTE for backwards compatibility
 DEFAULT_POSITION_TYPE = "byte"
@@ -235,6 +239,7 @@ class AdsCover(AdsEntity, CoverEntity):
 
         self._state_dict[STATE_KEY_POSITION] = None
         self._state_dict[STATE_KEY_PREV_POSITION] = None
+        self._position_last_updated: float | None = None
         self._ads_var_position = ads_var_position
         self._ads_var_position_type = ads_var_position_type
         self._ads_var_pos_set = ads_var_pos_set
@@ -272,6 +277,7 @@ class AdsCover(AdsEntity, CoverEntity):
                 
                 # Update current position
                 self._state_dict[STATE_KEY_POSITION] = value
+                self._position_last_updated = time.monotonic()
                 
                 # Schedule update
                 async def async_event_set():
@@ -346,6 +352,16 @@ class AdsCover(AdsEntity, CoverEntity):
             return 100 - position
         return position
 
+    def _is_movement_timed_out(self) -> bool:
+        """Return True if the last position update is older than the movement timeout.
+        
+        Returns False if no position update timestamp exists yet, allowing
+        direction-based detection to work until the first update is recorded.
+        """
+        if self._position_last_updated is None:
+            return False
+        return (time.monotonic() - self._position_last_updated) > _MOVEMENT_TIMEOUT
+
     @property
     def is_opening(self) -> bool | None:
         """Return if the cover is opening."""
@@ -359,13 +375,23 @@ class AdsCover(AdsEntity, CoverEntity):
         if current_position is None or prev_position is None:
             return None
         
+        # If no position update has arrived recently, the cover has stopped
+        if self._is_movement_timed_out():
+            return False
+        
         # Compare raw PLC positions (before inversion conversion)
         # Opening means moving toward open position
         if self._inverted:
             # When inverted: PLC 0=open, so opening means moving toward 0
+            # If already at 0 (fully open), cover has finished opening
+            if current_position == 0:
+                return False
             return current_position < prev_position
         else:
             # Normal mode: PLC 100=open, so opening means moving toward 100
+            # If already at 100 (fully open), cover has finished opening
+            if current_position == 100:
+                return False
             return current_position > prev_position
 
     @property
@@ -381,19 +407,34 @@ class AdsCover(AdsEntity, CoverEntity):
         if current_position is None or prev_position is None:
             return None
         
+        # If no position update has arrived recently, the cover has stopped
+        if self._is_movement_timed_out():
+            return False
+        
         # Compare raw PLC positions (before inversion conversion)
         # Closing means moving toward closed position
         if self._inverted:
             # When inverted: PLC 100=closed, so closing means moving toward 100
+            # If already at 100 (fully closed), cover has finished closing
+            if current_position == 100:
+                return False
             return current_position > prev_position
         else:
             # Normal mode: PLC 0=closed, so closing means moving toward 0
+            # If already at 0 (fully closed), cover has finished closing
+            if current_position == 0:
+                return False
             return current_position < prev_position
 
     def stop_cover(self, **kwargs: Any) -> None:
         """Fire the stop action."""
         if self._ads_var_stop:
             self._ads_hub.write_by_name(self._ads_var_stop, True, pyads.PLCTYPE_BOOL)
+        # Reset movement tracking so is_opening/is_closing immediately return False
+        current = self._state_dict.get(STATE_KEY_POSITION)
+        if current is not None:
+            self._state_dict[STATE_KEY_PREV_POSITION] = current
+        self._position_last_updated = None
 
     def set_cover_position(self, **kwargs: Any) -> None:
         """Set cover position.
