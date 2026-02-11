@@ -35,6 +35,8 @@ Because the domain is `ads_custom`, both integrations can coexist in the same Ho
 
 Copy the `custom_components/ads_custom` folder into your Home Assistant `custom_components/` directory, then restart.
 
+> **Note**: After installation, if the integration icon doesn't appear in Home Assistant or HACS, see the **[Icon Setup Guide](docs/ICON_SETUP.md)** for troubleshooting steps.
+
 ## Getting started
 
 ### Prerequisites
@@ -83,6 +85,8 @@ Restart Home Assistant after editing YAML.
 
 💡 **[Example `configuration.yaml`](example_configuration.yaml)** — copy-paste YAML for every entity type
 
+🎨 **[Icon and logo setup guide](docs/ICON_SETUP.md)** — how to display integration branding in Home Assistant and HACS
+
 ## Support
 
 - [Report an issue](https://github.com/Aaroneisele55/homeassistant-ads/issues)
@@ -107,3 +111,6 @@ Apache License 2.0
 
 - Original integration by [@mrpasztoradam](https://github.com/mrpasztoradam)
 - Built on the [pyads](https://github.com/stlehmann/pyads) library
+- Integration icons derived from [Home Assistant Brands](https://github.com/home-assistant/brands) for the core ADS integration
+
+See **[ATTRIBUTION.md](ATTRIBUTION.md)** for detailed attribution and licensing information for branding assets and dependencies.
