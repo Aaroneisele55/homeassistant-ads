@@ -102,6 +102,7 @@ This project uses automated version management:
 - See **[VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)** for details on the versioning system
 - Versions are automatically bumped based on commit messages or PR labels
 - Always update `CHANGELOG.md` with your changes under the `[Unreleased]` section
+- GitHub Releases are automatically created for HACS version detection
 
 ## License
 
