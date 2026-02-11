@@ -107,3 +107,6 @@ Apache License 2.0
 
 - Original integration by [@mrpasztoradam](https://github.com/mrpasztoradam)
 - Built on the [pyads](https://github.com/stlehmann/pyads) library
+- Integration icons derived from [Home Assistant Brands](https://github.com/home-assistant/brands) for the core ADS integration
+
+See **[ATTRIBUTION.md](ATTRIBUTION.md)** for detailed attribution and licensing information for branding assets and dependencies.
