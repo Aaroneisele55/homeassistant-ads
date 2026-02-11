@@ -135,3 +135,47 @@ jobs:
           git push origin "v$NEW_VERSION"
           
           echo "✅ Version bumped to $NEW_VERSION and pushed to repository"
+      
+      - name: Extract changelog for release
+        if: steps.bump_type.outputs.skip != 'true'
+        id: changelog
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          
+          # Extract the changelog section for this version
+          # Look for the version header and capture content until the next version or end
+          CHANGELOG_CONTENT=$(awk -v ver="$NEW_VERSION" '
+            /^## \[/ {
+              if (found) exit;
+              if ($0 ~ "\\[" ver "\\]") {
+                found=1;
+                next;
+              }
+            }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+          
+          # If no specific version section found, use a default message
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            CHANGELOG_CONTENT="See [CHANGELOG.md](CHANGELOG.md) for details."
+          fi
+          
+          # Save to file for GitHub Release
+          echo "$CHANGELOG_CONTENT" > /tmp/release_notes.md
+          echo "Release notes extracted for version $NEW_VERSION"
+      
+      - name: Create GitHub Release
+        if: steps.bump_type.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          
+          # Create the release using GitHub CLI
+          gh release create "v$NEW_VERSION" \
+            --title "v$NEW_VERSION" \
+            --notes-file /tmp/release_notes.md \
+            --verify-tag
+          
+          echo "✅ GitHub Release created for version $NEW_VERSION"
