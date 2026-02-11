@@ -274,8 +274,6 @@ class AdsCover(AdsEntity, CoverEntity):
                 self._state_dict[STATE_KEY_POSITION] = value
                 
                 # Schedule update
-                import asyncio
-                
                 async def async_event_set():
                     """Set event in async context."""
                     if self._event:
