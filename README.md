@@ -83,6 +83,8 @@ Restart Home Assistant after editing YAML.
 
 💡 **[Example `configuration.yaml`](example_configuration.yaml)** — copy-paste YAML for every entity type
 
+🎨 **[Icon and logo setup guide](docs/ICON_SETUP.md)** — how to display integration branding in Home Assistant and HACS
+
 ## Support
 
 - [Report an issue](https://github.com/Aaroneisele55/homeassistant-ads/issues)
