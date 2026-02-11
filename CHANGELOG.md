@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Integration icon and logo derived from the Home Assistant core ADS integration branding (see https://github.com/home-assistant/brands) for improved branding in Home Assistant UI and HACS
+- Attribution and licensing note for ADS branding assets (see ATTRIBUTION.md for details; these assets are subject to their own license and trademark terms and are not covered by this project's Apache-2.0 license)
+
 ## [1.1.0] - 2026-02-11
 
 ### Added
