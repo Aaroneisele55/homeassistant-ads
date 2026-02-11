@@ -156,14 +156,31 @@ jobs:
             found { print }
           ' CHANGELOG.md)
           
-          # If no specific version section found, use a default message
-          if [ -z "$CHANGELOG_CONTENT" ]; then
+          # Normalize content to detect effectively empty sections
+          CHANGELOG_CONTENT_STRIPPED="$(printf '%s' "$CHANGELOG_CONTENT" | tr -d '[:space:]')"
+          
+          # Check if the expected version header exists in the changelog
+          if ! grep -qE "^## \\[$NEW_VERSION\\]" CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md does not contain a header matching '## [$NEW_VERSION]'."
+          fi
+          
+          # If no specific version section found, use a default message and log a warning
+          if [ -z "$CHANGELOG_CONTENT_STRIPPED" ]; then
+            echo "::warning::Failed to extract release notes for version $NEW_VERSION from CHANGELOG.md. Falling back to generic message."
             CHANGELOG_CONTENT="See [CHANGELOG.md](CHANGELOG.md) for details."
+            EXTRACTION_STATUS="fallback"
+          else
+            EXTRACTION_STATUS="success"
           fi
           
           # Save to file for GitHub Release (use runner temp directory)
           echo "$CHANGELOG_CONTENT" > "${{ runner.temp }}/release_notes.md"
-          echo "Release notes extracted for version $NEW_VERSION"
+          
+          if [ "$EXTRACTION_STATUS" = "success" ]; then
+            echo "Release notes extracted for version $NEW_VERSION from CHANGELOG.md"
+          else
+            echo "Using generic release notes for version $NEW_VERSION (see warnings above)"
+          fi
       
       - name: Create GitHub Release
         if: steps.bump_type.outputs.skip != 'true'
