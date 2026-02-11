@@ -291,3 +291,271 @@ class TestRemoveClearedOptionalFields:
         assert "device_class" not in merged
         assert merged["state_class"] == "total"
 
+
+class TestReconfigureForms:
+    """Regression tests for reconfigure forms to ensure clearable fields work correctly.
+    
+    These tests verify that optional clearable fields (device_class, state_class) do NOT
+    have default= parameters in vol.Optional(), and that suggested_values is used instead.
+    This prevents the bug where defaults would prevent clearing fields.
+    """
+
+    @staticmethod
+    def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | ast.FunctionDef | None:
+        """Find a function definition by name in the AST, including async methods."""
+        # Search in top-level and class bodies
+        for node in tree.body:
+            # Check top-level functions
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
+                return node
+            # Check class methods
+            if isinstance(node, ast.ClassDef):
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == function_name:
+                        return item
+        return None
+
+    @staticmethod
+    def _find_optional_field_in_function(
+        func_node: ast.AsyncFunctionDef | ast.FunctionDef, field_name: str
+    ) -> tuple[bool, bool]:
+        """Check if a field is defined with vol.Optional and if it has a default.
+        
+        Returns:
+            Tuple of (field_found, has_default)
+        """
+        for node in ast.walk(func_node):
+            # Look for subscript assignments like schema_dict[vol.Optional(...)]
+            if isinstance(node, ast.Subscript):
+                if isinstance(node.slice, ast.Call):
+                    call = node.slice
+                    # Check if this is vol.Optional
+                    if (
+                        isinstance(call.func, ast.Attribute)
+                        and isinstance(call.func.value, ast.Name)
+                        and call.func.value.id == "vol"
+                        and call.func.attr == "Optional"
+                    ):
+                        # Check if first argument is the field we're looking for
+                        if call.args and isinstance(call.args[0], ast.Name):
+                            if call.args[0].id == field_name:
+                                # Check if there's a default= keyword argument
+                                has_default = any(
+                                    kw.arg == "default" for kw in call.keywords
+                                )
+                                return True, has_default
+        return False, False
+
+    @staticmethod
+    def _has_suggested_values_in_async_show_form(
+        func_node: ast.AsyncFunctionDef | ast.FunctionDef,
+    ) -> bool:
+        """Check if async_show_form is called with suggested_values parameter."""
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Call):
+                # Check if this is self.async_show_form()
+                if (
+                    isinstance(node.func, ast.Attribute)
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "self"
+                    and node.func.attr == "async_show_form"
+                ):
+                    # Check if suggested_values is in the keyword arguments
+                    return any(kw.arg == "suggested_values" for kw in node.keywords)
+        return False
+
+    def test_reconfigure_sensor_device_class_has_no_default(self):
+        """Test that device_class in reconfigure_sensor has no default parameter."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_sensor")
+        assert func is not None, "async_step_reconfigure_sensor not found"
+
+        found, has_default = self._find_optional_field_in_function(
+            func, "CONF_DEVICE_CLASS"
+        )
+        assert found, "CONF_DEVICE_CLASS not found in async_step_reconfigure_sensor"
+        assert not has_default, (
+            "CONF_DEVICE_CLASS must not have default= parameter in "
+            "async_step_reconfigure_sensor (breaks clearing functionality)"
+        )
+
+    def test_reconfigure_sensor_state_class_has_no_default(self):
+        """Test that state_class in reconfigure_sensor has no default parameter."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_sensor")
+        assert func is not None, "async_step_reconfigure_sensor not found"
+
+        found, has_default = self._find_optional_field_in_function(
+            func, "CONF_STATE_CLASS"
+        )
+        assert found, "CONF_STATE_CLASS not found in async_step_reconfigure_sensor"
+        assert not has_default, (
+            "CONF_STATE_CLASS must not have default= parameter in "
+            "async_step_reconfigure_sensor (breaks clearing functionality)"
+        )
+
+    def test_reconfigure_sensor_uses_suggested_values(self):
+        """Test that reconfigure_sensor uses suggested_values to display current values."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_sensor")
+        assert func is not None, "async_step_reconfigure_sensor not found"
+
+        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
+        assert has_suggested_values, (
+            "async_step_reconfigure_sensor must use suggested_values parameter "
+            "in async_show_form to display current values without schema defaults"
+        )
+
+    def test_reconfigure_binary_sensor_device_class_has_no_default(self):
+        """Test that device_class in reconfigure_binary_sensor has no default parameter."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_binary_sensor")
+        assert func is not None, "async_step_reconfigure_binary_sensor not found"
+
+        found, has_default = self._find_optional_field_in_function(
+            func, "CONF_DEVICE_CLASS"
+        )
+        assert found, "CONF_DEVICE_CLASS not found in async_step_reconfigure_binary_sensor"
+        assert not has_default, (
+            "CONF_DEVICE_CLASS must not have default= parameter in "
+            "async_step_reconfigure_binary_sensor (breaks clearing functionality)"
+        )
+
+    def test_reconfigure_binary_sensor_uses_suggested_values(self):
+        """Test that reconfigure_binary_sensor uses suggested_values to display current values."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_binary_sensor")
+        assert func is not None, "async_step_reconfigure_binary_sensor not found"
+
+        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
+        assert has_suggested_values, (
+            "async_step_reconfigure_binary_sensor must use suggested_values parameter "
+            "in async_show_form to display current values without schema defaults"
+        )
+
+    def test_reconfigure_cover_device_class_has_no_default(self):
+        """Test that device_class in reconfigure_cover has no default parameter."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_cover")
+        assert func is not None, "async_step_reconfigure_cover not found"
+
+        found, has_default = self._find_optional_field_in_function(
+            func, "CONF_DEVICE_CLASS"
+        )
+        assert found, "CONF_DEVICE_CLASS not found in async_step_reconfigure_cover"
+        assert not has_default, (
+            "CONF_DEVICE_CLASS must not have default= parameter in "
+            "async_step_reconfigure_cover (breaks clearing functionality)"
+        )
+
+    def test_reconfigure_cover_uses_suggested_values(self):
+        """Test that reconfigure_cover uses suggested_values to display current values."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_cover")
+        assert func is not None, "async_step_reconfigure_cover not found"
+
+        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
+        assert has_suggested_values, (
+            "async_step_reconfigure_cover must use suggested_values parameter "
+            "in async_show_form to display current values without schema defaults"
+        )
+
+    def test_reconfigure_valve_device_class_has_no_default(self):
+        """Test that device_class in reconfigure_valve has no default parameter."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_valve")
+        assert func is not None, "async_step_reconfigure_valve not found"
+
+        found, has_default = self._find_optional_field_in_function(
+            func, "CONF_DEVICE_CLASS"
+        )
+        assert found, "CONF_DEVICE_CLASS not found in async_step_reconfigure_valve"
+        assert not has_default, (
+            "CONF_DEVICE_CLASS must not have default= parameter in "
+            "async_step_reconfigure_valve (breaks clearing functionality)"
+        )
+
+    def test_reconfigure_valve_uses_suggested_values(self):
+        """Test that reconfigure_valve uses suggested_values to display current values."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        func = self._get_function_node(tree, "async_step_reconfigure_valve")
+        assert func is not None, "async_step_reconfigure_valve not found"
+
+        has_suggested_values = self._has_suggested_values_in_async_show_form(func)
+        assert has_suggested_values, (
+            "async_step_reconfigure_valve must use suggested_values parameter "
+            "in async_show_form to display current values without schema defaults"
+        )
+
