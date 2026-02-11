@@ -341,7 +341,8 @@
         "garage": "Garage",
         "gate": "Tor",
         "shade": "Rollo",
-        "shutter": "Rolladen"
+        "shutter": "Rolladen",
+        "": "(Keine)"
       }
     }
   }
