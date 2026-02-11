@@ -42,6 +42,10 @@ fi
 
 # Save to temporary file
 TEMP_FILE=$(mktemp)
+
+# Set up trap to ensure cleanup on exit (success or failure)
+trap 'rm -f "$TEMP_FILE"' EXIT
+
 echo "$CHANGELOG_CONTENT" > "$TEMP_FILE"
 
 echo "Release notes:"
@@ -56,8 +60,5 @@ gh release create "$TAG" \
   --title "$TAG" \
   --notes-file "$TEMP_FILE" \
   --verify-tag
-
-# Cleanup
-rm "$TEMP_FILE"
 
 echo "✅ GitHub Release created successfully for $TAG"
