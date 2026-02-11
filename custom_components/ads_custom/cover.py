@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -39,6 +40,7 @@ CONF_ADS_VAR_POSITION_TYPE = "adsvar_position_type"
 CONF_INVERTED = "inverted"
 
 STATE_KEY_POSITION = "position"
+STATE_KEY_PREV_POSITION = "prev_position"
 
 # Default to BYTE for backwards compatibility
 DEFAULT_POSITION_TYPE = "byte"
@@ -232,6 +234,7 @@ class AdsCover(AdsEntity, CoverEntity):
                 self._attr_unique_id = ads_var_open
 
         self._state_dict[STATE_KEY_POSITION] = None
+        self._state_dict[STATE_KEY_PREV_POSITION] = None
         self._ads_var_position = ads_var_position
         self._ads_var_position_type = ads_var_position_type
         self._ads_var_pos_set = ads_var_pos_set
@@ -256,9 +259,45 @@ class AdsCover(AdsEntity, CoverEntity):
         if self._ads_var_position is not None:
             # Use UINT or BYTE based on configuration
             plctype = pyads.PLCTYPE_UINT if self._ads_var_position_type == "uint" else pyads.PLCTYPE_BYTE
-            await self.async_initialize_device(
-                self._ads_var_position, plctype, STATE_KEY_POSITION
+            
+            # Register custom update handler for position to track previous value
+            def update_position(name, value):
+                """Handle position updates and track previous position."""
+                _LOGGER.debug("Variable %s changed its value to %d", name, value)
+                
+                # Store previous position before updating
+                current_position = self._state_dict.get(STATE_KEY_POSITION)
+                if current_position is not None:
+                    self._state_dict[STATE_KEY_PREV_POSITION] = current_position
+                
+                # Update current position
+                self._state_dict[STATE_KEY_POSITION] = value
+                
+                # Schedule update
+                async def async_event_set():
+                    """Set event in async context."""
+                    if self._event:
+                        self._event.set()
+                
+                asyncio.run_coroutine_threadsafe(async_event_set(), self.hass.loop)
+                self.schedule_update_ha_state()
+            
+            # Set up event for initial wait
+            self._event = asyncio.Event()
+            
+            await self.hass.async_add_executor_job(
+                self._ads_hub.add_device_notification, 
+                self._ads_var_position, 
+                plctype, 
+                update_position
             )
+            
+            # Wait for initial position update
+            try:
+                async with asyncio.timeout(10):
+                    await self._event.wait()
+            except TimeoutError:
+                _LOGGER.debug("Variable %s: Timeout during first update", self._ads_var_position)
 
     @property
     def device_class(self) -> CoverDeviceClass | None:
@@ -306,6 +345,50 @@ class AdsCover(AdsEntity, CoverEntity):
             # PLC 100 (closed) -> HA 0 (closed)
             return 100 - position
         return position
+
+    @property
+    def is_opening(self) -> bool | None:
+        """Return if the cover is opening."""
+        if self._ads_var_position is None:
+            return None
+        
+        current_position = self._state_dict.get(STATE_KEY_POSITION)
+        prev_position = self._state_dict.get(STATE_KEY_PREV_POSITION)
+        
+        # If we don't have both current and previous position, we can't determine direction
+        if current_position is None or prev_position is None:
+            return None
+        
+        # Compare raw PLC positions (before inversion conversion)
+        # Opening means moving toward open position
+        if self._inverted:
+            # When inverted: PLC 0=open, so opening means moving toward 0
+            return current_position < prev_position
+        else:
+            # Normal mode: PLC 100=open, so opening means moving toward 100
+            return current_position > prev_position
+
+    @property
+    def is_closing(self) -> bool | None:
+        """Return if the cover is closing."""
+        if self._ads_var_position is None:
+            return None
+        
+        current_position = self._state_dict.get(STATE_KEY_POSITION)
+        prev_position = self._state_dict.get(STATE_KEY_PREV_POSITION)
+        
+        # If we don't have both current and previous position, we can't determine direction
+        if current_position is None or prev_position is None:
+            return None
+        
+        # Compare raw PLC positions (before inversion conversion)
+        # Closing means moving toward closed position
+        if self._inverted:
+            # When inverted: PLC 100=closed, so closing means moving toward 100
+            return current_position > prev_position
+        else:
+            # Normal mode: PLC 0=closed, so closing means moving toward 0
+            return current_position < prev_position
 
     def stop_cover(self, **kwargs: Any) -> None:
         """Fire the stop action."""
