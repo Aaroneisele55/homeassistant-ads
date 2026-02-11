@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-02-11
+
 ### Added
 - Icon and logo setup guide (docs/ICON_SETUP.md) with detailed instructions for displaying branding in Home Assistant and HACS
 - ATTRIBUTION.md file with proper attribution and licensing information for branding assets
