@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- HACS version detection - automated workflow now creates GitHub Releases (not just git tags) so HACS can properly detect and display available versions
+
 ## [1.1.3] - 2026-02-11
 
 ## [1.1.2] - 2026-02-11

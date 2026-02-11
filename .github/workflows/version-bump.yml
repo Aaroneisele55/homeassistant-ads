@@ -135,3 +135,84 @@ jobs:
           git push origin "v$NEW_VERSION"
           
           echo "✅ Version bumped to $NEW_VERSION and pushed to repository"
+      
+      - name: Extract changelog for release
+        if: steps.bump_type.outputs.skip != 'true'
+        id: changelog
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          
+          # Extract the changelog section for this version
+          # Look for the version header and capture content until the next version or end
+          CHANGELOG_CONTENT=$(awk -v ver="$NEW_VERSION" '
+            /^## \[/ {
+              if (found) exit;
+              if ($0 ~ "\\[" ver "\\]") {
+                found=1;
+                next;
+              }
+            }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+          
+          # Normalize content to detect effectively empty sections
+          CHANGELOG_CONTENT_STRIPPED="$(printf '%s' "$CHANGELOG_CONTENT" | tr -d '[:space:]')"
+          
+          # Check if the expected version header exists in the changelog
+          if ! grep -qE "^## \\[$NEW_VERSION\\]" CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md does not contain a header matching '## [$NEW_VERSION]'."
+          fi
+          
+          # If no specific version section found, use a default message and log a warning
+          if [ -z "$CHANGELOG_CONTENT_STRIPPED" ]; then
+            echo "::warning::Failed to extract release notes for version $NEW_VERSION from CHANGELOG.md. Falling back to generic message."
+            CHANGELOG_CONTENT="See [CHANGELOG.md](CHANGELOG.md) for details."
+            EXTRACTION_STATUS="fallback"
+          else
+            EXTRACTION_STATUS="success"
+          fi
+          
+          # Save to file for GitHub Release (use runner temp directory)
+          echo "$CHANGELOG_CONTENT" > "${{ runner.temp }}/release_notes.md"
+          
+          if [ "$EXTRACTION_STATUS" = "success" ]; then
+            echo "Release notes extracted for version $NEW_VERSION from CHANGELOG.md"
+          else
+            echo "Using generic release notes for version $NEW_VERSION (see warnings above)"
+          fi
+      
+      - name: Create GitHub Release
+        if: steps.bump_type.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          RELEASE_TAG="v$NEW_VERSION"
+          NOTES_FILE="${{ runner.temp }}/release_notes.md"
+          
+          # Small initial delay to allow tag propagation to GitHub's API
+          sleep 5
+          
+          MAX_RETRIES=3
+          DELAY_SECONDS=5
+          
+          for attempt in $(seq 1 "$MAX_RETRIES"); do
+            echo "Attempt $attempt to create GitHub Release for $RELEASE_TAG"
+            
+            if gh release create "$RELEASE_TAG" \
+              --title "$RELEASE_TAG" \
+              --notes-file "$NOTES_FILE" \
+              --verify-tag; then
+              echo "✅ GitHub Release created for version $NEW_VERSION"
+              break
+            fi
+            
+            if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+              echo "Release creation failed (attempt $attempt). Retrying in ${DELAY_SECONDS}s..."
+              sleep "$DELAY_SECONDS"
+            else
+              echo "❌ Failed to create GitHub Release for $RELEASE_TAG after $MAX_RETRIES attempts." >&2
+              exit 1
+            fi
+          done
