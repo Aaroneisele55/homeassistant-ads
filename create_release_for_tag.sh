@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Helper script to create a GitHub Release for an existing git tag
 # Usage: ./create_release_for_tag.sh <tag_name>
 # Example: ./create_release_for_tag.sh v1.1.3

@@ -161,8 +161,8 @@ jobs:
             CHANGELOG_CONTENT="See [CHANGELOG.md](CHANGELOG.md) for details."
           fi
           
-          # Save to file for GitHub Release
-          echo "$CHANGELOG_CONTENT" > /tmp/release_notes.md
+          # Save to file for GitHub Release (use runner temp directory)
+          echo "$CHANGELOG_CONTENT" > "${{ runner.temp }}/release_notes.md"
           echo "Release notes extracted for version $NEW_VERSION"
       
       - name: Create GitHub Release
@@ -175,7 +175,7 @@ jobs:
           # Create the release using GitHub CLI
           gh release create "v$NEW_VERSION" \
             --title "v$NEW_VERSION" \
-            --notes-file /tmp/release_notes.md \
+            --notes-file "${{ runner.temp }}/release_notes.md" \
             --verify-tag
           
           echo "✅ GitHub Release created for version $NEW_VERSION"
