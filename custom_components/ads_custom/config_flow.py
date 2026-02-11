@@ -915,9 +915,14 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
         )
 
+        data_schema = self.add_suggested_values_to_schema(
+            vol.Schema(schema_dict),
+            entity,
+        )
+
         return self.async_show_form(
             step_id="reconfigure_binary_sensor",
-            data_schema=vol.Schema(schema_dict),
+            data_schema=data_schema,
         )
 
     async def async_step_reconfigure_light(
