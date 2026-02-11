@@ -23,10 +23,12 @@ if ! git rev-parse "$TAG" >/dev/null 2>&1; then
 fi
 
 # Extract changelog content for this version
+# Using awk -v to safely pass VERSION variable and exact pattern matching
 CHANGELOG_CONTENT=$(awk -v ver="$VERSION" '
   /^## \[/ {
     if (found) exit;
-    if ($0 ~ "\\[" ver "\\]") {
+    # Use exact matching with escaped brackets for robustness
+    if (index($0, "[" ver "]") > 0) {
       found=1;
       next;
     }
