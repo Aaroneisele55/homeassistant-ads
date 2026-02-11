@@ -301,6 +301,18 @@ class TestReconfigureForms:
     """
 
     @staticmethod
+    def _get_config_flow_tree() -> ast.AST:
+        """Load and parse the config_flow.py file."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            return ast.parse(f.read())
+
+    @staticmethod
     def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | ast.FunctionDef | None:
         """Find a function definition by name in the AST, including async methods."""
         # Search in top-level and class bodies
@@ -337,8 +349,20 @@ class TestReconfigureForms:
                         and call.func.attr == "Optional"
                     ):
                         # Check if first argument is the field we're looking for
-                        if call.args and isinstance(call.args[0], ast.Name):
-                            if call.args[0].id == field_name:
+                        if call.args:
+                            first_arg = call.args[0]
+                            field_matches = False
+                            
+                            # Handle both Name nodes (CONF_DEVICE_CLASS) and string literals
+                            if isinstance(first_arg, ast.Name) and first_arg.id == field_name:
+                                field_matches = True
+                            elif isinstance(first_arg, ast.Constant) and first_arg.value == field_name:
+                                field_matches = True
+                            # For Python < 3.8 compatibility
+                            elif isinstance(first_arg, ast.Str) and first_arg.s == field_name:  # type: ignore[attr-defined]
+                                field_matches = True
+                            
+                            if field_matches:
                                 # Check if there's a default= keyword argument
                                 has_default = any(
                                     kw.arg == "default" for kw in call.keywords
@@ -366,15 +390,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_sensor_device_class_has_no_default(self):
         """Test that device_class in reconfigure_sensor has no default parameter."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_sensor")
         assert func is not None, "async_step_reconfigure_sensor not found"
 
@@ -389,15 +405,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_sensor_state_class_has_no_default(self):
         """Test that state_class in reconfigure_sensor has no default parameter."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_sensor")
         assert func is not None, "async_step_reconfigure_sensor not found"
 
@@ -412,15 +420,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_sensor_uses_suggested_values(self):
         """Test that reconfigure_sensor uses suggested_values to display current values."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_sensor")
         assert func is not None, "async_step_reconfigure_sensor not found"
 
@@ -432,15 +432,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_binary_sensor_device_class_has_no_default(self):
         """Test that device_class in reconfigure_binary_sensor has no default parameter."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_binary_sensor")
         assert func is not None, "async_step_reconfigure_binary_sensor not found"
 
@@ -455,15 +447,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_binary_sensor_uses_suggested_values(self):
         """Test that reconfigure_binary_sensor uses suggested_values to display current values."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_binary_sensor")
         assert func is not None, "async_step_reconfigure_binary_sensor not found"
 
@@ -475,15 +459,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_cover_device_class_has_no_default(self):
         """Test that device_class in reconfigure_cover has no default parameter."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_cover")
         assert func is not None, "async_step_reconfigure_cover not found"
 
@@ -498,15 +474,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_cover_uses_suggested_values(self):
         """Test that reconfigure_cover uses suggested_values to display current values."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_cover")
         assert func is not None, "async_step_reconfigure_cover not found"
 
@@ -518,15 +486,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_valve_device_class_has_no_default(self):
         """Test that device_class in reconfigure_valve has no default parameter."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_valve")
         assert func is not None, "async_step_reconfigure_valve not found"
 
@@ -541,15 +501,7 @@ class TestReconfigureForms:
 
     def test_reconfigure_valve_uses_suggested_values(self):
         """Test that reconfigure_valve uses suggested_values to display current values."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as f:
-            tree = ast.parse(f.read())
-
+        tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, "async_step_reconfigure_valve")
         assert func is not None, "async_step_reconfigure_valve not found"
 
