@@ -188,11 +188,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          RELEASE_TAG="v$NEW_VERSION"
+          NOTES_FILE="${{ runner.temp }}/release_notes.md"
           
-          # Create the release using GitHub CLI
-          gh release create "v$NEW_VERSION" \
-            --title "v$NEW_VERSION" \
-            --notes-file "${{ runner.temp }}/release_notes.md" \
-            --verify-tag
+          # Small initial delay to allow tag propagation to GitHub's API
+          sleep 5
           
-          echo "✅ GitHub Release created for version $NEW_VERSION"
+          MAX_RETRIES=3
+          DELAY_SECONDS=5
+          
+          for attempt in $(seq 1 "$MAX_RETRIES"); do
+            echo "Attempt $attempt to create GitHub Release for $RELEASE_TAG"
+            
+            if gh release create "$RELEASE_TAG" \
+              --title "$RELEASE_TAG" \
+              --notes-file "$NOTES_FILE" \
+              --verify-tag; then
+              echo "✅ GitHub Release created for version $NEW_VERSION"
+              break
+            fi
+            
+            if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+              echo "Release creation failed (attempt $attempt). Retrying in ${DELAY_SECONDS}s..."
+              sleep "$DELAY_SECONDS"
+            else
+              echo "❌ Failed to create GitHub Release for $RELEASE_TAG after $MAX_RETRIES attempts." >&2
+              exit 1
+            fi
+          done
