@@ -1,13 +1,19 @@
 {
   "domain": "ads_custom",
   "name": "ADS Custom",
-  "codeowners": ["@mrpasztoradam"],
+  "codeowners": [
+    "@mrpasztoradam"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/Aaroneisele55/homeassistant-ads/blob/main/docs/index.md",
   "homeassistant": "2025.7.0",
   "iot_class": "local_push",
-  "loggers": ["pyads"],
+  "loggers": [
+    "pyads"
+  ],
   "quality_scale": "legacy",
-  "requirements": ["pyads==3.4.0"],
-  "version": "1.0.0"
+  "requirements": [
+    "pyads==3.4.0"
+  ],
+  "version": "1.1.0"
 }

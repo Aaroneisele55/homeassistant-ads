@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-11
+
 ### Added
 - Automated version management system with bump_version.py script
 - GitHub Actions workflow for automatic version bumping on pushes to main
