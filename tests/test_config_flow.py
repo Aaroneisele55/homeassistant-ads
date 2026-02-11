@@ -358,9 +358,6 @@ class TestReconfigureForms:
                                 field_matches = True
                             elif isinstance(first_arg, ast.Constant) and first_arg.value == field_name:
                                 field_matches = True
-                            # For Python < 3.8 compatibility
-                            elif isinstance(first_arg, ast.Str) and first_arg.s == field_name:  # type: ignore[attr-defined]
-                                field_matches = True
                             
                             if field_matches:
                                 # Check if there's a default= keyword argument
