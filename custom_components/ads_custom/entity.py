@@ -1,32 +1,33 @@
 """Support for Automation Device Specification (ADS)."""
 
+
 import asyncio
 from asyncio import timeout
 import logging
-from typing import Any
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityCategory
 
-from .const import (
-    STATE_KEY_STATE,
-    DOMAIN,
-    CONF_ENTITY_ICON,
-    CONF_ENTITY_CATEGORY,
-    CONF_ENTITY_PICTURE,
-)
+from .const import STATE_KEY_STATE
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
 
 
+
 class AdsEntity(Entity):
-        @staticmethod
-        def async_get_entity_options_flow(entity, platform):
+    @staticmethod
+    def async_get_entity_options_flow(entity, platform):
             """Return the entity options flow handler class for this entity."""
             from .entity_options_flow import AdsEntityOptionsFlowHandler
             return AdsEntityOptionsFlowHandler
     """Representation of ADS entity."""
+
+    @staticmethod
+    def async_get_entity_options_flow(entity, platform):
+        """Return the entity options flow handler class for this entity."""
+        from .entity_options_flow import AdsEntityOptionsFlowHandler
+        return AdsEntityOptionsFlowHandler
 
     _attr_should_poll = False
 
@@ -44,19 +45,19 @@ class AdsEntity(Entity):
         entity_picture: str | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
-        self._state_dict: dict[str, Any] = {}
+        self._state_dict = {}  
         self._state_dict[STATE_KEY_STATE] = None
         self._ads_hub = ads_hub
         self._ads_var = ads_var
-        self._event: asyncio.Event | None = None
+        self._event = None  # type: asyncio.Event | None
         if unique_id is not None:
             self._attr_unique_id = unique_id
         self._attr_name = name
-        
+
         # Set config entry ID for proper association
         if config_entry_id is not None:
             self._attr_config_entry_id = config_entry_id
-        
+
         # Set entity options
         if icon is not None:
             self._attr_icon = icon
