@@ -18,6 +18,11 @@ SUBENTRY_TYPE_ENTITY = "entity"
 
 STATE_KEY_STATE = "state"
 
+# Entity option configuration keys
+CONF_ENTITY_ICON = "icon"
+CONF_ENTITY_CATEGORY = "entity_category"
+CONF_ENTITY_PICTURE = "entity_picture"
+
 
 class AdsType(StrEnum):
     """Supported Types."""

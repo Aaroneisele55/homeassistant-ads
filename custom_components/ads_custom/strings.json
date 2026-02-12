@@ -36,6 +36,46 @@
         "reconfigure": "Reconfigure ADS Entity"
       },
       "step": {
+                "entity_options": {
+                  "title": "ADS Entity Options",
+                  "description": "Configure ADS-specific options for this entity. These options are unique to the ADS integration and are not available in the standard Home Assistant entity options dialog.",
+                  "data": {
+                    "adsvar": "ADS Variable Name",
+                    "adstype": "ADS Data Type",
+                    "adsvar_brightness": "Brightness Variable (optional)",
+                    "adsvar_brightness_type": "Brightness Data Type",
+                    "adsvar_brightness_scale": "Brightness Scale",
+                    "adsvar_position": "Position Variable (optional)",
+                    "adsvar_position_type": "Position Data Type",
+                    "adsvar_set_position": "Set Position Variable (optional)",
+                    "adsvar_open": "Open Command Variable (optional)",
+                    "adsvar_close": "Close Command Variable (optional)",
+                    "adsvar_stop": "Stop Command Variable (optional)",
+                    "inverted": "Inverted Positioning",
+                    "options": "Select Options (comma separated)",
+                    "unit_of_measurement": "Unit of Measurement (optional)",
+                    "device_class": "Device Class (optional)",
+                    "state_class": "State Class (optional)"
+                  },
+                  "data_description": {
+                    "adsvar": "The PLC variable name (e.g., GVL.pump)",
+                    "adstype": "The data type of the PLC variable",
+                    "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
+                    "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
+                    "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)",
+                    "adsvar_position": "Variable for reading current position (0-100)",
+                    "adsvar_position_type": "Data type: byte (0-255) or uint (0-65535)",
+                    "adsvar_set_position": "Variable for setting target position",
+                    "adsvar_open": "Boolean variable to trigger open command",
+                    "adsvar_close": "Boolean variable to trigger close command",
+                    "adsvar_stop": "Boolean variable to trigger stop command",
+                    "inverted": "If true, position 0=open and 100=closed",
+                    "options": "Comma-separated list of options for select entities",
+                    "unit_of_measurement": "e.g., °C, %, kW",
+                    "device_class": "e.g., temperature, humidity, power",
+                    "state_class": "For statistics and long-term data"
+                  }
+                },
         "user": {
           "title": "Add Entity",
           "description": "Select the type of entity you want to add.",

@@ -6,9 +6,15 @@ import logging
 from typing import Any
 
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, EntityCategory
 
-from .const import STATE_KEY_STATE, DOMAIN
+from .const import (
+    STATE_KEY_STATE,
+    DOMAIN,
+    CONF_ENTITY_ICON,
+    CONF_ENTITY_CATEGORY,
+    CONF_ENTITY_PICTURE,
+)
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,6 +34,9 @@ class AdsEntity(Entity):
         device_name: str | None = None,
         device_identifiers: set | None = None,
         config_entry_id: str | None = None,
+        icon: str | None = None,
+        entity_category: str | None = None,
+        entity_picture: str | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
         self._state_dict: dict[str, Any] = {}
@@ -42,6 +51,18 @@ class AdsEntity(Entity):
         # Set config entry ID for proper association
         if config_entry_id is not None:
             self._attr_config_entry_id = config_entry_id
+        
+        # Set entity options
+        if icon is not None:
+            self._attr_icon = icon
+        if entity_category is not None:
+            # Convert string to EntityCategory enum
+            try:
+                self._attr_entity_category = EntityCategory(entity_category)
+            except ValueError:
+                _LOGGER.warning("Invalid entity_category: %s", entity_category)
+        if entity_picture is not None:
+            self._attr_entity_picture = entity_picture
         
         # Set up device info if identifiers provided
         if device_identifiers is not None:

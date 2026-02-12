@@ -22,7 +22,15 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, selector
 import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
+from .const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_CATEGORY,
+    CONF_ENTITY_ICON,
+    CONF_ENTITY_PICTURE,
+    DOMAIN,
+    AdsType,
+    SUBENTRY_TYPE_ENTITY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1118,4 +1126,68 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 }
             ),
             errors=errors,
+        )
+
+    # ── Entity Options ──────────────────────────────────────────────
+
+    async def async_step_entity_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Configure entity options like icon, entity_category, etc."""
+        if user_input is not None:
+            subentry = self._get_reconfigure_subentry()
+            new_data = dict(subentry.data)
+            
+            # Remove empty optional fields to allow clearing
+            self._remove_empty_optional_fields(
+                user_input, CONF_ENTITY_ICON, CONF_ENTITY_CATEGORY, CONF_ENTITY_PICTURE
+            )
+            
+            # Update only the entity option fields
+            for key in [CONF_ENTITY_ICON, CONF_ENTITY_CATEGORY, CONF_ENTITY_PICTURE]:
+                if key in user_input:
+                    new_data[key] = user_input[key]
+                elif key in new_data:
+                    # Remove the key if it's not in user input (was cleared)
+                    del new_data[key]
+            
+            self.hass.config_entries.async_update_subentry(
+                self.entry, subentry, data=MappingProxyType(new_data)
+            )
+            return self.async_abort(reason="entity_options_updated")
+        
+        # Get current entity data
+        subentry = self._get_reconfigure_subentry()
+        entity = dict(subentry.data)
+        
+        # Define entity category options
+        entity_category_options = [
+            "",  # None/cleared
+            "config",
+            "diagnostic",
+        ]
+        
+        # Build the schema with current values as defaults
+        schema_dict: dict[Any, Any] = {
+            vol.Optional(CONF_ENTITY_ICON): selector.IconSelector(
+                selector.IconSelectorConfig()
+            ),
+            vol.Optional(CONF_ENTITY_CATEGORY): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=entity_category_options,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+            vol.Optional(CONF_ENTITY_PICTURE): cv.string,
+        }
+        
+        # Use add_suggested_values_to_schema to populate defaults
+        data_schema = self.add_suggested_values_to_schema(
+            vol.Schema(schema_dict),
+            entity,
+        )
+        
+        return self.async_show_form(
+            step_id="entity_options",
+            data_schema=data_schema,
         )

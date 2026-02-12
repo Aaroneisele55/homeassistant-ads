@@ -19,7 +19,15 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY
+from .const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_CATEGORY,
+    CONF_ENTITY_ICON,
+    CONF_ENTITY_PICTURE,
+    DOMAIN,
+    STATE_KEY_STATE,
+    SUBENTRY_TYPE_ENTITY,
+)
 from .entity import AdsEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -79,6 +87,9 @@ async def async_setup_entry(
         name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
         ads_var = subentry.data.get(CONF_ADS_VAR)
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+        icon = subentry.data.get(CONF_ENTITY_ICON)
+        entity_category = subentry.data.get(CONF_ENTITY_CATEGORY)
+        entity_picture = subentry.data.get(CONF_ENTITY_PICTURE)
 
         if ads_var and unique_id:
             # Each subentry gets its own device using the subentry's unique_id
@@ -86,7 +97,7 @@ async def async_setup_entry(
             device_name = name
             
             async_add_entities(
-                [AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id)],
+                [AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id, icon, entity_category, entity_picture)],
                 config_subentry_id=subentry_id,
             )
 
@@ -103,9 +114,12 @@ class AdsSwitch(AdsEntity, SwitchEntity):
         device_name: str | None = None,
         device_identifiers: set | None = None,
         config_entry_id: str | None = None,
+        icon: str | None = None,
+        entity_category: str | None = None,
+        entity_picture: str | None = None,
     ) -> None:
         """Initialize AdsSwitch entity."""
-        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id)
+        super().__init__(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, config_entry_id, icon, entity_category, entity_picture)
 
     async def async_added_to_hass(self) -> None:
         """Register device notification."""
