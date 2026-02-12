@@ -24,7 +24,6 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from . import ADS_TYPEMAP, CONF_ADS_TYPE
 from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY, AdsType
 from .entity import AdsEntity
-from .entity_options_flow import AdsEntityOptionsFlowHandler
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
