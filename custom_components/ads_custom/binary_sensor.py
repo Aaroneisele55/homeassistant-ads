@@ -79,7 +79,6 @@ async def async_setup_entry(
     """Set up ADS binary sensor entities from a config entry's subentries."""
 
     platform = entity_platform.async_get_current_platform()
-    platform.async_register_entity_options_flow(AdsEntityOptionsFlowHandler)
 
     ads_hub = hass.data[DOMAIN].get(entry.entry_id)
     if ads_hub is None:
