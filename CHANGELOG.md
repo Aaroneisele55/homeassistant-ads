@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Comprehensive entity reconfiguration documentation (docs/ENTITY_RECONFIGURATION.md)
+- Documentation explaining how to edit entity properties from the entity settings page
+- Feature clarification: UI-created entities already support reconfiguration via the entity settings cogwheel menu
+
+### Changed
+- Updated README.md and docs/index.md to document the entity reconfiguration feature
+
 ## [1.1.4] - 2026-02-11
 
 ### Fixed
