@@ -15,11 +15,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, entity_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import CONF_ADS_VAR, DOMAIN, SUBENTRY_TYPE_ENTITY
 from .entity import AdsEntity
+from .entity_options_flow import AdsEntityOptionsFlowHandler
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +76,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up ADS select entities from a config entry's subentries."""
+
+    platform = entity_platform.async_get_current_platform()
+    platform.async_register_entity_options_flow(AdsEntityOptionsFlowHandler)
+
     ads_hub = hass.data[DOMAIN].get(entry.entry_id)
     if ads_hub is None:
         return
