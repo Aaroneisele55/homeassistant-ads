@@ -145,6 +145,24 @@ The sections below document every entity type and its parameters.
 
 ---
 
+## Editing Entity Properties
+
+**For entities created through the UI**, you can edit their properties (ADS variables, data types, device classes, etc.) after creation:
+
+1. Go to **Settings → Devices & Services → Entities**
+2. Find your ADS entity and click on it
+3. Click the **cogwheel icon** (⚙️) in the top right corner
+4. Select **"Reconfigure"** to edit the entity's properties
+5. Make your changes and click **Submit**
+
+This works like Template entities in Home Assistant — you can modify any entity property without deleting and recreating the entity.
+
+**Note:** YAML entities do not support reconfiguration. To edit a YAML entity, update your `configuration.yaml` and restart Home Assistant.
+
+For detailed instructions with examples, see the [Entity Reconfiguration Guide](./ENTITY_RECONFIGURATION.md).
+
+---
+
 ## Binary Sensor
 
 Reads a boolean (or floating-point) value from the PLC and exposes it as on/off.

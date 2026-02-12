@@ -51,6 +51,8 @@ Copy the `custom_components/ads_custom` folder into your Home Assistant `custom_
 2. Search for **ADS Custom** and enter the AMS Net ID (e.g. `192.168.1.100.1.1`), an optional IP address, and the AMS port.
 3. After the connection succeeds, click **Configure → Add Entity** to create switches, sensors, binary sensors, or lights directly in the UI — no restart needed.
 
+**Editing entities:** Entities created through the UI can be reconfigured later. Go to **Settings → Devices & Services → Entities**, click on an ADS entity, then click the cogwheel icon and select **"Reconfigure"** to edit its properties (ADS variables, data types, device classes, etc.). See [Entity Reconfiguration Guide](docs/ENTITY_RECONFIGURATION.md) for details.
+
 ### Option B – YAML setup
 This integration is fully compatible with YAML configurations created for the core `ads` integration. Just change the domain to `ads_custom` and it will work!
 ```yaml
