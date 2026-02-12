@@ -43,6 +43,47 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
       
+      - name: Aggregate changelog from merged commits
+        run: |
+          LAST_TAG=$(git tag --sort=-creatordate | grep '^v' | head -n1)
+          echo "Last version tag: $LAST_TAG"
+          git log "$LAST_TAG..HEAD" --pretty=format:"%s" | grep -v "Bump version to" > commit_messages.txt
+          ADDED=""
+          CHANGED=""
+          FIXED=""
+          REMOVED=""
+          SECURITY=""
+          while read -r line; do
+            if echo "$line" | grep -qE '^feat:'; then
+              ADDED+="- ${line#feat: }\n"
+            elif echo "$line" | grep -qE '^fix:'; then
+              FIXED+="- ${line#fix: }\n"
+            elif echo "$line" | grep -qE '^change:'; then
+              CHANGED+="- ${line#change: }\n"
+            elif echo "$line" | grep -qE '^remove:'; then
+              REMOVED+="- ${line#remove: }\n"
+            elif echo "$line" | grep -qE '^security:'; then
+              SECURITY+="- ${line#security: }\n"
+            fi
+          done < commit_messages.txt
+          if [ -n "$ADDED$CHANGED$FIXED$REMOVED$SECURITY" ]; then
+            awk '/## \[Unreleased\]/ {print; print "\n"} !/## \[Unreleased\]/ {print}' CHANGELOG.md > CHANGELOG.tmp
+            echo "### Added" >> CHANGELOG.tmp
+            echo -e "$ADDED" >> CHANGELOG.tmp
+            echo "### Changed" >> CHANGELOG.tmp
+            echo -e "$CHANGED" >> CHANGELOG.tmp
+            echo "### Fixed" >> CHANGELOG.tmp
+            echo -e "$FIXED" >> CHANGELOG.tmp
+            echo "### Removed" >> CHANGELOG.tmp
+            echo -e "$REMOVED" >> CHANGELOG.tmp
+            echo "### Security" >> CHANGELOG.tmp
+            echo -e "$SECURITY" >> CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
+            echo "✓ Aggregated changelog from merged commits"
+          else
+            echo "No conventional commit messages found since last version."
+          fi
+          
       - name: Determine version bump type
         id: bump_type
         run: |
