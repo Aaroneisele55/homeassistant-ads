@@ -16,8 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AdsEntity(Entity):
-        @staticmethod
-        def async_get_entity_options_flow(entity, platform):
+    @staticmethod
+    def async_get_entity_options_flow(entity, platform):
             """Return the entity options flow handler class for this entity."""
             from .entity_options_flow import AdsEntityOptionsFlowHandler
             return AdsEntityOptionsFlowHandler
@@ -45,7 +45,7 @@ class AdsEntity(Entity):
         entity_picture: str | None = None,
     ) -> None:
         """Initialize ADS binary sensor."""
-        self._state_dict = {}  # type: dict[str, Any]
+        self._state_dict = {}  
         self._state_dict[STATE_KEY_STATE] = None
         self._ads_hub = ads_hub
         self._ads_var = ads_var
