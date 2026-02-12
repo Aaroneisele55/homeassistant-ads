@@ -665,4 +665,11 @@ async def _async_register_services(hass: HomeAssistant, ads: AdsHub) -> None:
             schema=SCHEMA_SERVICE_WRITE_DATA_BY_NAME,
         )
 
+
         hass.data[DOMAIN]["_services_registered"] = True
+
+# Ensure config_flow is imported so subentry flow handler is registered
+try:
+    import custom_components.ads_custom.config_flow
+except ImportError:
+    _LOGGER.warning("Could not import config_flow; entity options menu may not work.")
