@@ -97,6 +97,61 @@ jobs:
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "Determined bump type: $BUMP_TYPE"
       
+      - name: Update changelog with commit info
+        if: steps.bump_type.outputs.skip != 'true'
+        run: |
+          # Check if [Unreleased] section is empty
+          UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]$/,/^## \[/' CHANGELOG.md | sed '1d;$d' | grep -v '^$' || true)
+          
+          if [ -z "$UNRELEASED_CONTENT" ]; then
+            echo "⚠ [Unreleased] section is empty, extracting commit message"
+            
+            # Get commit message and body
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              COMMIT_TITLE="${{ github.event.pull_request.title }}"
+              COMMIT_BODY="${{ github.event.pull_request.body }}"
+            else
+              # For direct commits, get the most recent commit that's not a version bump
+              COMMIT_INFO=$(git log -1 --skip=0 --pretty=format:"%s%n%b" | head -20)
+              COMMIT_TITLE=$(echo "$COMMIT_INFO" | head -1)
+              COMMIT_BODY=$(echo "$COMMIT_INFO" | tail -n +2)
+            fi
+            
+            echo "Commit title: $COMMIT_TITLE"
+            
+            # Determine the category based on commit message
+            CATEGORY="Changed"
+            if echo "$COMMIT_TITLE" | grep -qiE '^(fix|bugfix|hotfix)'; then
+              CATEGORY="Fixed"
+            elif echo "$COMMIT_TITLE" | grep -qiE '^(feat|feature)'; then
+              CATEGORY="Added"
+            elif echo "$COMMIT_TITLE" | grep -qiE '^(remove|delete)'; then
+              CATEGORY="Removed"
+            elif echo "$COMMIT_TITLE" | grep -qiE '^(security|sec)'; then
+              CATEGORY="Security"
+            fi
+            
+            # Clean up commit title (remove conventional commit prefix)
+            CLEAN_TITLE=$(echo "$COMMIT_TITLE" | sed -E 's/^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?!?:\s*//')
+            
+            # Add to [Unreleased] section
+            # Find the line number of [Unreleased] and insert after it
+            awk -v category="$CATEGORY" -v title="$CLEAN_TITLE" '
+              /^## \[Unreleased\]$/ {
+                print
+                print ""
+                print "### " category
+                print "- " title
+                next
+              }
+              {print}
+            ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+            
+            echo "✓ Added commit to [Unreleased] section under ### $CATEGORY"
+          else
+            echo "✓ [Unreleased] section already has content"
+          fi
+      
       - name: Bump version
         id: bump_version
         if: steps.bump_type.outputs.skip != 'true'
