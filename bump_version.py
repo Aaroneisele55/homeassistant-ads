@@ -84,13 +84,13 @@ def update_changelog(changelog_path: Path, new_version: str) -> None:
     content = changelog_path.read_text()
     today = datetime.now().strftime("%Y-%m-%d")
     
-    # Check if there's an [Unreleased] section
-    unreleased_pattern = r"## \[Unreleased\]\s*\n"
-    if not re.search(unreleased_pattern, content):
+    # First check if there's an [Unreleased] section header
+    if not re.search(r"## \[Unreleased\]\s*\n", content):
         print(f"⚠ No [Unreleased] section found in {changelog_path}, cannot update")
         return
     
     # Check if there's content in the [Unreleased] section
+    # This pattern captures everything between [Unreleased] and the next ## [ header or EOF
     unreleased_content_pattern = r"## \[Unreleased\]\s*\n(.*?)(?=\n## \[|$)"
     match = re.search(unreleased_content_pattern, content, re.DOTALL)
     has_content = match and match.group(1).strip()

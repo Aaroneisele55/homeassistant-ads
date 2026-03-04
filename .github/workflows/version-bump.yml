@@ -111,8 +111,8 @@ jobs:
               COMMIT_TITLE="${{ github.event.pull_request.title }}"
               COMMIT_BODY="${{ github.event.pull_request.body }}"
             else
-              # For direct commits, get the most recent commit that's not a version bump
-              COMMIT_INFO=$(git log -1 --skip=0 --pretty=format:"%s%n%b" | head -20)
+              # For direct commits, get the most recent commit
+              COMMIT_INFO=$(git log -1 --pretty=format:"%s%n%b" | head -20)
               COMMIT_TITLE=$(echo "$COMMIT_INFO" | head -1)
               COMMIT_BODY=$(echo "$COMMIT_INFO" | tail -n +2)
             fi
@@ -131,8 +131,8 @@ jobs:
               CATEGORY="Security"
             fi
             
-            # Clean up commit title (remove conventional commit prefix)
-            CLEAN_TITLE=$(echo "$COMMIT_TITLE" | sed -E 's/^(feat|fix|docs|style|refactor|test|chore|build|ci|perf|revert)(\([^)]+\))?!?:\s*//')
+            # Clean up commit title (remove conventional commit prefix and other common prefixes)
+            CLEAN_TITLE=$(echo "$COMMIT_TITLE" | sed -E 's/^(feat|feature|fix|bugfix|hotfix|docs|style|refactor|test|chore|build|ci|perf|revert|remove|delete|security|sec)(\([^)]+\))?!?:\s*//')
             
             # Add to [Unreleased] section
             # Find the line number of [Unreleased] and insert after it
