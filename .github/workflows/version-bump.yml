@@ -101,7 +101,7 @@ jobs:
         if: steps.bump_type.outputs.skip != 'true'
         run: |
           # Check if [Unreleased] section is empty
-          UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]$/,/^## \[/' CHANGELOG.md | sed '1d;$d' | grep -v '^$' || true)
+          UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]$/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md | grep -v '^$' || true)
           
           if [ -z "$UNRELEASED_CONTENT" ]; then
             echo "⚠ [Unreleased] section is empty, extracting commit message"
