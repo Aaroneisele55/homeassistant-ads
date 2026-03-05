@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-05
+
+
+
 ### Added
 - Documented and finalized branding file layout: existing `custom_components/ads_custom/icon.png` and `logo.png` are kept for older Home Assistant / HACS behavior, and duplicated copies are now provided under `custom_components/ads_custom/brand/icon.png` and `logo.png` for the Home Assistant 2026.3+ brands proxy API; docs/ATTRIBUTION.md has been updated so that all shipped branding asset paths are covered consistently by the same attribution and licensing terms.
 
@@ -88,3 +92,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Improved thread safety in ADS hub operations
 - Better error handling for ADS connection failures
+### Added
+- replace brand/logo.png with official ADS logo from brands CDN
+- Add brand/ directory with icon and logo for HA 2026.3 brands proxy API
+
+### Changed
+
+### Fixed
+
+### Removed
+
+### Security
+
