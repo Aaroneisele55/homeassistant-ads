@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Documented and finalized branding file layout: existing `custom_components/ads_custom/icon.png` and `logo.png` are kept for older Home Assistant / HACS behavior, and duplicated copies are now provided under `custom_components/ads_custom/brand/icon.png` and `logo.png` for the Home Assistant 2026.3+ brands proxy API; docs/ATTRIBUTION.md has been updated so that all shipped branding asset paths are covered consistently by the same attribution and licensing terms.
+
 ## [1.1.14] - 2026-02-12
 
 ## [1.1.13] - 2026-02-12
