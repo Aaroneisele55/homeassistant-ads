@@ -80,33 +80,41 @@ def update_pyproject(pyproject_path: Path, new_version: str) -> None:
 
 
 def update_changelog(changelog_path: Path, new_version: str) -> None:
-    """Add a new version section to CHANGELOG.md if [Unreleased] section exists."""
+    """Add a new version section to CHANGELOG.md."""
     content = changelog_path.read_text()
+    today = datetime.now().strftime("%Y-%m-%d")
     
-    # Check if there's an [Unreleased] section with content
-    unreleased_pattern = r"## \[Unreleased\]\s*\n(.*?)(?=\n## \[|$)"
-    match = re.search(unreleased_pattern, content, re.DOTALL)
+    # First check if there's an [Unreleased] section header
+    if not re.search(r"## \[Unreleased\]\s*\n", content):
+        print(f"⚠ No [Unreleased] section found in {changelog_path}, cannot update")
+        return
     
-    if match and match.group(1).strip():
-        # There's unreleased content, convert it to a version section
-        today = datetime.now().strftime("%Y-%m-%d")
-        new_section = f"## [{new_version}] - {today}"
-        
-        # Replace [Unreleased] with the new version
-        new_content = content.replace("## [Unreleased]", new_section, 1)
-        
-        # Add a new [Unreleased] section at the top
-        insert_pos = new_content.find(f"## [{new_version}]")
-        new_content = (
-            new_content[:insert_pos] +
-            "## [Unreleased]\n\n" +
-            new_content[insert_pos:]
-        )
-        
-        changelog_path.write_text(new_content)
+    # Check if there's content in the [Unreleased] section
+    # This pattern captures everything between [Unreleased] and the next ## [ header or EOF
+    unreleased_content_pattern = r"## \[Unreleased\]\s*\n(.*?)(?=\n## \[|$)"
+    match = re.search(unreleased_content_pattern, content, re.DOTALL)
+    has_content = match and match.group(1).strip()
+    
+    # Create the new version section
+    new_section = f"## [{new_version}] - {today}"
+    
+    # Replace [Unreleased] with the new version
+    new_content = content.replace("## [Unreleased]", new_section, 1)
+    
+    # Add a new [Unreleased] section at the top
+    insert_pos = new_content.find(f"## [{new_version}]")
+    new_content = (
+        new_content[:insert_pos] +
+        "## [Unreleased]\n\n" +
+        new_content[insert_pos:]
+    )
+    
+    changelog_path.write_text(new_content)
+    
+    if has_content:
         print(f"✓ Updated {changelog_path} with version {new_version}")
     else:
-        print(f"ℹ No [Unreleased] changes found in {changelog_path}, skipping update")
+        print(f"✓ Created empty version section for {new_version} in {changelog_path}")
 
 
 def create_git_tag(version: str, dry_run: bool = False) -> None:
