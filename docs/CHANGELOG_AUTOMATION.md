@@ -165,11 +165,11 @@ If a change is in the wrong category:
 - The category is not automatically determined from the commit prefix
 - This is by design to avoid overwriting or conflicting with manual entries
 
-**Example scenario**: You manually add a "Fixed" entry to `[Unreleased]`, then commit with `feat: new feature`. The workflow will:
+**Example scenario**: You manually add a `Fixed` entry to `[Unreleased]`, then commit with `feat: new feature`. The workflow will:
 1. See that `[Unreleased]` has content
 2. Skip the automatic extraction
-3. Move the existing "Fixed" entry to the version section
-4. The "feat: new feature" commit will NOT be in the changelog
+3. Move the existing `Fixed` entry to the version section
+4. The `feat: new feature` commit will NOT be in the changelog
 
 **Recommendation**: When manually updating `[Unreleased]`, include all changes (both manual and from commits) to ensure completeness.
 

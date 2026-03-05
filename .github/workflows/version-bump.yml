@@ -192,12 +192,11 @@ jobs:
                 in_unreleased = 1
                 next
               }
-              # Skip blank lines immediately after [Unreleased] since we added our own
+              # Skip all blank lines immediately after [Unreleased] since we added our own
               in_unreleased && /^$/ {
-                in_unreleased = 0
                 next
               }
-              # Any other line after [Unreleased] means we need to print it
+              # Any non-blank line after [Unreleased] means we are done skipping
               in_unreleased {
                 in_unreleased = 0
               }
