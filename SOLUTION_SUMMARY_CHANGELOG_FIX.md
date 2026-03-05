@@ -107,7 +107,7 @@ The automated version bump workflow expected developers to manually update the `
 - ✅ CodeQL analysis: 0 alerts in both actions and python
 - ✅ No secrets or credentials in code
 - ✅ Secure temporary file usage in workflow
-- ✅ No injection vulnerabilities in bash scripts
+- ✅ Fixed shell injection vulnerability: PR title/body now passed via `env:` block instead of direct interpolation
 
 ## Next Steps for Users
 This PR can be merged to enable:

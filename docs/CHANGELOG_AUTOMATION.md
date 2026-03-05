@@ -140,6 +140,10 @@ If you see empty version sections in the changelog:
 - This should no longer happen with the updated workflow
 - The workflow now always populates changelog entries
 
+**Note for manual use**: If you run `bump_version.py` manually without first populating the `[Unreleased]` section, it will create an empty version section. The script will print "Created empty version section" as a warning. To avoid this, either:
+1. Manually add entries to `[Unreleased]` before running the script
+2. Use the GitHub Actions workflow which automatically populates the section
+
 ### Missing Changes
 
 If a change isn't in the changelog:
@@ -152,6 +156,22 @@ If a change isn't in the changelog:
 If a change is in the wrong category:
 - Update the commit message prefix to match the desired category
 - Or manually update the `[Unreleased]` section before committing
+
+### Existing Content Not Updated
+
+**Important limitation**: If the `[Unreleased]` section already contains manually-added content, the automatic extraction step is skipped entirely. This means:
+
+- The commit message is not added to the changelog (the existing content is preserved)
+- The category is not automatically determined from the commit prefix
+- This is by design to avoid overwriting or conflicting with manual entries
+
+**Example scenario**: You manually add a "Fixed" entry to `[Unreleased]`, then commit with `feat: new feature`. The workflow will:
+1. See that `[Unreleased]` has content
+2. Skip the automatic extraction
+3. Move the existing "Fixed" entry to the version section
+4. The "feat: new feature" commit will NOT be in the changelog
+
+**Recommendation**: When manually updating `[Unreleased]`, include all changes (both manual and from commits) to ensure completeness.
 
 ## Related Documentation
 

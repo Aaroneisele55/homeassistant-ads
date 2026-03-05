@@ -86,12 +86,16 @@ jobs:
           
       - name: Determine version bump type
         id: bump_type
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: |
           # Get the commit message or PR title
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            MESSAGE="${{ github.event.pull_request.title }}"
-            BODY="${{ github.event.pull_request.body }}"
-            LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+            MESSAGE="$PR_TITLE"
+            BODY="$PR_BODY"
+            LABELS="$PR_LABELS"
           else
             MESSAGE="$(git log -1 --pretty=%B)"
             BODY=""
@@ -140,6 +144,9 @@ jobs:
       
       - name: Update changelog with commit info
         if: steps.bump_type.outputs.skip != 'true'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           # Check if [Unreleased] section is empty
           UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]$/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md | grep -v '^$' || true)
@@ -147,10 +154,10 @@ jobs:
           if [ -z "$UNRELEASED_CONTENT" ]; then
             echo "⚠ [Unreleased] section is empty, extracting commit message"
             
-            # Get commit message and body
+            # Get commit message and body (using env vars to prevent shell injection)
             if [ "${{ github.event_name }}" == "pull_request" ]; then
-              COMMIT_TITLE="${{ github.event.pull_request.title }}"
-              COMMIT_BODY="${{ github.event.pull_request.body }}"
+              COMMIT_TITLE="$PR_TITLE"
+              COMMIT_BODY="$PR_BODY"
             else
               # For direct commits, get the most recent commit
               COMMIT_INFO=$(git log -1 --pretty=format:"%s%n%b" | head -20)
@@ -175,15 +182,24 @@ jobs:
             # Clean up commit title (remove conventional commit prefix and other common prefixes)
             CLEAN_TITLE=$(echo "$COMMIT_TITLE" | sed -E 's/^(feat|feature|fix|bugfix|hotfix|docs|style|refactor|test|chore|build|ci|perf|revert|remove|delete|security|sec)(\([^)]+\))?!?:\s*//')
             
-            # Add to [Unreleased] section
-            # Find the line number of [Unreleased] and insert after it
+            # Add to [Unreleased] section (preserving proper formatting)
             awk -v category="$CATEGORY" -v title="$CLEAN_TITLE" '
               /^## \[Unreleased\]$/ {
                 print
                 print ""
                 print "### " category
                 print "- " title
+                in_unreleased = 1
                 next
+              }
+              # Skip blank lines immediately after [Unreleased] since we added our own
+              in_unreleased && /^$/ {
+                in_unreleased = 0
+                next
+              }
+              # Any other line after [Unreleased] means we need to print it
+              in_unreleased {
+                in_unreleased = 0
               }
               {print}
             ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
