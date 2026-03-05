@@ -7,12 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Updated changelog generation to automatically capture commit messages when [Unreleased] section is empty
-- Improved version bump script to always create version sections in changelog
+## [1.1.14] - 2026-02-12
 
-### Fixed
-- Direct commits to main now properly documented in changelog (previously only PR-based changes were captured)
+## [1.1.13] - 2026-02-12
+
+## [1.1.12] - 2026-02-12
 
 ## [1.1.11] - 2026-02-12
 

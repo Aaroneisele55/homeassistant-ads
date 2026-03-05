@@ -30,7 +30,7 @@ from .const import (
     SUBENTRY_TYPE_ENTITY,
 )
 from .entity import AdsEntity
-from .entity_options_flow import AdsEntityOptionsFlowHandler
+    # from .entity_options_flow import AdsEntityOptionsFlowHandler
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS Switch"
@@ -78,7 +78,7 @@ async def async_setup_entry(
     """Set up ADS switch entities from a config entry's subentries."""
 
     platform = entity_platform.async_get_current_platform()
-    platform.async_register_entity_options_flow(AdsEntityOptionsFlowHandler)
+     # platform.async_register_entity_options_flow(AdsEntityOptionsFlowHandler)
 
     ads_hub = hass.data[DOMAIN].get(entry.entry_id)
     if ads_hub is None:
