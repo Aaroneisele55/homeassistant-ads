@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `brand/` directory with `icon.png` and `logo.png` to support the Home Assistant 2026.3 brands proxy API, enabling the ADS icon to display in the UI for custom integrations.
+
 ## [1.1.14] - 2026-02-12
 
 ## [1.1.13] - 2026-02-12
