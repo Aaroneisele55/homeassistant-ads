@@ -443,4 +443,70 @@ class TestReconfigureForms:
         )
 
 
+class TestDeviceAssignmentSupport:
+    """Tests for configurable entity-to-device assignment support."""
+
+    @staticmethod
+    def _get_config_flow_tree() -> ast.AST:
+        """Load and parse config_flow.py."""
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            return ast.parse(file.read())
+
+    @staticmethod
+    def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | None:
+        """Find an async function definition by name."""
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef):
+                for item in node.body:
+                    if isinstance(item, ast.AsyncFunctionDef) and item.name == function_name:
+                        return item
+        return None
+
+    @staticmethod
+    def _function_references_name(func_node: ast.AsyncFunctionDef, name: str) -> bool:
+        """Return True if function references a given variable name."""
+        return any(isinstance(node, ast.Name) and node.id == name for node in ast.walk(func_node))
+
+    @pytest.mark.parametrize(
+        "function_name",
+        [
+            "async_step_configure_switch",
+            "async_step_configure_sensor",
+            "async_step_configure_binary_sensor",
+            "async_step_configure_light",
+            "async_step_configure_cover",
+            "async_step_configure_valve",
+            "async_step_configure_select",
+            "async_step_reconfigure_switch",
+            "async_step_reconfigure_sensor",
+            "async_step_reconfigure_binary_sensor",
+            "async_step_reconfigure_light",
+            "async_step_reconfigure_cover",
+            "async_step_reconfigure_valve",
+            "async_step_reconfigure_select",
+        ],
+    )
+    def test_device_assignment_fields_used_in_entity_forms(self, function_name: str):
+        """Ensure each add/reconfigure form uses device assignment fields."""
+        tree = self._get_config_flow_tree()
+        func = self._get_function_node(tree, function_name)
+        assert func is not None, f"{function_name} not found"
+        assert self._function_references_name(func, "CONF_ENTITY_DEVICE_ID"), (
+            f"{function_name} should reference CONF_ENTITY_DEVICE_ID"
+        )
+
+    def test_device_name_validation_error_exists(self):
+        """Ensure the device-name-required validation error key is present."""
+        tree = self._get_config_flow_tree()
+        assert any(
+            isinstance(node, ast.Constant) and node.value == "device_name_required"
+            for node in ast.walk(tree)
+        ), "device_name_required error key not found in config_flow.py"
+
 

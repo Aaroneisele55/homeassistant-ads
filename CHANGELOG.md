@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Config-flow support to assign entities to an existing ADS device, or create a new shared device entry during add/edit.
+
+### Changed
+- Entity setup now uses persisted `entity_device_id` assignments so multiple entities can appear under one device instead of always creating one device per entity.
+
 ## [1.2.1] - 2026-05-20
 
 ### Changed
@@ -128,4 +134,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
-

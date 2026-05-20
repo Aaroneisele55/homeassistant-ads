@@ -27,7 +27,13 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import EVENT_DEVICE_REGISTRY_UPDATED
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_ADS_VAR, DOMAIN, AdsType, SUBENTRY_TYPE_ENTITY
+from .const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    DOMAIN,
+    AdsType,
+    SUBENTRY_TYPE_ENTITY,
+)
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -339,12 +345,13 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         subentry_unique_id = subentry.unique_id
         if not subentry_unique_id:
             continue
+        subentry_device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry_unique_id
 
         # Migrate device: ensure device is properly associated with subentry
         # For existing users who already have the duplicate display issue,
         # we need to clean up and re-associate properly
         device = device_registry.async_get_device(
-            identifiers={(DOMAIN, subentry_unique_id)}
+            identifiers={(DOMAIN, subentry_device_id)}
         )
         if device is not None:
             subentry_ids = device.config_entries_subentries.get(hub_entry.entry_id)
@@ -376,7 +383,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 )
                 # Re-fetch device after removal as it may have been removed if it had no other associations
                 device = device_registry.async_get_device(
-                    identifiers={(DOMAIN, subentry_unique_id)}
+                    identifiers={(DOMAIN, subentry_device_id)}
                 )
                 if device is not None:
                     device_registry.async_update_device(
@@ -514,15 +521,22 @@ async def _async_handle_device_registry_update(
     if not our_identifier:
         return
 
-    # Find the subentry with matching unique_id
-    matching_subentry = None
+    # Find matching subentries by assigned device identifier
+    matching_subentries: list[ConfigSubentry] = []
+    for subentry in entry.subentries.values():
+        if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+            continue
+        subentry_device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        if subentry_device_id == our_identifier:
+            matching_subentries.append(subentry)
 
-    for subentry_id, subentry in entry.subentries.items():
-        if subentry.subentry_type == SUBENTRY_TYPE_ENTITY and subentry.unique_id == our_identifier:
-            matching_subentry = subentry
-            break
+    if len(matching_subentries) != 1:
+        # Only sync names in legacy one-device-per-entity mode
+        return
 
-    if not matching_subentry:
+    matching_subentry = matching_subentries[0]
+    if CONF_ENTITY_DEVICE_ID in matching_subentry.data:
+        # Explicit device assignment should not rename entity names
         return
 
     # Get the new device name (prefer name_by_user over name)

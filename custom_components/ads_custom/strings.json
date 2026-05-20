@@ -36,46 +36,46 @@
         "reconfigure": "Reconfigure ADS Entity"
       },
       "step": {
-                "entity_options": {
-                  "title": "ADS Entity Options",
-                  "description": "Configure ADS-specific options for this entity. These options are unique to the ADS integration and are not available in the standard Home Assistant entity options dialog.",
-                  "data": {
-                    "adsvar": "ADS Variable Name",
-                    "adstype": "ADS Data Type",
-                    "adsvar_brightness": "Brightness Variable (optional)",
-                    "adsvar_brightness_type": "Brightness Data Type",
-                    "adsvar_brightness_scale": "Brightness Scale",
-                    "adsvar_position": "Position Variable (optional)",
-                    "adsvar_position_type": "Position Data Type",
-                    "adsvar_set_position": "Set Position Variable (optional)",
-                    "adsvar_open": "Open Command Variable (optional)",
-                    "adsvar_close": "Close Command Variable (optional)",
-                    "adsvar_stop": "Stop Command Variable (optional)",
-                    "inverted": "Inverted Positioning",
-                    "options": "Select Options (comma separated)",
-                    "unit_of_measurement": "Unit of Measurement (optional)",
-                    "device_class": "Device Class (optional)",
-                    "state_class": "State Class (optional)"
-                  },
-                  "data_description": {
-                    "adsvar": "The PLC variable name (e.g., GVL.pump)",
-                    "adstype": "The data type of the PLC variable",
-                    "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
-                    "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
-                    "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)",
-                    "adsvar_position": "Variable for reading current position (0-100)",
-                    "adsvar_position_type": "Data type: byte (0-255) or uint (0-65535)",
-                    "adsvar_set_position": "Variable for setting target position",
-                    "adsvar_open": "Boolean variable to trigger open command",
-                    "adsvar_close": "Boolean variable to trigger close command",
-                    "adsvar_stop": "Boolean variable to trigger stop command",
-                    "inverted": "If true, position 0=open and 100=closed",
-                    "options": "Comma-separated list of options for select entities",
-                    "unit_of_measurement": "e.g., °C, %, kW",
-                    "device_class": "e.g., temperature, humidity, power",
-                    "state_class": "For statistics and long-term data"
-                  }
-                },
+        "entity_options": {
+          "title": "ADS Entity Options",
+          "description": "Configure ADS-specific options for this entity. These options are unique to the ADS integration and are not available in the standard Home Assistant entity options dialog.",
+          "data": {
+            "adsvar": "ADS Variable Name",
+            "adstype": "ADS Data Type",
+            "adsvar_brightness": "Brightness Variable (optional)",
+            "adsvar_brightness_type": "Brightness Data Type",
+            "adsvar_brightness_scale": "Brightness Scale",
+            "adsvar_position": "Position Variable (optional)",
+            "adsvar_position_type": "Position Data Type",
+            "adsvar_set_position": "Set Position Variable (optional)",
+            "adsvar_open": "Open Command Variable (optional)",
+            "adsvar_close": "Close Command Variable (optional)",
+            "adsvar_stop": "Stop Command Variable (optional)",
+            "inverted": "Inverted Positioning",
+            "options": "Select Options (comma separated)",
+            "unit_of_measurement": "Unit of Measurement (optional)",
+            "device_class": "Device Class (optional)",
+            "state_class": "State Class (optional)"
+          },
+          "data_description": {
+            "adsvar": "The PLC variable name (e.g., GVL.pump)",
+            "adstype": "The data type of the PLC variable",
+            "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
+            "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
+            "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)",
+            "adsvar_position": "Variable for reading current position (0-100)",
+            "adsvar_position_type": "Data type: byte (0-255) or uint (0-65535)",
+            "adsvar_set_position": "Variable for setting target position",
+            "adsvar_open": "Boolean variable to trigger open command",
+            "adsvar_close": "Boolean variable to trigger close command",
+            "adsvar_stop": "Boolean variable to trigger stop command",
+            "inverted": "If true, position 0=open and 100=closed",
+            "options": "Comma-separated list of options for select entities",
+            "unit_of_measurement": "e.g., °C, %, kW",
+            "device_class": "e.g., temperature, humidity, power",
+            "state_class": "For statistics and long-term data"
+          }
+        },
         "user": {
           "title": "Add Entity",
           "description": "Select the type of entity you want to add.",
@@ -94,11 +94,15 @@
           "description": "Configure a switch entity that controls a boolean variable on your PLC.",
           "data": {
             "adsvar": "ADS Variable Name",
-            "name": "Entity Name"
+            "name": "Entity Name",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable name (e.g., GVL.pump)",
-            "name": "Friendly name for the switch"
+            "name": "Friendly name for the switch",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_sensor": {
@@ -110,7 +114,9 @@
             "adstype": "Data Type",
             "unit_of_measurement": "Unit of Measurement (optional)",
             "device_class": "Device Class (optional)",
-            "state_class": "State Class (optional)"
+            "state_class": "State Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable name (e.g., GVL.temperature)",
@@ -118,7 +124,9 @@
             "adstype": "The data type of the PLC variable",
             "unit_of_measurement": "e.g., °C, %, kW",
             "device_class": "e.g., temperature, humidity, power",
-            "state_class": "For statistics and long-term data"
+            "state_class": "For statistics and long-term data",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_binary_sensor": {
@@ -128,13 +136,17 @@
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
             "adstype": "Data Type",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable name (e.g., GVL.door_open)",
             "name": "Friendly name for the binary sensor",
             "adstype": "bool for boolean, real for floating-point",
-            "device_class": "e.g., door, motion, window"
+            "device_class": "e.g., door, motion, window",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_light": {
@@ -145,14 +157,18 @@
             "name": "Entity Name",
             "adsvar_brightness": "Brightness Variable (optional)",
             "adsvar_brightness_type": "Brightness Data Type",
-            "adsvar_brightness_scale": "Brightness Scale"
+            "adsvar_brightness_scale": "Brightness Scale",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable for on/off control",
             "name": "Friendly name for the light",
             "adsvar_brightness": "PLC variable for brightness (leave empty for on/off only)",
             "adsvar_brightness_type": "Data type: byte (0-255) or uint (0-65535)",
-            "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)"
+            "adsvar_brightness_scale": "Maximum brightness value (255 for HA standard, 100 for Beckhoff)",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_cover": {
@@ -168,7 +184,9 @@
             "adsvar_close": "Close Command Variable (optional)",
             "adsvar_stop": "Stop Command Variable (optional)",
             "inverted": "Inverted Positioning",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "Boolean variable indicating if cover is closed",
@@ -180,7 +198,9 @@
             "adsvar_close": "Boolean variable to trigger close command",
             "adsvar_stop": "Boolean variable to trigger stop command",
             "inverted": "If true, position 0=open and 100=closed",
-            "device_class": "e.g., blind, curtain, garage"
+            "device_class": "e.g., blind, curtain, garage",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_valve": {
@@ -189,12 +209,16 @@
           "data": {
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable for valve control (true=open, false=closed)",
             "name": "Friendly name for the valve",
-            "device_class": "e.g., gas, water"
+            "device_class": "e.g., gas, water",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "configure_select": {
@@ -203,12 +227,16 @@
           "data": {
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
-            "options": "Options (comma-separated)"
+            "options": "Options (comma-separated)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
           },
           "data_description": {
             "adsvar": "The PLC variable storing the option index (0-based integer)",
             "name": "Friendly name for the select",
-            "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')"
+            "options": "Enter options separated by commas (e.g., 'Off, Auto, Manual')",
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_switch": {
@@ -216,7 +244,13 @@
           "description": "Modify the configuration for this switch entity.",
           "data": {
             "adsvar": "ADS Variable Name",
-            "name": "Entity Name"
+            "name": "Entity Name",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_sensor": {
@@ -228,7 +262,13 @@
             "adstype": "Data Type",
             "unit_of_measurement": "Unit of Measurement (optional)",
             "device_class": "Device Class (optional)",
-            "state_class": "State Class (optional)"
+            "state_class": "State Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_binary_sensor": {
@@ -238,7 +278,13 @@
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
             "adstype": "Data Type",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_light": {
@@ -249,7 +295,13 @@
             "name": "Entity Name",
             "adsvar_brightness": "Brightness Variable (optional)",
             "adsvar_brightness_type": "Brightness Data Type",
-            "adsvar_brightness_scale": "Brightness Scale"
+            "adsvar_brightness_scale": "Brightness Scale",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_cover": {
@@ -265,7 +317,13 @@
             "adsvar_close": "Close Command Variable (optional)",
             "adsvar_stop": "Stop Command Variable (optional)",
             "inverted": "Inverted Positioning",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_valve": {
@@ -274,7 +332,13 @@
           "data": {
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
-            "device_class": "Device Class (optional)"
+            "device_class": "Device Class (optional)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         },
         "reconfigure_select": {
@@ -283,13 +347,20 @@
           "data": {
             "adsvar": "ADS Variable Name",
             "name": "Entity Name",
-            "options": "Options (comma-separated)"
+            "options": "Options (comma-separated)",
+            "entity_device_id": "Device (existing or create new)",
+            "entity_device_name": "New Device Name (required for new device)"
+          },
+          "data_description": {
+            "entity_device_id": "Select an existing device to group this entity under, or choose to create a new device.",
+            "entity_device_name": "Used only when creating a new device."
           }
         }
       },
       "error": {
         "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
-        "no_options": "Select must have at least one option"
+        "no_options": "Select must have at least one option",
+        "device_name_required": "A device name is required when creating a new device"
       },
       "abort": {
         "entity_type_not_supported": "This entity type is not yet supported",
