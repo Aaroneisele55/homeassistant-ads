@@ -43,7 +43,7 @@ Copy the `custom_components/ads_custom` folder into your Home Assistant `custom_
 
 - A Beckhoff TwinCAT 2 or TwinCAT 3 PLC reachable on the network.
 - An AMS route configured on the PLC that points back to the Home Assistant host.
-- Firewall rules that allow UDP port 48899 and the AMS port (default 48898).
+- Firewall rules that allow the AMS port (default 48898).
 
 ### Option A – UI setup
 
@@ -84,28 +84,13 @@ Restart Home Assistant after editing YAML.
 📋 **[Entity parameter reference](ENTITY_PARAMETERS.md)** — complete parameter tables for all seven entity types
 
 💡 **[Example `configuration.yaml`](example_configuration.yaml)** — copy-paste YAML for every entity type
-
-🎨 **[Icon and logo setup guide](docs/ICON_SETUP.md)** — how to display integration branding in Home Assistant and HACS
-
 ## Support
 
 - [Report an issue](https://github.com/Aaroneisele55/homeassistant-ads/issues)
-- [Home Assistant Community Forum](https://community.home-assistant.io/)
-
 ## Contributing
 
 Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines.
 
-### Version Management
-
-This project uses automated version management:
-- See **[VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)** for details on the versioning system
-- See **[docs/CHANGELOG_AUTOMATION.md](docs/CHANGELOG_AUTOMATION.md)** for how changelog entries are automatically generated
-- Versions are automatically bumped based on commit messages or PR labels
-- Optionally update `CHANGELOG.md` with your changes under the `[Unreleased]` section (otherwise commit messages are used)
-- GitHub Releases are automatically created for HACS version detection
-
-## License
 
 Apache License 2.0
 
