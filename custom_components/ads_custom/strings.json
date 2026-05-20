@@ -368,6 +368,119 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ADS Hub Settings",
+        "description": "Select an entity to edit, or choose 'Configure Connection' to update the ADS connection settings.",
+        "data": {
+          "selected_item": "Select entity or action"
+        }
+      },
+      "hub_connection": {
+        "title": "Configure ADS Connection",
+        "description": "Update the connection settings for your ADS device.",
+        "data": {
+          "device": "AMS Net ID",
+          "ip_address": "IP Address (optional)",
+          "port": "AMS Port"
+        }
+      },
+      "edit_switch": {
+        "title": "Edit Switch",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_sensor": {
+        "title": "Edit Sensor",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "unit_of_measurement": "Unit of Measurement (optional)",
+          "device_class": "Device Class (optional)",
+          "state_class": "State Class (optional)",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_binary_sensor": {
+        "title": "Edit Binary Sensor",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "adstype": "Data Type",
+          "device_class": "Device Class (optional)",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_light": {
+        "title": "Edit Light",
+        "data": {
+          "adsvar": "ADS Variable Name (On/Off)",
+          "name": "Entity Name",
+          "adsvar_brightness": "Brightness Variable (optional)",
+          "adsvar_brightness_type": "Brightness Data Type",
+          "adsvar_brightness_scale": "Brightness Scale",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_cover": {
+        "title": "Edit Cover",
+        "data": {
+          "adsvar": "Closed State Variable (optional)",
+          "name": "Entity Name",
+          "adsvar_position": "Position Variable (optional)",
+          "adsvar_position_type": "Position Data Type",
+          "adsvar_set_position": "Set Position Variable (optional)",
+          "adsvar_open": "Open Command Variable (optional)",
+          "adsvar_close": "Close Command Variable (optional)",
+          "adsvar_stop": "Stop Command Variable (optional)",
+          "inverted": "Inverted Positioning",
+          "device_class": "Device Class (optional)",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_valve": {
+        "title": "Edit Valve",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "device_class": "Device Class (optional)",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      },
+      "edit_select": {
+        "title": "Edit Select",
+        "data": {
+          "adsvar": "ADS Variable Name",
+          "name": "Entity Name",
+          "options": "Options (comma-separated)",
+          "entity_device_id": "Device (existing or create new)",
+          "entity_device_name": "New Device Name (required for new device)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the ADS device. Please check your configuration and ensure the device is reachable.",
+      "unknown": "Unexpected error occurred",
+      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
+      "no_options": "Select must have at least one option",
+      "device_name_required": "A device name is required when creating a new device"
+    },
+    "abort": {
+      "entity_type_not_supported": "This entity type is not yet supported",
+      "entity_not_found": "The selected entity could not be found"
+    }
+  },
   "selector": {
     "select": {
       "options": {

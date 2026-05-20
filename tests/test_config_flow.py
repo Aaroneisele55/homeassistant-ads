@@ -557,3 +557,210 @@ class TestResolveDeviceAssignment:
 
         assert result is True
         assert user_input["entity_device_id"] == "legacy-entity-id"
+
+
+class TestAdsHubOptionsFlowHandler:
+    """Tests for the hub-level AdsHubOptionsFlowHandler options flow."""
+
+    def test_options_flow_handler_importable(self):
+        """AdsHubOptionsFlowHandler can be imported from config_flow."""
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        assert AdsHubOptionsFlowHandler is not None
+
+    def test_options_flow_registered_on_config_flow(self):
+        """AdsConfigFlow.async_get_options_flow returns AdsHubOptionsFlowHandler instance."""
+        from unittest.mock import MagicMock
+
+        from custom_components.ads_custom.config_flow import (
+            AdsConfigFlow,
+            AdsHubOptionsFlowHandler,
+        )
+
+        config_entry = MagicMock()
+        handler = AdsConfigFlow.async_get_options_flow(config_entry)
+        assert isinstance(handler, AdsHubOptionsFlowHandler)
+
+    def test_options_flow_has_entity_edit_steps(self):
+        """AdsHubOptionsFlowHandler exposes async_step_edit_* for all entity types."""
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        entity_types = [
+            "switch",
+            "sensor",
+            "binary_sensor",
+            "light",
+            "cover",
+            "valve",
+            "select",
+        ]
+        for entity_type in entity_types:
+            step_name = f"async_step_edit_{entity_type}"
+            assert hasattr(AdsHubOptionsFlowHandler, step_name), (
+                f"AdsHubOptionsFlowHandler missing {step_name}"
+            )
+
+    def test_options_flow_has_hub_connection_step(self):
+        """AdsHubOptionsFlowHandler exposes async_step_hub_connection."""
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        assert hasattr(AdsHubOptionsFlowHandler, "async_step_hub_connection")
+
+    def test_options_flow_has_init_step(self):
+        """AdsHubOptionsFlowHandler exposes async_step_init."""
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        assert hasattr(AdsHubOptionsFlowHandler, "async_step_init")
+
+    def test_options_flow_init_routes_to_hub_connection_sentinel(self):
+        """Selecting __hub_connection__ in init routes to hub_connection step."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from custom_components.ads_custom.config_flow import (
+            AdsHubOptionsFlowHandler,
+            _HUB_CONNECTION_SENTINEL,
+        )
+
+        handler = AdsHubOptionsFlowHandler()
+
+        # Mock the config entry with no subentries
+        mock_entry = MagicMock()
+        mock_entry.subentries = {}
+        mock_entry.options = {}
+        handler._config_entry = mock_entry  # OptionsFlow stores as _config_entry
+
+        # Patch async_step_hub_connection to return a sentinel value
+        hub_result = {"type": "form", "step_id": "hub_connection"}
+        handler.async_step_hub_connection = AsyncMock(return_value=hub_result)
+
+        # Patch async_show_form to capture what would be shown
+        show_form_result = {"type": "form", "step_id": "init"}
+        handler.async_show_form = MagicMock(return_value=show_form_result)
+        handler.hass = MagicMock()
+
+        # When no user_input, should show the init form
+        result = asyncio.get_event_loop().run_until_complete(handler.async_step_init(None))
+        assert result["step_id"] == "init"
+
+        # When user selects hub_connection
+        result = asyncio.get_event_loop().run_until_complete(
+            handler.async_step_init({"selected_item": _HUB_CONNECTION_SENTINEL})
+        )
+        assert result["step_id"] == "hub_connection"
+        handler.async_step_hub_connection.assert_called_once()
+
+    def test_options_flow_init_routes_to_entity_edit(self):
+        """Selecting an entity subentry in init routes to the correct edit step."""
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock
+
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        handler = AdsHubOptionsFlowHandler()
+
+        # Create a mock subentry for a switch
+        mock_subentry = MagicMock()
+        mock_subentry.subentry_id = "abc123"
+        mock_subentry.subentry_type = "entity"
+        mock_subentry.title = "Pump (Switch)"
+        mock_subentry.data = {
+            "entity_type": "switch",
+            "adsvar": "GVL.Pump",
+            "name": "Pump",
+            "unique_id": "abc123",
+        }
+
+        mock_entry = MagicMock()
+        mock_entry.subentries = {"abc123": mock_subentry}
+        mock_entry.options = {}
+        handler._config_entry = mock_entry
+
+        edit_result = {"type": "form", "step_id": "edit_switch"}
+        handler.async_step_edit_switch = AsyncMock(return_value=edit_result)
+
+        show_form_result = {"type": "form", "step_id": "init"}
+        handler.async_show_form = MagicMock(return_value=show_form_result)
+        handler.hass = MagicMock()
+        # Make hass.dr return empty device registry
+        import homeassistant.helpers.device_registry as dr
+        empty_devices = MagicMock()
+        empty_devices.devices = {}
+
+        with patch.object(dr, "async_get", return_value=empty_devices):
+            result = asyncio.get_event_loop().run_until_complete(
+                handler.async_step_init({"selected_item": "abc123"})
+            )
+
+        assert result["step_id"] == "edit_switch"
+        handler.async_step_edit_switch.assert_called_once()
+
+    def test_options_flow_init_aborts_for_unknown_entity(self):
+        """Selecting a non-existent subentry in init aborts the flow."""
+        import asyncio
+        from unittest.mock import MagicMock
+
+        from custom_components.ads_custom.config_flow import AdsHubOptionsFlowHandler
+
+        handler = AdsHubOptionsFlowHandler()
+
+        mock_entry = MagicMock()
+        mock_entry.subentries = {}
+        mock_entry.options = {}
+        handler._config_entry = mock_entry
+
+        abort_result = {"type": "abort", "reason": "entity_not_found"}
+        handler.async_abort = MagicMock(return_value=abort_result)
+        handler.async_show_form = MagicMock(return_value={"type": "form"})
+        handler.hass = MagicMock()
+
+        result = asyncio.get_event_loop().run_until_complete(
+            handler.async_step_init({"selected_item": "nonexistent"})
+        )
+
+        handler.async_abort.assert_called_once_with(reason="entity_not_found")
+
+    def test_options_flow_edit_steps_use_device_assignment_schema(self):
+        """Each entity edit step should use device assignment schema (AST check)."""
+        import ast
+        from pathlib import Path
+
+        config_flow_path = (
+            Path(__file__).parent.parent
+            / "custom_components"
+            / "ads_custom"
+            / "config_flow.py"
+        )
+        with open(config_flow_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+
+        edit_steps = [
+            "async_step_edit_switch",
+            "async_step_edit_sensor",
+            "async_step_edit_binary_sensor",
+            "async_step_edit_light",
+            "async_step_edit_cover",
+            "async_step_edit_valve",
+            "async_step_edit_select",
+        ]
+
+        # Collect all function names in the file
+        for step_name in edit_steps:
+            func_found = False
+            refs_device_schema = False
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and node.name == step_name
+                ):
+                    func_found = True
+                    for child in ast.walk(node):
+                        if isinstance(child, ast.Attribute) and child.attr == "_device_assignment_schema":
+                            refs_device_schema = True
+                            break
+                    break
+
+            assert func_found, f"{step_name} not found in config_flow.py"
+            assert refs_device_schema, (
+                f"{step_name} should use _device_assignment_schema"
+            )

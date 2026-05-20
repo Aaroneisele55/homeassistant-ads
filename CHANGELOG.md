@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Hub-level options flow: pressing the "Configure" button on the ADS hub config entry now shows a list of all configured entities (subentries), allowing users to select any entity to edit. Also provides a "Configure Connection" option to update the ADS device address and port.
+
 ## [1.2.2] - 2026-05-20
 
 
