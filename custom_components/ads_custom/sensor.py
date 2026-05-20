@@ -29,7 +29,15 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType, StateType
 
 from . import ADS_TYPEMAP, CONF_ADS_FACTOR, CONF_ADS_TYPE
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY, AdsType
+from .const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
+    DOMAIN,
+    STATE_KEY_STATE,
+    SUBENTRY_TYPE_ENTITY,
+    AdsType,
+)
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -141,9 +149,9 @@ async def async_setup_entry(
         unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
 
         if ads_var and unique_id:
-            # Each subentry gets its own device using the subentry's unique_id
-            device_identifiers = {(DOMAIN, subentry.unique_id)}
-            device_name = name
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name
+            device_identifiers = {(DOMAIN, device_id)}
             
             async_add_entities(
                 [AdsSensor(

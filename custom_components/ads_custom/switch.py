@@ -22,6 +22,8 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import (
     CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
     CONF_ENTITY_CATEGORY,
     CONF_ENTITY_ICON,
     CONF_ENTITY_PICTURE,
@@ -98,9 +100,9 @@ async def async_setup_entry(
         entity_picture = subentry.data.get(CONF_ENTITY_PICTURE)
 
         if ads_var and unique_id:
-            # Each subentry gets its own device using the subentry's unique_id
-            device_identifiers = {(DOMAIN, subentry.unique_id)}
-            device_name = name
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name
+            device_identifiers = {(DOMAIN, device_id)}
             
             async_add_entities(
                 [AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id, icon, entity_category, entity_picture)],

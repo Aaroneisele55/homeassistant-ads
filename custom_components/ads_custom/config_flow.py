@@ -17,13 +17,15 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
-from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, selector
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
     CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
     CONF_ENTITY_CATEGORY,
     CONF_ENTITY_ICON,
     CONF_ENTITY_PICTURE,
@@ -33,6 +35,8 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+DEVICE_OPTION_CREATE_NEW = "__create_new__"
+DEFAULT_NEW_DEVICE_NAME = "ADS Device"
 
 # Entity type constants
 CONF_ENTITY_TYPE = "entity_type"
@@ -361,6 +365,143 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if field_name in merged_data and field_name not in user_input:
                 del merged_data[field_name]
 
+    @staticmethod
+    def _resolve_device_assignment(
+        user_input: dict[str, Any],
+        *,
+        current_data: dict[str, Any] | None = None,
+    ) -> bool:
+        """Resolve and validate device assignment fields in-place.
+
+        This method mutates ``user_input`` and returns ``True`` when assignment
+        resolution succeeds, otherwise ``False`` when user input is invalid.
+        It always sets/updates ``CONF_ENTITY_DEVICE_ID`` and may set or remove
+        ``CONF_ENTITY_DEVICE_NAME`` based on the selected mode.
+
+        Handled scenarios:
+        - Existing device selected: keep selected device ID and clear new-device name.
+        - New device selected: require ``entity_device_name`` and generate a new
+          ``entity_device_id``.
+        - No selection provided: preserve existing assignment from ``current_data``
+          (including legacy ``unique_id`` fallback) or create a dedicated fallback
+          assignment for compatibility.
+        """
+        selected_device_id = user_input.get(CONF_ENTITY_DEVICE_ID)
+        if selected_device_id is None:
+            # Keep existing assignment on reconfigure if field omitted
+            if current_data is not None:
+                existing_id = current_data.get(CONF_ENTITY_DEVICE_ID) or current_data.get(CONF_UNIQUE_ID)
+                if existing_id:
+                    user_input[CONF_ENTITY_DEVICE_ID] = existing_id
+                    user_input.pop(CONF_ENTITY_DEVICE_NAME, None)
+                    return True
+
+            # Legacy fallback: create a dedicated device as before
+            user_input[CONF_ENTITY_DEVICE_ID] = uuid.uuid4().hex
+            user_input[CONF_ENTITY_DEVICE_NAME] = user_input.get(
+                CONF_NAME, DEFAULT_NEW_DEVICE_NAME
+            )
+            return True
+
+        if selected_device_id == DEVICE_OPTION_CREATE_NEW:
+            new_device_name = (user_input.get(CONF_ENTITY_DEVICE_NAME) or "").strip()
+            if not new_device_name:
+                return False
+            user_input[CONF_ENTITY_DEVICE_ID] = uuid.uuid4().hex
+            user_input[CONF_ENTITY_DEVICE_NAME] = new_device_name
+            return True
+
+        # Existing device selected
+        user_input[CONF_ENTITY_DEVICE_ID] = selected_device_id
+        user_input.pop(CONF_ENTITY_DEVICE_NAME, None)
+        return True
+
+    def _get_device_assignment_options(self) -> list[dict[str, str]]:
+        """Return sorted device options as label/value dictionaries.
+
+        Options include all ADS devices linked to the current config entry,
+        sorted alphabetically by label, plus a trailing ``Create new device``
+        option used by config-flow forms.
+        """
+        device_registry = dr.async_get(self.hass)
+        options: list[dict[str, str]] = []
+        seen_identifiers: set[str] = set()
+
+        for device in device_registry.devices.values():
+            if self.entry.entry_id not in device.config_entries:
+                continue
+
+            for domain, identifier in device.identifiers:
+                if domain != DOMAIN or identifier in seen_identifiers:
+                    continue
+                seen_identifiers.add(identifier)
+                label = device.name_by_user or device.name or identifier
+                options.append({"label": label, "value": identifier})
+                break
+
+        options.sort(key=lambda item: item["label"].lower())
+        options.append({"label": "Create new device", "value": DEVICE_OPTION_CREATE_NEW})
+        return options
+
+    def _device_assignment_schema(
+        self, current_data: dict[str, Any] | None = None
+    ) -> dict[Any, Any]:
+        """Build schema fields for assigning an entity to a device.
+
+        Returns voluptuous schema entries for:
+        - ``entity_device_id``: existing-device selector plus create-new option.
+        - ``entity_device_name``: optional name used when creating a device.
+
+        For legacy entities without explicit ``entity_device_id``, this method
+        falls back to ``unique_id`` so reconfigure forms default to the correct
+        previously-created device.
+        """
+        options = self._get_device_assignment_options()
+        current_device_id = (
+            current_data.get(CONF_ENTITY_DEVICE_ID) if current_data else None
+        )
+        if current_data and not current_device_id:
+            # Legacy entities created before explicit device assignment used
+            # the entity/subentry unique_id as the device identifier.
+            current_device_id = current_data.get(CONF_UNIQUE_ID)
+
+        if current_device_id and all(
+            option["value"] != current_device_id for option in options
+        ):
+            fallback_label = current_data.get(
+                CONF_ENTITY_DEVICE_NAME,
+                current_data.get(CONF_NAME, current_device_id),
+            )
+            options.insert(
+                0,
+                {
+                    "label": fallback_label,
+                    "value": current_device_id,
+                },
+            )
+
+        default_device_id = (
+            current_device_id
+            if current_device_id
+            else (options[0]["value"] if options else DEVICE_OPTION_CREATE_NEW)
+        )
+
+        schema: dict[Any, Any] = {
+            vol.Optional(CONF_ENTITY_DEVICE_ID, default=default_device_id): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+        }
+
+        if current_data and current_data.get(CONF_ENTITY_DEVICE_NAME):
+            schema[vol.Optional(CONF_ENTITY_DEVICE_NAME, default=current_data[CONF_ENTITY_DEVICE_NAME])] = cv.string
+        else:
+            schema[vol.Optional(CONF_ENTITY_DEVICE_NAME)] = cv.string
+
+        return schema
+
     def _update_device_name_if_changed(
         self, subentry_unique_id: str, old_name: str | None, new_name: str
     ) -> None:
@@ -484,17 +625,21 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Configure a switch entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            unique_id = uuid.uuid4().hex
-            return self.async_create_entry(
-                title=f"{user_input[CONF_NAME]} (Switch)",
-                data={
-                    CONF_ENTITY_TYPE: "switch",
-                    **user_input,
-                    "unique_id": unique_id,
-                },
-                unique_id=unique_id,
-            )
+            if not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Switch)",
+                    data={
+                        CONF_ENTITY_TYPE: "switch",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
+                )
 
         return self.async_show_form(
             step_id="configure_switch",
@@ -502,30 +647,36 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 {
                     vol.Required(CONF_ADS_VAR): cv.string,
                     vol.Required(CONF_NAME): cv.string,
+                    **self._device_assignment_schema(),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_configure_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Configure a sensor entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             # Remove empty optional fields to allow clearing
             self._remove_empty_optional_fields(
                 user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS
             )
 
-            unique_id = uuid.uuid4().hex
-            return self.async_create_entry(
-                title=f"{user_input[CONF_NAME]} (Sensor)",
-                data={
-                    CONF_ENTITY_TYPE: "sensor",
-                    **user_input,
-                    "unique_id": unique_id,
-                },
-                unique_id=unique_id,
-            )
+            if not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Sensor)",
+                    data={
+                        CONF_ENTITY_TYPE: "sensor",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
+                )
 
         return self.async_show_form(
             step_id="configure_sensor",
@@ -552,28 +703,34 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    **self._device_assignment_schema(),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_configure_binary_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Configure a binary sensor entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             # Remove empty optional fields to allow clearing
             self._remove_empty_optional_fields(user_input, CONF_DEVICE_CLASS)
 
-            unique_id = uuid.uuid4().hex
-            return self.async_create_entry(
-                title=f"{user_input[CONF_NAME]} (Binary Sensor)",
-                data={
-                    CONF_ENTITY_TYPE: "binary_sensor",
-                    **user_input,
-                    "unique_id": unique_id,
-                },
-                unique_id=unique_id,
-            )
+            if not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Binary Sensor)",
+                    data={
+                        CONF_ENTITY_TYPE: "binary_sensor",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
+                )
 
         return self.async_show_form(
             step_id="configure_binary_sensor",
@@ -593,25 +750,31 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    **self._device_assignment_schema(),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_configure_light(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Configure a light entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            unique_id = uuid.uuid4().hex
-            return self.async_create_entry(
-                title=f"{user_input[CONF_NAME]} (Light)",
-                data={
-                    CONF_ENTITY_TYPE: "light",
-                    **user_input,
-                    "unique_id": unique_id,
-                },
-                unique_id=unique_id,
-            )
+            if not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Light)",
+                    data={
+                        CONF_ENTITY_TYPE: "light",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
+                )
 
         return self.async_show_form(
             step_id="configure_light",
@@ -629,8 +792,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                     vol.Optional("adsvar_brightness_scale", default=255): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=65535)
                     ),
+                    **self._device_assignment_schema(),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_configure_cover(
@@ -650,8 +815,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
-
-            if not errors:
+            elif not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
                 unique_id = uuid.uuid4().hex
                 return self.async_create_entry(
                     title=f"{user_input[CONF_NAME]} (Cover)",
@@ -687,6 +853,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    **self._device_assignment_schema(),
                 }
             ),
             errors=errors,
@@ -696,20 +863,24 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Configure a valve entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
             # Remove empty optional fields to allow clearing
             self._remove_empty_optional_fields(user_input, CONF_DEVICE_CLASS)
 
-            unique_id = uuid.uuid4().hex
-            return self.async_create_entry(
-                title=f"{user_input[CONF_NAME]} (Valve)",
-                data={
-                    CONF_ENTITY_TYPE: "valve",
-                    **user_input,
-                    "unique_id": unique_id,
-                },
-                unique_id=unique_id,
-            )
+            if not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                unique_id = uuid.uuid4().hex
+                return self.async_create_entry(
+                    title=f"{user_input[CONF_NAME]} (Valve)",
+                    data={
+                        CONF_ENTITY_TYPE: "valve",
+                        **user_input,
+                        "unique_id": unique_id,
+                    },
+                    unique_id=unique_id,
+                )
 
         return self.async_show_form(
             step_id="configure_valve",
@@ -723,8 +894,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    **self._device_assignment_schema(),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_configure_select(
@@ -740,8 +913,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             if not options:
                 errors["options"] = "no_options"
-
-            if not errors:
+            elif not self._resolve_device_assignment(user_input):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
                 unique_id = uuid.uuid4().hex
                 return self.async_create_entry(
                     title=f"{user_input[CONF_NAME]} (Select)",
@@ -761,6 +935,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                     vol.Required(CONF_ADS_VAR): cv.string,
                     vol.Required(CONF_NAME): cv.string,
                     vol.Required("options"): cv.string,
+                    **self._device_assignment_schema(),
                 }
             ),
             errors=errors,
@@ -797,22 +972,26 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a switch entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            new_data = dict(self._entity_data)
-            new_data.update(user_input)
-            subentry = self._get_reconfigure_subentry()
-            new_title = f"{user_input[CONF_NAME]} (Switch)"
+            if not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                new_data = dict(self._entity_data)
+                new_data.update(user_input)
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Switch)"
 
-            # Update device name if changed
-            old_name = self._entity_data.get(CONF_NAME)
-            new_name = user_input[CONF_NAME]
-            if subentry.unique_id:
-                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+                # Update device name if changed (legacy one-device-per-entity only)
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
-            self.hass.config_entries.async_update_subentry(
-                self.entry, subentry, data=MappingProxyType(new_data), title=new_title
-            )
-            return self.async_abort(reason="reconfigure_successful")
+                self.hass.config_entries.async_update_subentry(
+                    self.entry, subentry, data=MappingProxyType(new_data), title=new_title
+                )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         return self.async_show_form(
@@ -821,39 +1000,45 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 {
                     vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
                     vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
+                    **self._device_assignment_schema(entity),
                 }
             ),
+            errors=errors,
         )
 
     async def async_step_reconfigure_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a sensor entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            new_data = dict(self._entity_data)
-            new_data.update(user_input)
+            if not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                new_data = dict(self._entity_data)
+                new_data.update(user_input)
 
-            # Remove empty optional fields to allow clearing
-            self._remove_empty_optional_fields(
-                new_data, CONF_DEVICE_CLASS, CONF_STATE_CLASS
-            )
-            self._remove_cleared_optional_fields(
-                new_data, user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS
-            )
+                # Remove empty optional fields to allow clearing
+                self._remove_empty_optional_fields(
+                    new_data, CONF_DEVICE_CLASS, CONF_STATE_CLASS
+                )
+                self._remove_cleared_optional_fields(
+                    new_data, user_input, CONF_DEVICE_CLASS, CONF_STATE_CLASS
+                )
 
-            subentry = self._get_reconfigure_subentry()
-            new_title = f"{user_input[CONF_NAME]} (Sensor)"
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Sensor)"
 
-            # Update device name if changed
-            old_name = self._entity_data.get(CONF_NAME)
-            new_name = user_input[CONF_NAME]
-            if subentry.unique_id:
-                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+                # Update device name if changed (legacy one-device-per-entity only)
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
-            self.hass.config_entries.async_update_subentry(
-                self.entry, subentry, data=MappingProxyType(new_data), title=new_title
-            )
-            return self.async_abort(reason="reconfigure_successful")
+                self.hass.config_entries.async_update_subentry(
+                    self.entry, subentry, data=MappingProxyType(new_data), title=new_title
+                )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -879,37 +1064,43 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         schema_dict[vol.Optional(CONF_STATE_CLASS)] = selector.SelectSelector(
             selector.SelectSelectorConfig(options=["measurement", "total", "total_increasing"], mode=selector.SelectSelectorMode.DROPDOWN)
         )
+        schema_dict.update(self._device_assignment_schema(entity))
 
         return self.async_show_form(
             step_id="reconfigure_sensor",
             data_schema=vol.Schema(schema_dict),
+            errors=errors,
         )
 
     async def async_step_reconfigure_binary_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a binary sensor entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            new_data = dict(self._entity_data)
-            new_data.update(user_input)
+            if not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                new_data = dict(self._entity_data)
+                new_data.update(user_input)
 
-            # Remove empty optional fields to allow clearing
-            self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
-            self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
+                # Remove empty optional fields to allow clearing
+                self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
+                self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
 
-            subentry = self._get_reconfigure_subentry()
-            new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
 
-            # Update device name if changed
-            old_name = self._entity_data.get(CONF_NAME)
-            new_name = user_input[CONF_NAME]
-            if subentry.unique_id:
-                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+                # Update device name if changed (legacy one-device-per-entity only)
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
-            self.hass.config_entries.async_update_subentry(
-                self.entry, subentry, data=MappingProxyType(new_data), title=new_title
-            )
-            return self.async_abort(reason="reconfigure_successful")
+                self.hass.config_entries.async_update_subentry(
+                    self.entry, subentry, data=MappingProxyType(new_data), title=new_title
+                )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -918,6 +1109,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             vol.Optional(CONF_ADS_TYPE, default=entity.get(CONF_ADS_TYPE, "bool")): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=["bool", "real"], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
+            **self._device_assignment_schema(entity),
         }
         schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
             selector.SelectSelectorConfig(options=BINARY_SENSOR_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
@@ -931,28 +1123,33 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure_binary_sensor",
             data_schema=data_schema,
+            errors=errors,
         )
 
     async def async_step_reconfigure_light(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a light entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            new_data = dict(self._entity_data)
-            new_data.update(user_input)
-            subentry = self._get_reconfigure_subentry()
-            new_title = f"{user_input[CONF_NAME]} (Light)"
+            if not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                new_data = dict(self._entity_data)
+                new_data.update(user_input)
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Light)"
 
-            # Update device name if changed
-            old_name = self._entity_data.get(CONF_NAME)
-            new_name = user_input[CONF_NAME]
-            if subentry.unique_id:
-                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+                # Update device name if changed (legacy one-device-per-entity only)
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
-            self.hass.config_entries.async_update_subentry(
-                self.entry, subentry, data=MappingProxyType(new_data), title=new_title
-            )
-            return self.async_abort(reason="reconfigure_successful")
+                self.hass.config_entries.async_update_subentry(
+                    self.entry, subentry, data=MappingProxyType(new_data), title=new_title
+                )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         light_schema: dict[Any, Any] = {
@@ -964,6 +1161,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             vol.Optional("adsvar_brightness_scale", default=entity.get("adsvar_brightness_scale", 255)): vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=65535)
             ),
+            **self._device_assignment_schema(entity),
         }
         existing_brightness_var = entity.get("adsvar_brightness")
         if existing_brightness_var:
@@ -974,6 +1172,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure_light",
             data_schema=vol.Schema(light_schema),
+            errors=errors,
         )
 
     async def async_step_reconfigure_cover(
@@ -989,8 +1188,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             if not user_input.get(CONF_ADS_VAR) and not user_input.get("adsvar_position"):
                 errors["base"] = "no_state_var"
-
-            if not errors:
+            elif not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
 
@@ -1001,10 +1201,10 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
 
-                # Update device name if changed
+                # Update device name if changed (legacy one-device-per-entity only)
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id:
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
                 self.hass.config_entries.async_update_subentry(
@@ -1030,6 +1230,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
             selector.SelectSelectorConfig(options=COVER_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
         )
+        schema_dict.update(self._device_assignment_schema(entity))
 
         return self.async_show_form(
             step_id="reconfigure_cover",
@@ -1041,27 +1242,31 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Reconfigure a valve entity."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            new_data = dict(self._entity_data)
-            new_data.update(user_input)
+            if not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
+                new_data = dict(self._entity_data)
+                new_data.update(user_input)
 
-            # Remove empty optional fields to allow clearing
-            self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
-            self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
+                # Remove empty optional fields to allow clearing
+                self._remove_empty_optional_fields(new_data, CONF_DEVICE_CLASS)
+                self._remove_cleared_optional_fields(new_data, user_input, CONF_DEVICE_CLASS)
 
-            subentry = self._get_reconfigure_subentry()
-            new_title = f"{user_input[CONF_NAME]} (Valve)"
+                subentry = self._get_reconfigure_subentry()
+                new_title = f"{user_input[CONF_NAME]} (Valve)"
 
-            # Update device name if changed
-            old_name = self._entity_data.get(CONF_NAME)
-            new_name = user_input[CONF_NAME]
-            if subentry.unique_id:
-                self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
+                # Update device name if changed (legacy one-device-per-entity only)
+                old_name = self._entity_data.get(CONF_NAME)
+                new_name = user_input[CONF_NAME]
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                    self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
-            self.hass.config_entries.async_update_subentry(
-                self.entry, subentry, data=MappingProxyType(new_data), title=new_title
-            )
-            return self.async_abort(reason="reconfigure_successful")
+                self.hass.config_entries.async_update_subentry(
+                    self.entry, subentry, data=MappingProxyType(new_data), title=new_title
+                )
+                return self.async_abort(reason="reconfigure_successful")
 
         entity = self._entity_data
         schema_dict: dict[Any, Any] = {
@@ -1071,10 +1276,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         schema_dict[vol.Optional(CONF_DEVICE_CLASS)] = selector.SelectSelector(
             selector.SelectSelectorConfig(options=VALVE_DEVICE_CLASSES, mode=selector.SelectSelectorMode.DROPDOWN)
         )
+        schema_dict.update(self._device_assignment_schema(entity))
 
         return self.async_show_form(
             step_id="reconfigure_valve",
             data_schema=vol.Schema(schema_dict),
+            errors=errors,
         )
 
     async def async_step_reconfigure_select(
@@ -1090,18 +1297,19 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             if not options:
                 errors["options"] = "no_options"
-
-            if not errors:
+            elif not self._resolve_device_assignment(user_input, current_data=self._entity_data):
+                errors[CONF_ENTITY_DEVICE_NAME] = "device_name_required"
+            else:
                 new_data = dict(self._entity_data)
                 new_data.update(user_input)
                 new_data["options"] = options
                 subentry = self._get_reconfigure_subentry()
                 new_title = f"{user_input[CONF_NAME]} (Select)"
 
-                # Update device name if changed
+                # Update device name if changed (legacy one-device-per-entity only)
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id:
+                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
 
                 self.hass.config_entries.async_update_subentry(
@@ -1123,6 +1331,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                     vol.Required(CONF_ADS_VAR, default=entity.get(CONF_ADS_VAR, "")): cv.string,
                     vol.Required(CONF_NAME, default=entity.get(CONF_NAME, "")): cv.string,
                     vol.Required("options", default=options_str): cv.string,
+                    **self._device_assignment_schema(entity),
                 }
             ),
             errors=errors,

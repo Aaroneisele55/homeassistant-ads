@@ -26,7 +26,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
-from .const import CONF_ADS_VAR, DOMAIN, STATE_KEY_STATE, SUBENTRY_TYPE_ENTITY
+from .const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
+    DOMAIN,
+    STATE_KEY_STATE,
+    SUBENTRY_TYPE_ENTITY,
+)
 from .entity import AdsEntity
 from .hub import AdsHub
 
@@ -184,9 +191,9 @@ async def async_setup_entry(
             continue
 
         if unique_id:
-            # Each subentry gets its own device using the subentry's unique_id
-            device_identifiers = {(DOMAIN, subentry.unique_id)}
-            device_name = name
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name
+            device_identifiers = {(DOMAIN, device_id)}
             
             async_add_entities(
                 [AdsCover(
