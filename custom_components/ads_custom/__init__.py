@@ -530,8 +530,13 @@ async def _async_handle_device_registry_update(
         if subentry_device_id == our_identifier:
             matching_subentries.append(subentry)
 
-    if len(matching_subentries) != 1:
-        # Only sync names in legacy one-device-per-entity mode
+    if not matching_subentries:
+        # No matching entity subentry for this device.
+        return
+
+    if len(matching_subentries) > 1:
+        # Multiple entities share this device; do not sync device rename to
+        # any single entity name in shared-device mode.
         return
 
     matching_subentry = matching_subentries[0]

@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
     ConfigSubentryFlow,
     SubentryFlowResult,
 )
-from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT, CONF_UNIQUE_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr, selector
 import homeassistant.helpers.config_validation as cv
@@ -36,6 +36,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 DEVICE_OPTION_CREATE_NEW = "__create_new__"
+DEFAULT_NEW_DEVICE_NAME = "ADS Device"
 
 # Entity type constants
 CONF_ENTITY_TYPE = "entity_type"
@@ -364,18 +365,32 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             if field_name in merged_data and field_name not in user_input:
                 del merged_data[field_name]
 
+    @staticmethod
     def _resolve_device_assignment(
-        self,
         user_input: dict[str, Any],
         *,
         current_data: dict[str, Any] | None = None,
     ) -> bool:
-        """Resolve and validate device assignment in user_input."""
+        """Resolve and validate device assignment fields in-place.
+
+        This method mutates ``user_input`` and returns ``True`` when assignment
+        resolution succeeds, otherwise ``False`` when user input is invalid.
+        It always sets/updates ``CONF_ENTITY_DEVICE_ID`` and may set or remove
+        ``CONF_ENTITY_DEVICE_NAME`` based on the selected mode.
+
+        Handled scenarios:
+        - Existing device selected: keep selected device ID and clear new-device name.
+        - New device selected: require ``entity_device_name`` and generate a new
+          ``entity_device_id``.
+        - No selection provided: preserve existing assignment from ``current_data``
+          (including legacy ``unique_id`` fallback) or create a dedicated fallback
+          assignment for compatibility.
+        """
         selected_device_id = user_input.get(CONF_ENTITY_DEVICE_ID)
         if selected_device_id is None:
             # Keep existing assignment on reconfigure if field omitted
             if current_data is not None:
-                existing_id = current_data.get(CONF_ENTITY_DEVICE_ID) or current_data.get("unique_id")
+                existing_id = current_data.get(CONF_ENTITY_DEVICE_ID) or current_data.get(CONF_UNIQUE_ID)
                 if existing_id:
                     user_input[CONF_ENTITY_DEVICE_ID] = existing_id
                     user_input.pop(CONF_ENTITY_DEVICE_NAME, None)
@@ -383,7 +398,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
 
             # Legacy fallback: create a dedicated device as before
             user_input[CONF_ENTITY_DEVICE_ID] = uuid.uuid4().hex
-            user_input[CONF_ENTITY_DEVICE_NAME] = user_input.get(CONF_NAME, "ADS Device")
+            user_input[CONF_ENTITY_DEVICE_NAME] = user_input.get(
+                CONF_NAME, DEFAULT_NEW_DEVICE_NAME
+            )
             return True
 
         if selected_device_id == DEVICE_OPTION_CREATE_NEW:
@@ -400,7 +417,12 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return True
 
     def _get_device_assignment_options(self) -> list[dict[str, str]]:
-        """Return selectable device assignment options."""
+        """Return sorted device options as label/value dictionaries.
+
+        Options include all ADS devices linked to the current config entry,
+        sorted alphabetically by label, plus a trailing ``Create new device``
+        option used by config-flow forms.
+        """
         device_registry = dr.async_get(self.hass)
         options: list[dict[str, str]] = []
         seen_identifiers: set[str] = set()
@@ -424,21 +446,36 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
     def _device_assignment_schema(
         self, current_data: dict[str, Any] | None = None
     ) -> dict[Any, Any]:
-        """Build schema fields for selecting or creating a target device."""
+        """Build schema fields for assigning an entity to a device.
+
+        Returns voluptuous schema entries for:
+        - ``entity_device_id``: existing-device selector plus create-new option.
+        - ``entity_device_name``: optional name used when creating a device.
+
+        For legacy entities without explicit ``entity_device_id``, this method
+        falls back to ``unique_id`` so reconfigure forms default to the correct
+        previously-created device.
+        """
         options = self._get_device_assignment_options()
         current_device_id = (
             current_data.get(CONF_ENTITY_DEVICE_ID) if current_data else None
         )
         if current_data and not current_device_id:
-            current_device_id = current_data.get("unique_id")
+            # Legacy entities created before explicit device assignment used
+            # the entity/subentry unique_id as the device identifier.
+            current_device_id = current_data.get(CONF_UNIQUE_ID)
 
         if current_device_id and all(
             option["value"] != current_device_id for option in options
         ):
+            fallback_label = current_data.get(
+                CONF_ENTITY_DEVICE_NAME,
+                current_data.get(CONF_NAME, current_device_id),
+            )
             options.insert(
                 0,
                 {
-                    "label": current_data.get(CONF_ENTITY_DEVICE_NAME, current_data.get(CONF_NAME, current_device_id)),
+                    "label": fallback_label,
                     "value": current_device_id,
                 },
             )

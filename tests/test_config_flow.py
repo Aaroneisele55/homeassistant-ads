@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.ads_custom.config_flow import AdsEntitySubentryFlowHandler
+from custom_components.ads_custom.config_flow import (
+    AdsEntitySubentryFlowHandler,
+    DEVICE_OPTION_CREATE_NEW,
+)
 
 
 class TestDeviceClassLists:
@@ -446,17 +449,21 @@ class TestReconfigureForms:
 class TestDeviceAssignmentSupport:
     """Tests for configurable entity-to-device assignment support."""
 
-    @staticmethod
-    def _get_config_flow_tree() -> ast.AST:
-        """Load and parse config_flow.py."""
-        config_flow_path = (
-            Path(__file__).parent.parent
-            / "custom_components"
-            / "ads_custom"
-            / "config_flow.py"
-        )
-        with open(config_flow_path, "r", encoding="utf-8") as file:
-            return ast.parse(file.read())
+    _config_flow_ast_cache: ast.AST | None = None
+
+    @classmethod
+    def _get_config_flow_tree(cls) -> ast.AST:
+        """Load and parse config_flow.py once and reuse the AST."""
+        if cls._config_flow_ast_cache is None:
+            config_flow_path = (
+                Path(__file__).parent.parent
+                / "custom_components"
+                / "ads_custom"
+                / "config_flow.py"
+            )
+            with open(config_flow_path, "r", encoding="utf-8") as file:
+                cls._config_flow_ast_cache = ast.parse(file.read())
+        return cls._config_flow_ast_cache
 
     @staticmethod
     def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | None:
@@ -471,7 +478,11 @@ class TestDeviceAssignmentSupport:
     @staticmethod
     def _function_references_name(func_node: ast.AsyncFunctionDef, name: str) -> bool:
         """Return True if function references a given variable name."""
-        return any(isinstance(node, ast.Name) and node.id == name for node in ast.walk(func_node))
+        return any(
+            (isinstance(node, ast.Name) and node.id == name)
+            or (isinstance(node, ast.Attribute) and node.attr == name)
+            for node in ast.walk(func_node)
+        )
 
     @pytest.mark.parametrize(
         "function_name",
@@ -497,8 +508,8 @@ class TestDeviceAssignmentSupport:
         tree = self._get_config_flow_tree()
         func = self._get_function_node(tree, function_name)
         assert func is not None, f"{function_name} not found"
-        assert self._function_references_name(func, "CONF_ENTITY_DEVICE_ID"), (
-            f"{function_name} should reference CONF_ENTITY_DEVICE_ID"
+        assert self._function_references_name(func, "_device_assignment_schema"), (
+            f"{function_name} should include device assignment schema"
         )
 
     def test_device_name_validation_error_exists(self):
@@ -510,3 +521,39 @@ class TestDeviceAssignmentSupport:
         ), "device_name_required error key not found in config_flow.py"
 
 
+class TestResolveDeviceAssignment:
+    """Tests for _resolve_device_assignment helper behavior."""
+
+    def test_existing_device_selection_clears_new_device_name(self):
+        """Selecting existing device should keep device id and clear new device name."""
+        user_input = {
+            "entity_device_id": "existing-device",
+            "entity_device_name": "Should be removed",
+        }
+
+        result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
+
+        assert result is True
+        assert user_input["entity_device_id"] == "existing-device"
+        assert "entity_device_name" not in user_input
+
+    def test_create_new_device_requires_name(self):
+        """Creating a new device without name should fail validation."""
+        user_input = {"entity_device_id": DEVICE_OPTION_CREATE_NEW}
+
+        result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
+
+        assert result is False
+
+    def test_reconfigure_legacy_uses_unique_id_fallback(self):
+        """Legacy reconfigure should reuse unique_id when entity_device_id is absent."""
+        user_input = {}
+        current_data = {"unique_id": "legacy-entity-id"}
+
+        result = AdsEntitySubentryFlowHandler._resolve_device_assignment(
+            user_input,
+            current_data=current_data,
+        )
+
+        assert result is True
+        assert user_input["entity_device_id"] == "legacy-entity-id"
