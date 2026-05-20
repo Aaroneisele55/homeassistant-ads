@@ -19,12 +19,15 @@ Versions follow the format: `MAJOR.MINOR.PATCH`
 When completing a task, AI agents should:
 
 1. **Use appropriate commit message prefixes** or **PR labels** to trigger automatic version bumps
-2. **Update the CHANGELOG.md** with changes under an `[Unreleased]` section
+2. **Optionally update the CHANGELOG.md** with changes under an `[Unreleased]` section
+   - If you don't update [Unreleased], the workflow will automatically extract your commit message and add it to the changelog
+   - For better changelog quality, manually updating [Unreleased] is recommended
 3. The GitHub Actions workflow will automatically:
-   - Detect the version bump type
+   - If [Unreleased] is empty, extract commit messages and populate the changelog
+   - Detect the version bump type from commit messages or PR labels
    - Update `manifest.json` and `pyproject.toml`
    - Move `[Unreleased]` changes to a versioned section in `CHANGELOG.md`
-   - Create a git tag
+   - Create a git tag and GitHub Release
    - Commit and push all changes
 
 ### Version Bump Detection

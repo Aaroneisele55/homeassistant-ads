@@ -100,8 +100,9 @@ Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for gui
 
 This project uses automated version management:
 - See **[VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)** for details on the versioning system
+- See **[docs/CHANGELOG_AUTOMATION.md](docs/CHANGELOG_AUTOMATION.md)** for how changelog entries are automatically generated
 - Versions are automatically bumped based on commit messages or PR labels
-- Always update `CHANGELOG.md` with your changes under the `[Unreleased]` section
+- Optionally update `CHANGELOG.md` with your changes under the `[Unreleased]` section (otherwise commit messages are used)
 - GitHub Releases are automatically created for HACS version detection
 
 ## License
