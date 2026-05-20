@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-20
+
+### Changed
+- Merge pull request #89 from Aaroneisele55/copilot/update-changelog-generation
 ## [1.2.0] - 2026-03-05
 
 
