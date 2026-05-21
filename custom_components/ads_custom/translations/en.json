@@ -328,6 +328,38 @@
       }
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage ADS Devices",
+        "description": "Select the ADS device you want to manage.",
+        "data": {
+          "selected_device_id": "Device"
+        }
+      },
+      "device_actions": {
+        "title": "Device Actions",
+        "description": "Select an entity to edit, rename this device, or delete this device (deletion only works when no entities are assigned).",
+        "data": {
+          "selected_entity_subentry_id": "Entity",
+          "entity_device_name": "Device Name",
+          "device_action": "Action",
+          "confirm_delete": "Confirm device deletion"
+        }
+      }
+    },
+    "error": {
+      "no_action_selected": "Select an entity, change the device name, or choose delete.",
+      "device_has_entities": "This device cannot be deleted because entities are still assigned to it.",
+      "delete_confirmation_required": "Please confirm the device deletion.",
+      "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
+      "no_options": "Select must have at least one option",
+      "device_name_required": "A device name is required when creating a new device"
+    },
+    "abort": {
+      "reconfigure_successful": "Entity updated successfully"
+    }
+  },
   "selector": {
     "select": {
       "options": {

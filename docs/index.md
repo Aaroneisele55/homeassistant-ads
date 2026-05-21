@@ -134,6 +134,16 @@ After the connection is configured:
 4. Fill in the PLC variable name, a friendly name, and any type-specific options.
 5. Click **Submit** — the entity appears immediately without a restart.
 
+When creating a UI entity, you must assign it to an ADS device (either an existing device or a new one created directly in the form).
+
+You can also manage devices from the same config entry options:
+
+1. Select a device.
+2. Select an entity to edit, or rename the selected device.
+3. Optionally choose **Delete device** and confirm deletion.
+
+> **Delete rule:** Device deletion is only available when no entities are assigned to that device. This prevents orphaned entities.
+
 Entity types currently available in the UI: **Binary Sensor, Cover, Light, Select, Sensor, Switch, Valve**.
 The same entity types can also be defined via YAML.
 

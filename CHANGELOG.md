@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Hub-level options flow for device-centric management: select device, then either select an assigned entity to edit, rename the device, or delete an empty device (with confirmation).
+
+### Changed
+- New entity creation now requires explicit device assignment (existing device or create new device).
+- Legacy entities without explicit device assignment are migrated to a shared default device per hub.
+
 ## [1.2.2] - 2026-05-20
 
 
@@ -149,4 +156,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
-
