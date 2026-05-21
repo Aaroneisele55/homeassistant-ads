@@ -22,8 +22,6 @@ STATE_KEY_STATE = "state"
 CONF_ENTITY_ICON = "icon"
 CONF_ENTITY_CATEGORY = "entity_category"
 CONF_ENTITY_PICTURE = "entity_picture"
-CONF_ENTITY_DEVICE_ID = "entity_device_id"
-CONF_ENTITY_DEVICE_NAME = "entity_device_name"
 
 
 class AdsType(StrEnum):

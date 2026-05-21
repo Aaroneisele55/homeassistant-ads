@@ -138,15 +138,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
-### Added
-- finalize shared device assignment flow and tests
-- add configurable entity device assignment in config flow and platforms
-
-### Changed
-
-### Fixed
-
-### Removed
-
-### Security
-
