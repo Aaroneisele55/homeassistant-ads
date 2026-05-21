@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 from custom_components.ads_custom.config_flow import (
+    AdsConfigFlow,
     AdsEntitySubentryFlowHandler,
+    AdsOptionsFlowHandler,
     DEVICE_OPTION_CREATE_NEW,
 )
 
@@ -557,3 +560,18 @@ class TestResolveDeviceAssignment:
 
         assert result is True
         assert user_input["entity_device_id"] == "legacy-entity-id"
+
+    def test_new_entity_requires_explicit_device_selection(self):
+        """New entities must explicitly choose existing device or create new."""
+        user_input = {}
+        result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
+        assert result is False
+
+
+class TestHubOptionsFlowSupport:
+    """Tests for config-entry options flow support."""
+
+    def test_config_flow_returns_hub_options_flow_handler(self):
+        """Config flow should expose AdsOptionsFlowHandler for config entry options."""
+        flow = AdsConfigFlow.async_get_options_flow(MagicMock())
+        assert isinstance(flow, AdsOptionsFlowHandler)

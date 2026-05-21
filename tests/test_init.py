@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import ctypes
+from unittest.mock import MagicMock
 
 import pytest
 import voluptuous as vol
 
-from custom_components.ads_custom.const import CONF_ADS_VAR, DOMAIN, AdsType
+from custom_components.ads_custom.const import (
+    CONF_ADS_VAR,
+    CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
+    DOMAIN,
+    SUBENTRY_TYPE_ENTITY,
+    AdsType,
+)
 
 
 class TestCollectYamlEntities:
@@ -189,3 +197,47 @@ class TestServiceSchema:
             SCHEMA_SERVICE_WRITE_DATA_BY_NAME(
                 {"adstype": "nonexistent", "value": 1, "adsvar": "x"}
             )
+
+
+class TestLegacyDefaultDeviceMigration:
+    """Tests for legacy entity default-device migration."""
+
+    @pytest.mark.asyncio
+    async def test_unassigned_entities_are_grouped_under_one_default_device(self):
+        """Entities without entity_device_id should get shared default device assignment."""
+        from custom_components.ads_custom import (
+            _async_migrate_legacy_unassigned_entities_to_default_device,
+        )
+
+        subentry_unassigned = MagicMock()
+        subentry_unassigned.subentry_type = SUBENTRY_TYPE_ENTITY
+        subentry_unassigned.data = {"name": "Legacy Entity"}
+
+        subentry_assigned = MagicMock()
+        subentry_assigned.subentry_type = SUBENTRY_TYPE_ENTITY
+        subentry_assigned.data = {CONF_ENTITY_DEVICE_ID: "existing-device"}
+
+        hub_entry = MagicMock()
+        hub_entry.entry_id = "hub-entry-id"
+        hub_entry.title = "ADS (Hub)"
+        hub_entry.data = {}
+        hub_entry.subentries = {
+            "legacy-subentry": subentry_unassigned,
+            "assigned-subentry": subentry_assigned,
+        }
+
+        hass = MagicMock()
+        hass.config_entries.async_entries.return_value = [hub_entry]
+
+        await _async_migrate_legacy_unassigned_entities_to_default_device(hass)
+
+        hass.config_entries.async_update_subentry.assert_called_once()
+        _, updated_subentry = hass.config_entries.async_update_subentry.call_args.args[:2]
+        updated_data = hass.config_entries.async_update_subentry.call_args.kwargs["data"]
+
+        assert updated_subentry is subentry_unassigned
+        assert (
+            updated_data[CONF_ENTITY_DEVICE_ID]
+            == "hub-entry-id-default-device"
+        )
+        assert updated_data[CONF_ENTITY_DEVICE_NAME] == "Default ADS Device"

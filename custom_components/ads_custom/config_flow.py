@@ -15,6 +15,7 @@ from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
     ConfigSubentryFlow,
+    OptionsFlow,
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_DEVICE, CONF_IP_ADDRESS, CONF_NAME, CONF_PORT, CONF_UNIQUE_ID
@@ -37,6 +38,12 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 DEVICE_OPTION_CREATE_NEW = "__create_new__"
 DEFAULT_NEW_DEVICE_NAME = "ADS Device"
+DEFAULT_MIGRATED_DEVICE_NAME = "Default ADS Device"
+OPTION_DELETE_DEVICE = "__delete_device__"
+CONF_SELECTED_DEVICE_ID = "selected_device_id"
+CONF_SELECTED_ENTITY_SUBENTRY_ID = "selected_entity_subentry_id"
+CONF_CONFIRM_DELETE = "confirm_delete"
+CONF_DEVICE_ACTION = "device_action"
 
 # Entity type constants
 CONF_ENTITY_TYPE = "entity_type"
@@ -231,6 +238,12 @@ class AdsConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return subentries supported by this handler."""
         return {SUBENTRY_TYPE_ENTITY: AdsEntitySubentryFlowHandler}
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Return the options flow for this config entry."""
+        return AdsOptionsFlowHandler(config_entry)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -396,12 +409,8 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                     user_input.pop(CONF_ENTITY_DEVICE_NAME, None)
                     return True
 
-            # Legacy fallback: create a dedicated device as before
-            user_input[CONF_ENTITY_DEVICE_ID] = uuid.uuid4().hex
-            user_input[CONF_ENTITY_DEVICE_NAME] = user_input.get(
-                CONF_NAME, DEFAULT_NEW_DEVICE_NAME
-            )
-            return True
+            # New entities must explicitly select existing or create-new device
+            return False
 
         if selected_device_id == DEVICE_OPTION_CREATE_NEW:
             new_device_name = (user_input.get(CONF_ENTITY_DEVICE_NAME) or "").strip()
@@ -1399,4 +1408,259 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id="entity_options",
             data_schema=data_schema,
+        )
+
+
+class AdsOptionsFlowHandler(OptionsFlow):
+    """Handle hub-level device and entity management options."""
+
+    _entity_data: dict[str, Any]
+
+    _remove_empty_optional_fields = staticmethod(
+        AdsEntitySubentryFlowHandler._remove_empty_optional_fields
+    )
+    _remove_cleared_optional_fields = staticmethod(
+        AdsEntitySubentryFlowHandler._remove_cleared_optional_fields
+    )
+    _resolve_device_assignment = staticmethod(
+        AdsEntitySubentryFlowHandler._resolve_device_assignment
+    )
+    _get_device_assignment_options = AdsEntitySubentryFlowHandler._get_device_assignment_options
+    _device_assignment_schema = AdsEntitySubentryFlowHandler._device_assignment_schema
+    _update_device_name_if_changed = AdsEntitySubentryFlowHandler._update_device_name_if_changed
+
+    async_step_reconfigure = AdsEntitySubentryFlowHandler.async_step_reconfigure
+    async_step_reconfigure_switch = AdsEntitySubentryFlowHandler.async_step_reconfigure_switch
+    async_step_reconfigure_sensor = AdsEntitySubentryFlowHandler.async_step_reconfigure_sensor
+    async_step_reconfigure_binary_sensor = (
+        AdsEntitySubentryFlowHandler.async_step_reconfigure_binary_sensor
+    )
+    async_step_reconfigure_light = AdsEntitySubentryFlowHandler.async_step_reconfigure_light
+    async_step_reconfigure_cover = AdsEntitySubentryFlowHandler.async_step_reconfigure_cover
+    async_step_reconfigure_valve = AdsEntitySubentryFlowHandler.async_step_reconfigure_valve
+    async_step_reconfigure_select = AdsEntitySubentryFlowHandler.async_step_reconfigure_select
+
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self._selected_device_id: str | None = None
+        self._selected_subentry_id: str | None = None
+
+    @property
+    def entry(self) -> ConfigEntry:
+        """Compatibility property expected by reconfigure helpers."""
+        return self.config_entry
+
+    def _get_reconfigure_subentry(self):
+        """Return the currently selected subentry for reconfigure helpers."""
+        if not self._selected_subentry_id:
+            raise ValueError("No entity selected")
+        subentry = self.config_entry.subentries.get(self._selected_subentry_id)
+        if subentry is None:
+            raise ValueError("Selected entity no longer exists")
+        return subentry
+
+    def _entity_subentries(self) -> list[tuple[str, Any]]:
+        """Return entity subentries for this config entry."""
+        return [
+            (subentry_id, subentry)
+            for subentry_id, subentry in self.config_entry.subentries.items()
+            if subentry.subentry_type == SUBENTRY_TYPE_ENTITY
+        ]
+
+    def _device_entities_map(self) -> dict[str, list[tuple[str, Any]]]:
+        """Map device identifiers to entity subentries."""
+        device_map: dict[str, list[tuple[str, Any]]] = {}
+        for subentry_id, subentry in self._entity_subentries():
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            if not device_id:
+                continue
+            device_map.setdefault(device_id, []).append((subentry_id, subentry))
+        return device_map
+
+    def _get_registry_device_labels(self) -> dict[str, str]:
+        """Get current registry labels keyed by ADS device identifier."""
+        labels: dict[str, str] = {}
+        device_registry = dr.async_get(self.hass)
+        for device in device_registry.devices.values():
+            if self.config_entry.entry_id not in device.config_entries:
+                continue
+            for domain, identifier in device.identifiers:
+                if domain != DOMAIN:
+                    continue
+                labels[identifier] = device.name_by_user or device.name or identifier
+                break
+        return labels
+
+    def _get_device_selection_options(self) -> list[dict[str, str]]:
+        """Return selectable device list for options step."""
+        device_map = self._device_entities_map()
+        labels = self._get_registry_device_labels()
+        all_device_ids = set(device_map).union(labels)
+        options: list[dict[str, str]] = []
+        for device_id in all_device_ids:
+            label = labels.get(device_id)
+            if not label:
+                entities = device_map.get(device_id, [])
+                if entities:
+                    first_entity = entities[0][1]
+                    label = (
+                        first_entity.data.get(CONF_ENTITY_DEVICE_NAME)
+                        or first_entity.data.get(CONF_NAME)
+                        or device_id
+                    )
+                else:
+                    label = device_id
+            options.append({"label": label, "value": device_id})
+        options.sort(key=lambda item: item["label"].lower())
+        return options
+
+    def _device_name_for_id(self, device_id: str) -> str:
+        """Resolve a display name for a specific ADS device ID."""
+        labels = self._get_registry_device_labels()
+        if device_id in labels:
+            return labels[device_id]
+        entities = self._device_entities_map().get(device_id, [])
+        if entities:
+            first_entity = entities[0][1]
+            return (
+                first_entity.data.get(CONF_ENTITY_DEVICE_NAME)
+                or first_entity.data.get(CONF_NAME)
+                or DEFAULT_MIGRATED_DEVICE_NAME
+            )
+        return device_id
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Step 1: select device."""
+        errors: dict[str, str] = {}
+        options = self._get_device_selection_options()
+
+        if user_input is not None:
+            selected_device_id = user_input.get(CONF_SELECTED_DEVICE_ID)
+            if selected_device_id:
+                self._selected_device_id = selected_device_id
+                return await self.async_step_device_actions()
+            errors[CONF_SELECTED_DEVICE_ID] = "required"
+
+        default_device = (
+            self._selected_device_id
+            if self._selected_device_id
+            else (options[0]["value"] if options else "")
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SELECTED_DEVICE_ID, default=default_device): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=options,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+            errors=errors,
+        )
+
+    def _entity_select_options(self, device_id: str) -> list[dict[str, str]]:
+        """Build entity selector options for a selected device."""
+        options: list[dict[str, str]] = [{"label": "(No entity selected)", "value": ""}]
+        entities = self._device_entities_map().get(device_id, [])
+        for subentry_id, subentry in sorted(
+            entities, key=lambda item: item[1].title.lower()
+        ):
+            options.append({"label": subentry.title, "value": subentry_id})
+        return options
+
+    def _rename_device(self, device_id: str, new_name: str) -> None:
+        """Rename device in registry and persist name to all assigned entities."""
+        device_registry = dr.async_get(self.hass)
+        device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+        if device:
+            if device.name_by_user:
+                device_registry.async_update_device(device.id, name_by_user=new_name)
+            else:
+                device_registry.async_update_device(device.id, name=new_name)
+
+        for _, subentry in self._device_entities_map().get(device_id, []):
+            new_data = dict(subentry.data)
+            new_data[CONF_ENTITY_DEVICE_NAME] = new_name
+            self.hass.config_entries.async_update_subentry(
+                self.config_entry,
+                subentry,
+                data=MappingProxyType(new_data),
+            )
+
+    def _delete_empty_device(self, device_id: str) -> None:
+        """Delete an empty device from the registry."""
+        device_registry = dr.async_get(self.hass)
+        device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+        if not device:
+            return
+        device_registry.async_update_device(
+            device.id,
+            remove_config_entry_id=self.config_entry.entry_id,
+        )
+
+    async def async_step_device_actions(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 2/3: select entity, rename device, or delete empty device."""
+        if not self._selected_device_id:
+            return await self.async_step_init()
+
+        errors: dict[str, str] = {}
+        current_name = self._device_name_for_id(self._selected_device_id)
+        entities = self._device_entities_map().get(self._selected_device_id, [])
+        entity_options = self._entity_select_options(self._selected_device_id)
+
+        if user_input is not None:
+            selected_subentry_id = user_input.get(CONF_SELECTED_ENTITY_SUBENTRY_ID)
+            if selected_subentry_id:
+                self._selected_subentry_id = selected_subentry_id
+                return await self.async_step_reconfigure()
+
+            requested_action = user_input.get(CONF_DEVICE_ACTION, "")
+            new_device_name = (user_input.get(CONF_ENTITY_DEVICE_NAME) or "").strip()
+            wants_delete = requested_action == OPTION_DELETE_DEVICE
+
+            if wants_delete:
+                if entities:
+                    errors["base"] = "device_has_entities"
+                elif not user_input.get(CONF_CONFIRM_DELETE):
+                    errors[CONF_CONFIRM_DELETE] = "delete_confirmation_required"
+                else:
+                    self._delete_empty_device(self._selected_device_id)
+                    return self.async_create_entry(title="", data={})
+            elif new_device_name and new_device_name != current_name:
+                self._rename_device(self._selected_device_id, new_device_name)
+                return self.async_create_entry(title="", data={})
+            else:
+                errors["base"] = "no_action_selected"
+
+        return self.async_show_form(
+            step_id="device_actions",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_SELECTED_ENTITY_SUBENTRY_ID, default=""): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=entity_options,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(CONF_ENTITY_DEVICE_NAME, default=current_name): cv.string,
+                    vol.Optional(CONF_DEVICE_ACTION, default=""): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {"label": "(None)", "value": ""},
+                                {"label": "Delete device", "value": OPTION_DELETE_DEVICE},
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(CONF_CONFIRM_DELETE, default=False): cv.boolean,
+                }
+            ),
+            errors=errors,
         )

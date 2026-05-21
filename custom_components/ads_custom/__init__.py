@@ -30,6 +30,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import (
     CONF_ADS_VAR,
     CONF_ENTITY_DEVICE_ID,
+    CONF_ENTITY_DEVICE_NAME,
     DOMAIN,
     AdsType,
     SUBENTRY_TYPE_ENTITY,
@@ -84,6 +85,8 @@ ADS_TYPEMAP = {
 CONF_ADS_FACTOR = "factor"
 CONF_ADS_TYPE = "adstype"
 CONF_ADS_VALUE = "value"
+DEFAULT_MIGRATED_DEVICE_NAME = "Default ADS Device"
+LEGACY_DEFAULT_DEVICE_SUFFIX = "default-device"
 
 # All platforms supported by this integration
 PLATFORMS = [
@@ -445,6 +448,46 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
             )
 
 
+async def _async_migrate_legacy_unassigned_entities_to_default_device(
+    hass: HomeAssistant,
+) -> None:
+    """Assign legacy unassigned entities to one shared default device per hub."""
+    entries = hass.config_entries.async_entries(DOMAIN)
+    hub_entries = [e for e in entries if e.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB) == ENTRY_TYPE_HUB]
+
+    for hub_entry in hub_entries:
+        legacy_entities: list[ConfigSubentry] = []
+        for subentry in hub_entry.subentries.values():
+            if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+                continue
+            if not subentry.data.get(CONF_ENTITY_DEVICE_ID):
+                legacy_entities.append(subentry)
+
+        if not legacy_entities:
+            continue
+
+        default_device_id = f"{hub_entry.entry_id}-{LEGACY_DEFAULT_DEVICE_SUFFIX}"
+
+        for subentry in legacy_entities:
+            new_data = dict(subentry.data)
+            new_data[CONF_ENTITY_DEVICE_ID] = default_device_id
+            if not new_data.get(CONF_ENTITY_DEVICE_NAME):
+                new_data[CONF_ENTITY_DEVICE_NAME] = DEFAULT_MIGRATED_DEVICE_NAME
+
+            hass.config_entries.async_update_subentry(
+                hub_entry,
+                subentry,
+                data=MappingProxyType(new_data),
+            )
+
+        _LOGGER.info(
+            "Assigned %d legacy entities on hub '%s' to shared default device '%s'",
+            len(legacy_entities),
+            hub_entry.title,
+            default_device_id,
+        )
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ADS component from YAML configuration."""
     # Initialize data storage once
@@ -453,6 +496,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     # Migrate old entity config entries / hub options to subentries
     await _async_migrate_to_subentries(hass)
+    await _async_migrate_legacy_unassigned_entities_to_default_device(hass)
 
     # Migrate entity registry entries to have proper config_entry_id
     await _async_migrate_entity_config_entries(hass)
