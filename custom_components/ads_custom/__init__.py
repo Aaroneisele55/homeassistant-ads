@@ -381,7 +381,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 # Note: Two separate calls are needed because async_update_device doesn't support
                 # remove and add of the same entry_id in a single call
                 device_registry.async_update_device(
-                    config_entry_id=entry.entry_id,
+                    config_entry_id=hub_entry.entry_id,
                     remove_config_entry_id=hub_entry.entry_id,
                 )
                 # Re-fetch device after removal as it may have been removed if it had no other associations
@@ -392,7 +392,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                     device_registry.async_update_device(
                         device.id,
                         add_config_entry_id=hub_entry.entry_id,
-                        config_entry_id=entry.entry_id,
+                        config_entry_id=hub_entry.entry_id,
                         add_config_subentry_id=subentry_id,
                     )
             elif needs_subentry:
@@ -406,7 +406,7 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                 # Just add the subentry association to nest it properly in the UI
                 device_registry.async_update_device(
                     device.id,
-                    config_entry_id=entry.entry_id,
+                    config_entry_id=hub_entry.entry_id,
                     add_config_subentry_id=subentry_id,
                 )
 
