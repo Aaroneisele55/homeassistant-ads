@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-05-22
+
+### Fixed
+- Fix device association reset logic in init.py
 ## [1.2.6] - 2026-05-22
 
 ### Changed
