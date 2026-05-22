@@ -1442,7 +1442,6 @@ class AdsOptionsFlowHandler(OptionsFlow):
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
         self._selected_device_id: str | None = None
         self._selected_subentry_id: str | None = None
 
