@@ -41,6 +41,7 @@ DEFAULT_NEW_DEVICE_NAME = "ADS Device"
 DEFAULT_MIGRATED_DEVICE_NAME = "Default ADS Device"
 OPTION_DELETE_DEVICE = "__delete_device__"
 OPTION_DELETE_EMPTY_DEVICES = "__delete_empty_devices__"
+OPTION_MOVE_ENTITIES = "__move_entities__"
 CONF_SELECTED_DEVICE_ID = "selected_device_id"
 CONF_SELECTED_ENTITY_SUBENTRY_ID = "selected_entity_subentry_id"
 CONF_CONFIRM_DELETE = "confirm_delete"
@@ -428,6 +429,14 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         else:
             device_registry.async_update_device(device.id, name=new_name)
 
+    def _should_update_legacy_device_name(self, user_input: dict[str, Any]) -> bool:
+        """Return whether a legacy implicit device should follow the entity rename."""
+
+        if self._entity_data.get(CONF_ENTITY_DEVICE_ID):
+            return False
+
+        return user_input.get(CONF_ENTITY_DEVICE_ID) == self._entity_data.get(CONF_UNIQUE_ID)
+
     # ── Add new entity ──────────────────────────────────────────────
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
@@ -712,7 +721,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Switch)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -747,7 +756,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Sensor)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -791,7 +800,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Binary Sensor)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -829,7 +838,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Light)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -875,7 +884,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Cover)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -921,7 +930,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Valve)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -962,7 +971,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
                 new_title = f"{user_input[CONF_NAME]} (Select)"
                 old_name = self._entity_data.get(CONF_NAME)
                 new_name = user_input[CONF_NAME]
-                if subentry.unique_id and CONF_ENTITY_DEVICE_ID not in self._entity_data:
+                if subentry.unique_id and self._should_update_legacy_device_name(user_input):
                     self._update_device_name_if_changed(subentry.unique_id, old_name, new_name)
                 self.hass.config_entries.async_update_subentry(
                     self.entry, subentry, data=MappingProxyType(new_data), title=new_title
@@ -1189,6 +1198,45 @@ class AdsOptionsFlowHandler(OptionsFlow):
                 self.config_entry, subentry, data=MappingProxyType(new_data)
             )
 
+    def _move_entities_to_device(self, subentry_ids: list[str], device_id: str) -> int:
+        device_name = self._device_name_for_id(device_id)
+        moved_count = 0
+
+        for subentry_id in subentry_ids:
+            subentry = self.config_entry.subentries.get(subentry_id)
+            if not subentry or subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+                continue
+
+            new_data = dict(subentry.data)
+            new_data[CONF_ENTITY_DEVICE_ID] = device_id
+            new_data[CONF_ENTITY_DEVICE_NAME] = device_name
+            self.hass.config_entries.async_update_subentry(
+                self.config_entry, subentry, data=MappingProxyType(new_data)
+            )
+            moved_count += 1
+
+        return moved_count
+
+    def _move_entity_options(self) -> list[dict[str, str]]:
+        labels = self._get_registry_device_labels()
+        options: list[dict[str, str]] = []
+
+        for subentry_id, subentry in sorted(self._entity_subentries(), key=lambda item: item[1].title.lower()):
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_name = (
+                subentry.data.get(CONF_ENTITY_DEVICE_NAME)
+                or labels.get(device_id)
+                or device_id
+            )
+            options.append(
+                {
+                    "label": f"{subentry.title} [{device_name}]",
+                    "value": subentry_id,
+                }
+            )
+
+        return options
+
     def _delete_empty_device(self, device_id: str) -> None:
         device_registry = dr.async_get(self.hass)
         device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
@@ -1261,6 +1309,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
             new_device_name = (user_input.get(CONF_ENTITY_DEVICE_NAME) or "").strip()
             wants_delete = requested_action == OPTION_DELETE_DEVICE
             wants_delete_empty_devices = requested_action == OPTION_DELETE_EMPTY_DEVICES
+            wants_move_entities = requested_action == OPTION_MOVE_ENTITIES
 
             if wants_delete_empty_devices:
                 empty_device_ids = self._empty_device_ids()
@@ -1279,6 +1328,8 @@ class AdsOptionsFlowHandler(OptionsFlow):
                 else:
                     self._delete_empty_device(self._selected_device_id)
                     return self.async_create_entry(title="", data={})
+            elif wants_move_entities:
+                return await self.async_step_move_entities()
             elif new_device_name and new_device_name != current_name:
                 self._rename_device(self._selected_device_id, new_device_name)
                 return self.async_create_entry(title="", data={})
@@ -1296,6 +1347,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "(None)", "value": ""},
+                            {"label": "Move entities to this device", "value": OPTION_MOVE_ENTITIES},
                             {"label": "Delete device", "value": OPTION_DELETE_DEVICE},
                             {"label": "Delete all empty devices", "value": OPTION_DELETE_EMPTY_DEVICES},
                         ],
@@ -1303,6 +1355,38 @@ class AdsOptionsFlowHandler(OptionsFlow):
                     )
                 ),
                 vol.Optional(CONF_CONFIRM_DELETE, default=False): cv.boolean,
+            }),
+            errors=errors,
+        )
+
+    async def async_step_move_entities(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if not self._selected_device_id:
+            return await self.async_step_init()
+
+        errors: dict[str, str] = {}
+        entity_options = self._move_entity_options()
+
+        if user_input is not None:
+            selected_subentry_ids = user_input.get(CONF_SELECTED_ENTITY_SUBENTRY_ID, [])
+            if isinstance(selected_subentry_ids, str):
+                selected_subentry_ids = [selected_subentry_ids] if selected_subentry_ids else []
+
+            if not selected_subentry_ids:
+                errors["base"] = "no_entities_selected"
+            else:
+                self._move_entities_to_device(selected_subentry_ids, self._selected_device_id)
+                return self.async_create_entry(title="", data={})
+
+        return self.async_show_form(
+            step_id="move_entities",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_SELECTED_ENTITY_SUBENTRY_ID, default=[]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=entity_options,
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
             }),
             errors=errors,
         )

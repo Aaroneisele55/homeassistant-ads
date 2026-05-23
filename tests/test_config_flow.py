@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -14,6 +14,7 @@ from custom_components.ads_custom.config_flow import (
     AdsOptionsFlowHandler,
     DEVICE_OPTION_CREATE_NEW,
     OPTION_DELETE_EMPTY_DEVICES,
+    OPTION_MOVE_ENTITIES,
 )
 from custom_components.ads_custom.entity import resolve_device_name
 
@@ -309,7 +310,7 @@ class TestReconfigureForms:
     """
 
     @staticmethod
-    def _get_config_flow_tree() -> ast.AST:
+    def _get_config_flow_tree() -> ast.Module:
         """Load and parse the config_flow.py file."""
         config_flow_path = (
             Path(__file__).parent.parent
@@ -321,18 +322,11 @@ class TestReconfigureForms:
             return ast.parse(f.read())
 
     @staticmethod
-    def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | ast.FunctionDef | None:
+    def _get_function_node(tree: ast.Module, function_name: str) -> ast.AsyncFunctionDef | ast.FunctionDef | None:
         """Find a function definition by name in the AST, including async methods."""
-        # Search in top-level and class bodies
-        for node in tree.body:
-            # Check top-level functions
+        for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == function_name:
                 return node
-            # Check class methods
-            if isinstance(node, ast.ClassDef):
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == function_name:
-                        return item
         return None
 
     @staticmethod
@@ -463,10 +457,10 @@ class TestReconfigureForms:
 class TestDeviceAssignmentSupport:
     """Tests for configurable entity-to-device assignment support."""
 
-    _config_flow_ast_cache: ast.AST | None = None
+    _config_flow_ast_cache: ast.Module | None = None
 
     @classmethod
-    def _get_config_flow_tree(cls) -> ast.AST:
+    def _get_config_flow_tree(cls) -> ast.Module:
         """Load and parse config_flow.py once and reuse the AST."""
         if cls._config_flow_ast_cache is None:
             config_flow_path = (
@@ -480,13 +474,11 @@ class TestDeviceAssignmentSupport:
         return cls._config_flow_ast_cache
 
     @staticmethod
-    def _get_function_node(tree: ast.AST, function_name: str) -> ast.AsyncFunctionDef | None:
+    def _get_function_node(tree: ast.Module, function_name: str) -> ast.AsyncFunctionDef | None:
         """Find an async function definition by name."""
-        for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                for item in node.body:
-                    if isinstance(item, ast.AsyncFunctionDef) and item.name == function_name:
-                        return item
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == function_name:
+                return node
         return None
 
     @staticmethod
@@ -577,6 +569,59 @@ class TestResolveDeviceAssignment:
         user_input = {}
         result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
         assert result is False
+
+
+class TestLegacyDeviceRenameSync:
+    """Tests for legacy device rename synchronization during reconfigure."""
+
+    def test_legacy_device_rename_syncs_only_when_entity_stays_on_implicit_device(self):
+        """Only the implicit legacy device should follow an entity rename."""
+        flow = AdsEntitySubentryFlowHandler()
+        flow._entity_data = {"unique_id": "legacy-device"}
+
+        assert flow._should_update_legacy_device_name({"entity_device_id": "legacy-device"}) is True
+        assert flow._should_update_legacy_device_name({"entity_device_id": "other-device"}) is False
+
+    def test_explicit_device_assignment_never_syncs_legacy_device_name(self):
+        """Entities already assigned to a device must not rename their legacy device."""
+        flow = AdsEntitySubentryFlowHandler()
+        flow._entity_data = {"unique_id": "legacy-device", "entity_device_id": "existing-device"}
+
+        assert flow._should_update_legacy_device_name({"entity_device_id": "existing-device"}) is False
+
+    @pytest.mark.asyncio
+    async def test_reconfigure_sensor_reassignment_does_not_rename_target_device(self):
+        """Assigning a legacy entity to an existing device should not rename that device."""
+        flow = AdsEntitySubentryFlowHandler()
+        flow._entity_data = {
+            "unique_id": "legacy-device",
+            "entity_type": "sensor",
+            "adsvar": "GVL.Test",
+            "name": "Legacy Entity",
+        }
+        flow.hass = MagicMock()
+        flow._config_entry = MagicMock()
+        flow._config_entry.entry_id = "entry-id"
+        flow.handler = MagicMock(config_entry=flow._config_entry)
+        flow.hass.config_entries.async_update_subentry = MagicMock()
+        flow._get_reconfigure_subentry = MagicMock(return_value=MagicMock(unique_id="legacy-device"))
+        flow._update_device_name_if_changed = MagicMock()
+        flow.async_abort = MagicMock(return_value={"type": "abort"})
+
+        result = await flow.async_step_reconfigure_sensor(
+            {
+                "adsvar": "GVL.Test",
+                "name": "Renamed Entity",
+                "entity_device_id": "existing-device",
+            }
+        )
+
+        assert result["type"] == "abort"
+        flow._update_device_name_if_changed.assert_not_called()
+        flow.hass.config_entries.async_update_subentry.assert_called_once()
+        updated_data = flow.hass.config_entries.async_update_subentry.call_args.kwargs["data"]
+        assert updated_data["entity_device_id"] == "existing-device"
+        assert "entity_device_name" not in updated_data
 
 
 class TestHubOptionsFlowSupport:
@@ -729,3 +774,101 @@ class TestDeleteEmptyDevicesSupport:
     def test_delete_empty_devices_option_constant_has_expected_value(self):
         """The bulk delete action constant should remain stable."""
         assert OPTION_DELETE_EMPTY_DEVICES == "__delete_empty_devices__"
+
+
+class TestMoveEntitiesSupport:
+    """Tests for bulk entity move support in the hub options flow."""
+
+    def test_device_actions_menu_includes_move_entities_action(self):
+        """The device actions menu should expose the bulk move action."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            source = file.read()
+
+        assert "Move entities to this device" in source
+        assert "OPTION_MOVE_ENTITIES" in source
+
+    def test_move_entities_step_uses_multi_select(self):
+        """The bulk move step should allow selecting multiple entities."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            tree = ast.parse(file.read())
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "async_step_move_entities":
+                assert any(
+                    isinstance(keyword, ast.keyword)
+                    and keyword.arg == "multiple"
+                    and isinstance(keyword.value, ast.Constant)
+                    and keyword.value.value is True
+                    for keyword in ast.walk(node)
+                ), "async_step_move_entities must set multiple=True on the selector"
+                return
+
+        pytest.fail("async_step_move_entities not found in config_flow.py")
+
+    @pytest.mark.asyncio
+    async def test_device_actions_routes_to_move_entities_step(self):
+        """Choosing the move action should open the bulk move step."""
+        flow = AdsOptionsFlowHandler()
+        flow._selected_device_id = "target-device"
+        flow._device_name_for_id = MagicMock(return_value="Target device")
+        flow._device_entities_map = MagicMock(return_value={})
+        flow._entity_select_options = MagicMock(return_value=[])
+        flow.async_step_move_entities = AsyncMock(return_value={"type": "form", "step_id": "move_entities"})
+
+        result = await flow.async_step_device_actions({"device_action": OPTION_MOVE_ENTITIES})
+
+        assert result == {"type": "form", "step_id": "move_entities"}
+        flow.async_step_move_entities.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_move_entities_updates_selected_subentries(self, monkeypatch):
+        """The bulk move step should rewrite every selected entity to the target device."""
+        flow = AdsOptionsFlowHandler()
+        flow._config_entry = MagicMock()
+        flow._config_entry.entry_id = "entry-id"
+        flow._selected_device_id = "target-device"
+
+        selected_one = MagicMock(
+            subentry_type="entity",
+            data={"name": "Entity One", "entity_device_id": "source-device-1"},
+            unique_id="entity-one",
+            title="Entity One",
+        )
+        selected_two = MagicMock(
+            subentry_type="entity",
+            data={"name": "Entity Two", "entity_device_id": "source-device-2"},
+            unique_id="entity-two",
+            title="Entity Two",
+        )
+        flow._config_entry.subentries = {
+            "subentry-one": selected_one,
+            "subentry-two": selected_two,
+        }
+        flow.hass = MagicMock()
+
+        target_device = MagicMock()
+        target_device.id = "target-registry-id"
+        target_device.identifiers = {("ads_custom", "target-device")}
+        target_device.config_entries = {"entry-id"}
+        target_device.config_entries_subentries = {}
+        target_device.name_by_user = None
+        target_device.name = "Target device"
+
+        registry = MagicMock()
+        registry.devices = {target_device.id: target_device}
+
+        monkeypatch.setattr("custom_components.ads_custom.config_flow.dr.async_get", lambda hass: registry)
+
+        await flow.async_step_move_entities({"selected_entity_subentry_id": ["subentry-one", "subentry-two"]})
+
+        assert flow.hass.config_entries.async_update_subentry.call_count == 2
+        for call in flow.hass.config_entries.async_update_subentry.call_args_list:
+            updated_data = call.kwargs["data"]
+            assert updated_data["entity_device_id"] == "target-device"
+            assert updated_data["entity_device_name"] == "Target device"
+
+    def test_move_entities_option_constant_has_expected_value(self):
+        """The bulk move action constant should remain stable."""
+        assert OPTION_MOVE_ENTITIES == "__move_entities__"
