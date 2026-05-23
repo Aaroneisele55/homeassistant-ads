@@ -13,6 +13,7 @@ from custom_components.ads_custom.config_flow import (
     AdsEntitySubentryFlowHandler,
     AdsOptionsFlowHandler,
     DEVICE_OPTION_CREATE_NEW,
+    OPTION_DELETE_EMPTY_DEVICES,
 )
 
 
@@ -575,3 +576,72 @@ class TestHubOptionsFlowSupport:
         """Config flow should expose AdsOptionsFlowHandler for config entry options."""
         flow = AdsConfigFlow.async_get_options_flow(MagicMock())
         assert isinstance(flow, AdsOptionsFlowHandler)
+
+
+class TestDeleteEmptyDevicesSupport:
+    """Tests for bulk empty-device cleanup in the hub options flow."""
+
+    def test_device_actions_menu_includes_delete_all_empty_devices(self):
+        """The device actions menu should expose the bulk delete action."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            source = file.read()
+
+        assert "Delete all empty devices" in source
+        assert "OPTION_DELETE_EMPTY_DEVICES" in source
+
+    def test_delete_empty_devices_removes_only_unassigned_devices(self, monkeypatch):
+        """Bulk deletion should only remove devices that have no entity subentries."""
+        flow = AdsOptionsFlowHandler()
+        flow._config_entry = MagicMock()
+        flow._config_entry.entry_id = "entry-id"
+        flow._config_entry.subentries = {
+            "assigned": MagicMock(
+                subentry_type="entity",
+                data={"entity_device_id": "assigned-device"},
+                unique_id="assigned-entity",
+                title="Assigned entity",
+            )
+        }
+        flow.hass = MagicMock()
+
+        assigned_device = MagicMock()
+        assigned_device.id = "assigned-registry-id"
+        assigned_device.identifiers = {("ads_custom", "assigned-device")}
+        assigned_device.config_entries = {"entry-id"}
+
+        empty_device = MagicMock()
+        empty_device.id = "empty-registry-id"
+        empty_device.identifiers = {("ads_custom", "empty-device")}
+        empty_device.config_entries = {"entry-id"}
+
+        other_entry_device = MagicMock()
+        other_entry_device.id = "other-registry-id"
+        other_entry_device.identifiers = {("ads_custom", "other-device")}
+        other_entry_device.config_entries = {"other-entry"}
+
+        registry = MagicMock()
+        registry.devices = {
+            assigned_device.id: assigned_device,
+            empty_device.id: empty_device,
+            other_entry_device.id: other_entry_device,
+        }
+        registry.async_get_device.side_effect = lambda identifiers: {
+            frozenset({("ads_custom", "assigned-device")}): assigned_device,
+            frozenset({("ads_custom", "empty-device")}): empty_device,
+            frozenset({("ads_custom", "other-device")}): other_entry_device,
+        }.get(frozenset(identifiers))
+
+        monkeypatch.setattr("custom_components.ads_custom.config_flow.dr.async_get", lambda hass: registry)
+
+        deleted_count = flow._delete_empty_devices()
+
+        assert deleted_count == 1
+        registry.async_update_device.assert_called_once_with(
+            empty_device.id,
+            remove_config_entry_id="entry-id",
+        )
+
+    def test_delete_empty_devices_option_constant_has_expected_value(self):
+        """The bulk delete action constant should remain stable."""
+        assert OPTION_DELETE_EMPTY_DEVICES == "__delete_empty_devices__"

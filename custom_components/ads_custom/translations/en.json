@@ -339,7 +339,7 @@
       },
       "device_actions": {
         "title": "Device Actions",
-        "description": "Select an entity to edit, rename this device, or delete this device (deletion only works when no entities are assigned).",
+        "description": "Select an entity to edit, rename this device, delete this device, or delete all empty devices (deletion only works when no entities are assigned).",
         "data": {
           "selected_entity_subentry_id": "Entity",
           "entity_device_name": "Device Name",
@@ -352,6 +352,7 @@
       "no_action_selected": "Select an entity, change the device name, or choose delete.",
       "device_has_entities": "This device cannot be deleted because entities are still assigned to it.",
       "delete_confirmation_required": "Please confirm the device deletion.",
+      "no_empty_devices": "There are no empty devices to delete.",
       "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
       "no_options": "Select must have at least one option",
       "device_name_required": "A device name is required when creating a new device"

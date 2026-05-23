@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Hub options flow action to delete all empty ADS devices that no longer have entities assigned.
+
 ## [1.2.10] - 2026-05-22
 
 ### Changed

@@ -40,6 +40,7 @@ DEVICE_OPTION_CREATE_NEW = "__create_new__"
 DEFAULT_NEW_DEVICE_NAME = "ADS Device"
 DEFAULT_MIGRATED_DEVICE_NAME = "Default ADS Device"
 OPTION_DELETE_DEVICE = "__delete_device__"
+OPTION_DELETE_EMPTY_DEVICES = "__delete_empty_devices__"
 CONF_SELECTED_DEVICE_ID = "selected_device_id"
 CONF_SELECTED_ENTITY_SUBENTRY_ID = "selected_entity_subentry_id"
 CONF_CONFIRM_DELETE = "confirm_delete"
@@ -1185,6 +1186,42 @@ class AdsOptionsFlowHandler(OptionsFlow):
             remove_config_entry_id=self.config_entry.entry_id,
         )
 
+    def _empty_device_ids(self) -> list[str]:
+        device_map = self._device_entities_map()
+        device_registry = dr.async_get(self.hass)
+        empty_device_ids: list[str] = []
+
+        for device in device_registry.devices.values():
+            if self.config_entry.entry_id not in device.config_entries:
+                continue
+
+            for domain, identifier in device.identifiers:
+                if domain != DOMAIN:
+                    continue
+
+                if identifier not in device_map:
+                    empty_device_ids.append(identifier)
+                break
+
+        return empty_device_ids
+
+    def _delete_empty_devices(self) -> int:
+        deleted_count = 0
+        device_registry = dr.async_get(self.hass)
+
+        for device_id in self._empty_device_ids():
+            device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+            if not device:
+                continue
+
+            device_registry.async_update_device(
+                device.id,
+                remove_config_entry_id=self.config_entry.entry_id,
+            )
+            deleted_count += 1
+
+        return deleted_count
+
     async def async_step_device_actions(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if not self._selected_device_id:
             return await self.async_step_init()
@@ -1203,8 +1240,18 @@ class AdsOptionsFlowHandler(OptionsFlow):
             requested_action = user_input.get(CONF_DEVICE_ACTION, "")
             new_device_name = (user_input.get(CONF_ENTITY_DEVICE_NAME) or "").strip()
             wants_delete = requested_action == OPTION_DELETE_DEVICE
+            wants_delete_empty_devices = requested_action == OPTION_DELETE_EMPTY_DEVICES
 
-            if wants_delete:
+            if wants_delete_empty_devices:
+                empty_device_ids = self._empty_device_ids()
+                if not empty_device_ids:
+                    errors["base"] = "no_empty_devices"
+                elif not user_input.get(CONF_CONFIRM_DELETE):
+                    errors[CONF_CONFIRM_DELETE] = "delete_confirmation_required"
+                else:
+                    self._delete_empty_devices()
+                    return self.async_create_entry(title="", data={})
+            elif wants_delete:
                 if entities:
                     errors["base"] = "device_has_entities"
                 elif not user_input.get(CONF_CONFIRM_DELETE):
@@ -1230,6 +1277,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
                         options=[
                             {"label": "(None)", "value": ""},
                             {"label": "Delete device", "value": OPTION_DELETE_DEVICE},
+                            {"label": "Delete all empty devices", "value": OPTION_DELETE_EMPTY_DEVICES},
                         ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
