@@ -38,7 +38,7 @@ from .const import (
     SUBENTRY_TYPE_ENTITY,
     AdsType,
 )
-from .entity import AdsEntity
+from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -150,7 +150,11 @@ async def async_setup_entry(
 
         if ads_var and unique_id:
             device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-            device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name
+            device_name = resolve_device_name(
+                hass,
+                device_id,
+                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
+            )
             device_identifiers = {(DOMAIN, device_id)}
             
             async_add_entities(

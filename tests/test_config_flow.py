@@ -15,6 +15,7 @@ from custom_components.ads_custom.config_flow import (
     DEVICE_OPTION_CREATE_NEW,
     OPTION_DELETE_EMPTY_DEVICES,
 )
+from custom_components.ads_custom.entity import resolve_device_name
 
 
 class TestDeviceClassLists:
@@ -344,34 +345,43 @@ class TestReconfigureForms:
             Tuple of (field_found, has_default)
         """
         for node in ast.walk(func_node):
+            candidate_calls: list[ast.Call] = []
+
             # Look for subscript assignments like schema_dict[vol.Optional(...)]
-            if isinstance(node, ast.Subscript):
-                if isinstance(node.slice, ast.Call):
-                    call = node.slice
-                    # Check if this is vol.Optional
-                    if (
-                        isinstance(call.func, ast.Attribute)
-                        and isinstance(call.func.value, ast.Name)
-                        and call.func.value.id == "vol"
-                        and call.func.attr == "Optional"
-                    ):
-                        # Check if first argument is the field we're looking for
-                        if call.args:
-                            first_arg = call.args[0]
-                            field_matches = False
-                            
-                            # Handle both Name nodes (CONF_DEVICE_CLASS) and string literals
-                            if isinstance(first_arg, ast.Name) and first_arg.id == field_name:
-                                field_matches = True
-                            elif isinstance(first_arg, ast.Constant) and first_arg.value == field_name:
-                                field_matches = True
-                            
-                            if field_matches:
-                                # Check if there's a default= keyword argument
-                                has_default = any(
-                                    kw.arg == "default" for kw in call.keywords
-                                )
-                                return True, has_default
+            if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Call):
+                candidate_calls.append(node.slice)
+
+            # Also look for dict keys like {vol.Optional(...): selector.SelectSelector(...)}
+            if isinstance(node, ast.Dict):
+                for key in node.keys:
+                    if isinstance(key, ast.Call):
+                        candidate_calls.append(key)
+
+            for call in candidate_calls:
+                # Check if this is vol.Optional
+                if (
+                    isinstance(call.func, ast.Attribute)
+                    and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id == "vol"
+                    and call.func.attr == "Optional"
+                ):
+                    # Check if first argument is the field we're looking for
+                    if call.args:
+                        first_arg = call.args[0]
+                        field_matches = False
+
+                        # Handle both Name nodes (CONF_DEVICE_CLASS) and string literals
+                        if isinstance(first_arg, ast.Name) and first_arg.id == field_name:
+                            field_matches = True
+                        elif isinstance(first_arg, ast.Constant) and first_arg.value == field_name:
+                            field_matches = True
+
+                        if field_matches:
+                            # Check if there's a default= keyword argument
+                            has_default = any(
+                                kw.arg == "default" for kw in call.keywords
+                            )
+                            return True, has_default
         return False, False
 
     def test_reconfigure_sensor_device_class_has_no_default(self):
@@ -576,6 +586,80 @@ class TestHubOptionsFlowSupport:
         """Config flow should expose AdsOptionsFlowHandler for config entry options."""
         flow = AdsConfigFlow.async_get_options_flow(MagicMock())
         assert isinstance(flow, AdsOptionsFlowHandler)
+
+
+class TestDeviceRegistryMembershipHandling:
+    """Tests for device registry membership and naming behavior."""
+
+    def test_device_selection_includes_subentry_linked_devices(self, monkeypatch):
+        """Devices linked only through subentries should still appear in the picker."""
+        flow = AdsOptionsFlowHandler()
+        flow._config_entry = MagicMock()
+        flow._config_entry.entry_id = "entry-id"
+        flow._config_entry.subentries = {
+            "subentry-1": MagicMock(
+                subentry_type="entity",
+                data={"entity_device_id": "subentry-device"},
+                unique_id="entity-1",
+                title="Subentry entity",
+            )
+        }
+        flow.hass = MagicMock()
+
+        direct_device = MagicMock()
+        direct_device.id = "direct-registry-id"
+        direct_device.identifiers = {("ads_custom", "direct-device")}
+        direct_device.config_entries = {"entry-id"}
+        direct_device.config_entries_subentries = {}
+        direct_device.name_by_user = None
+        direct_device.name = "Direct device"
+
+        subentry_device = MagicMock()
+        subentry_device.id = "subentry-registry-id"
+        subentry_device.identifiers = {("ads_custom", "subentry-device")}
+        subentry_device.config_entries = set()
+        subentry_device.config_entries_subentries = {"entry-id": {"subentry-1"}}
+        subentry_device.name_by_user = None
+        subentry_device.name = "Subentry device"
+
+        foreign_device = MagicMock()
+        foreign_device.id = "foreign-registry-id"
+        foreign_device.identifiers = {("ads_custom", "foreign-device")}
+        foreign_device.config_entries = {"other-entry"}
+        foreign_device.config_entries_subentries = {}
+        foreign_device.name_by_user = None
+        foreign_device.name = "Foreign device"
+
+        registry = MagicMock()
+        registry.devices = {
+            direct_device.id: direct_device,
+            subentry_device.id: subentry_device,
+            foreign_device.id: foreign_device,
+        }
+
+        monkeypatch.setattr("custom_components.ads_custom.config_flow.dr.async_get", lambda hass: registry)
+
+        options = flow._get_device_selection_options()
+        values = {option["value"] for option in options}
+
+        assert "direct-device" in values
+        assert "subentry-device" in values
+        assert "foreign-device" not in values
+
+    def test_resolve_device_name_prefers_existing_registry_name(self, monkeypatch):
+        """Existing devices should keep their registry name instead of the fallback."""
+        device = MagicMock()
+        device.name_by_user = None
+        device.name = "Existing device"
+
+        registry = MagicMock()
+        registry.async_get_device.return_value = device
+
+        monkeypatch.setattr("custom_components.ads_custom.entity.dr.async_get", lambda hass: registry)
+
+        resolved_name = resolve_device_name(MagicMock(), "device-id", "Fallback name")
+
+        assert resolved_name == "Existing device"
 
 
 class TestDeleteEmptyDevicesSupport:

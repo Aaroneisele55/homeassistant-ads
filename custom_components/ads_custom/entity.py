@@ -1,14 +1,17 @@
 """Support for Automation Device Specification (ADS)."""
 
+from __future__ import annotations
 
 import asyncio
 from asyncio import timeout
 import logging
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityCategory
 
-from .const import STATE_KEY_STATE
+from .const import DOMAIN, STATE_KEY_STATE
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,3 +113,18 @@ class AdsEntity(Entity):
     def available(self) -> bool:
         """Return False if state has not been updated yet."""
         return self._state_dict[STATE_KEY_STATE] is not None
+
+
+def resolve_device_name(
+    hass: HomeAssistant,
+    device_id: str,
+    fallback_name: str | None,
+) -> str | None:
+    """Return the current registry name for a device, or a fallback for new devices."""
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+    if device is None:
+        return fallback_name
+
+    return device.name_by_user or device.name or fallback_name

@@ -1077,11 +1077,24 @@ class AdsOptionsFlowHandler(OptionsFlow):
             device_map.setdefault(device_id, []).append((subentry_id, subentry))
         return device_map
 
+    def _device_belongs_to_entry(self, device: Any) -> bool:
+        """Return whether a device is linked to this config entry."""
+
+        config_entries = getattr(device, "config_entries", set())
+        if self.config_entry.entry_id in config_entries:
+            return True
+
+        subentry_map = getattr(device, "config_entries_subentries", None)
+        if not isinstance(subentry_map, dict):
+            return False
+
+        return bool(subentry_map.get(self.config_entry.entry_id))
+
     def _get_registry_device_labels(self) -> dict[str, str]:
         labels: dict[str, str] = {}
         device_registry = dr.async_get(self.hass)
         for device in device_registry.devices.values():
-            if self.config_entry.entry_id not in device.config_entries:
+            if not self._device_belongs_to_entry(device):
                 continue
             for domain, identifier in device.identifiers:
                 if domain != DOMAIN:
@@ -1181,6 +1194,13 @@ class AdsOptionsFlowHandler(OptionsFlow):
         device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
         if not device:
             return
+        subentry_map = getattr(device, "config_entries_subentries", None)
+        if isinstance(subentry_map, dict) and subentry_map.get(self.config_entry.entry_id):
+            return
+
+        config_entries = getattr(device, "config_entries", set())
+        if self.config_entry.entry_id not in config_entries:
+            return
         device_registry.async_update_device(
             device.id,
             remove_config_entry_id=self.config_entry.entry_id,
@@ -1192,7 +1212,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
         empty_device_ids: list[str] = []
 
         for device in device_registry.devices.values():
-            if self.config_entry.entry_id not in device.config_entries:
+            if not self._device_belongs_to_entry(device):
                 continue
 
             for domain, identifier in device.identifiers:

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 # ---------------------------------------------------------------------------
 # Patch missing Home Assistant APIs for test compatibility.
 # ConfigSubentry was introduced in HA 2025.7.0 (which requires Python 3.13+).
@@ -9,6 +12,10 @@ from __future__ import annotations
 # package (2025.1.x) where ConfigSubentry does not exist.
 # This must happen before any custom_components imports.
 # ---------------------------------------------------------------------------
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 import homeassistant.config_entries as _ce
 
 if not hasattr(_ce, "ConfigSubentry"):
