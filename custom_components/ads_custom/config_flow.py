@@ -42,10 +42,14 @@ DEFAULT_MIGRATED_DEVICE_NAME = "Default ADS Device"
 OPTION_DELETE_DEVICE = "__delete_device__"
 OPTION_DELETE_EMPTY_DEVICES = "__delete_empty_devices__"
 OPTION_MOVE_ENTITIES = "__move_entities__"
+OPTION_BROWSE_SYMBOLS = "__browse_symbols__"
 CONF_SELECTED_DEVICE_ID = "selected_device_id"
 CONF_SELECTED_ENTITY_SUBENTRY_ID = "selected_entity_subentry_id"
 CONF_CONFIRM_DELETE = "confirm_delete"
 CONF_DEVICE_ACTION = "device_action"
+CONF_SYMBOL_QUERY = "symbol_query"
+CONF_SELECTED_SYMBOL = "selected_symbol"
+MAX_DISCOVERY_SYMBOL_RESULTS = 500
 
 # Entity type constants
 CONF_ENTITY_TYPE = "entity_type"
@@ -53,6 +57,21 @@ CONF_ADS_TYPE = "adstype"
 CONF_DEVICE_CLASS = "device_class"
 CONF_UNIT_OF_MEASUREMENT = "unit_of_measurement"
 CONF_STATE_CLASS = "state_class"
+
+
+def _symbol_type_text(symbol_type: Any) -> str:
+    """Normalize symbol type values to readable strings."""
+    if symbol_type is None:
+        return "unknown"
+    return str(symbol_type)
+
+
+def _symbol_option_label(name: str, symbol_type: str, comment: str | None = None) -> str:
+    """Build a compact label for symbol discovery dropdown options."""
+    details = f"{name} [{symbol_type}]"
+    if comment:
+        return f"{details} — {comment}"
+    return details
 
 # Cover ADS variable field names (for sanitization)
 COVER_ADS_VAR_FIELDS = [
@@ -1057,6 +1076,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
     def __init__(self) -> None:
         self._selected_device_id: str | None = None
         self._selected_subentry_id: str | None = None
+        self._symbol_query: str = ""
 
     @property
     def entry(self) -> ConfigEntry:
@@ -1147,6 +1167,87 @@ class AdsOptionsFlowHandler(OptionsFlow):
                 or DEFAULT_MIGRATED_DEVICE_NAME
             )
         return device_id
+
+    async def _async_discover_symbols(self) -> list[dict[str, str]]:
+        """Fetch and normalize PLC symbols from the active ADS hub."""
+        hub = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+        if hub is None:
+            return []
+
+        symbols = await self.hass.async_add_executor_job(hub.get_all_symbols)
+        normalized: list[dict[str, str]] = []
+        for symbol in symbols:
+            name = getattr(symbol, "name", None)
+            if not name:
+                continue
+            symbol_type = _symbol_type_text(getattr(symbol, "symbol_type", None))
+            comment = (getattr(symbol, "comment", "") or "").strip()
+            normalized.append(
+                {
+                    "name": str(name),
+                    "type": symbol_type,
+                    "comment": str(comment),
+                    "label": _symbol_option_label(str(name), symbol_type, comment),
+                }
+            )
+        normalized.sort(key=lambda item: item["name"].lower())
+        return normalized
+
+    async def async_step_browse_symbols(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Show a searchable PLC symbol browser."""
+        if not self._selected_device_id:
+            return await self.async_step_init()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            self._symbol_query = (user_input.get(CONF_SYMBOL_QUERY) or "").strip()
+
+        symbols = await self._async_discover_symbols()
+        if not symbols:
+            errors["base"] = "symbol_discovery_unavailable"
+
+        query = self._symbol_query.lower()
+        filtered = (
+            [
+                symbol for symbol in symbols
+                if query in symbol["name"].lower()
+                or query in symbol["type"].lower()
+                or query in symbol["comment"].lower()
+            ]
+            if query
+            else symbols
+        )
+
+        shown_symbols = filtered[:MAX_DISCOVERY_SYMBOL_RESULTS]
+        options: list[dict[str, str]] = [{"label": "(No variable selected)", "value": ""}]
+        options.extend(
+            {"label": symbol["label"], "value": symbol["name"]}
+            for symbol in shown_symbols
+        )
+
+        selected_symbol = ""
+        if user_input is not None:
+            candidate = (user_input.get(CONF_SELECTED_SYMBOL) or "").strip()
+            if candidate:
+                selected_symbol = candidate
+
+        return self.async_show_form(
+            step_id="browse_symbols",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_SYMBOL_QUERY, default=self._symbol_query): cv.string,
+                vol.Optional(CONF_SELECTED_SYMBOL, default=selected_symbol): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }),
+            errors=errors,
+            description_placeholders={
+                "shown_count": str(len(shown_symbols)),
+                "total_count": str(len(symbols)),
+            },
+        )
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -1310,6 +1411,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
             wants_delete = requested_action == OPTION_DELETE_DEVICE
             wants_delete_empty_devices = requested_action == OPTION_DELETE_EMPTY_DEVICES
             wants_move_entities = requested_action == OPTION_MOVE_ENTITIES
+            wants_browse_symbols = requested_action == OPTION_BROWSE_SYMBOLS
 
             if wants_delete_empty_devices:
                 empty_device_ids = self._empty_device_ids()
@@ -1330,6 +1432,8 @@ class AdsOptionsFlowHandler(OptionsFlow):
                     return self.async_create_entry(title="", data={})
             elif wants_move_entities:
                 return await self.async_step_move_entities()
+            elif wants_browse_symbols:
+                return await self.async_step_browse_symbols()
             elif new_device_name and new_device_name != current_name:
                 self._rename_device(self._selected_device_id, new_device_name)
                 return self.async_create_entry(title="", data={})
@@ -1347,6 +1451,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=[
                             {"label": "(None)", "value": ""},
+                            {"label": "Browse PLC variables", "value": OPTION_BROWSE_SYMBOLS},
                             {"label": "Move entities to this device", "value": OPTION_MOVE_ENTITIES},
                             {"label": "Delete device", "value": OPTION_DELETE_DEVICE},
                             {"label": "Delete all empty devices", "value": OPTION_DELETE_EMPTY_DEVICES},

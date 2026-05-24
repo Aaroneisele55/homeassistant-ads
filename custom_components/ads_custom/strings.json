@@ -386,6 +386,14 @@
           "device_action": "Action",
           "confirm_delete": "Confirm device deletion"
         }
+      },
+      "browse_symbols": {
+        "title": "Browse PLC Variables",
+        "description": "Showing {shown_count} of {total_count} variables. Filter by name, PLC type, or comment. Arrays and structures are shown with their original PLC type.",
+        "data": {
+          "symbol_query": "Search",
+          "selected_symbol": "Variable"
+        }
       }
     },
     "error": {
@@ -395,7 +403,8 @@
       "no_empty_devices": "There are no empty devices to delete.",
       "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
       "no_options": "Select must have at least one option",
-      "device_name_required": "A device name is required when creating a new device"
+      "device_name_required": "A device name is required when creating a new device",
+      "symbol_discovery_unavailable": "Could not load PLC variables. Ensure the ADS connection is active."
     },
     "abort": {
       "reconfigure_successful": "Entity updated successfully"

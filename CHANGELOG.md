@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Hub options flow action to browse PLC variables with search by name/type/comment, including array and object type display.
+
 ## [1.2.13] - 2026-05-23
 
 ### Changed
@@ -211,4 +214,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
-

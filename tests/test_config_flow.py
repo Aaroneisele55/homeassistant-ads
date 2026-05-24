@@ -13,6 +13,7 @@ from custom_components.ads_custom.config_flow import (
     AdsEntitySubentryFlowHandler,
     AdsOptionsFlowHandler,
     DEVICE_OPTION_CREATE_NEW,
+    OPTION_BROWSE_SYMBOLS,
     OPTION_DELETE_EMPTY_DEVICES,
     OPTION_MOVE_ENTITIES,
 )
@@ -872,3 +873,68 @@ class TestMoveEntitiesSupport:
     def test_move_entities_option_constant_has_expected_value(self):
         """The bulk move action constant should remain stable."""
         assert OPTION_MOVE_ENTITIES == "__move_entities__"
+
+
+class TestBrowseSymbolsSupport:
+    """Tests for PLC symbol discovery support in the hub options flow."""
+
+    def test_device_actions_menu_includes_browse_symbols_action(self):
+        """The device actions menu should expose PLC symbol browsing."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            source = file.read()
+
+        assert "Browse PLC variables" in source
+        assert "OPTION_BROWSE_SYMBOLS" in source
+
+    @pytest.mark.asyncio
+    async def test_device_actions_routes_to_browse_symbols_step(self):
+        """Choosing the browse action should open the symbol browser step."""
+        flow = AdsOptionsFlowHandler()
+        flow._selected_device_id = "target-device"
+        flow._device_name_for_id = MagicMock(return_value="Target device")
+        flow._device_entities_map = MagicMock(return_value={})
+        flow._entity_select_options = MagicMock(return_value=[])
+        flow.async_step_browse_symbols = AsyncMock(return_value={"type": "form", "step_id": "browse_symbols"})
+
+        result = await flow.async_step_device_actions({"device_action": OPTION_BROWSE_SYMBOLS})
+
+        assert result == {"type": "form", "step_id": "browse_symbols"}
+        flow.async_step_browse_symbols.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_async_discover_symbols_preserves_complex_symbol_types(self):
+        """Discovered symbols should keep array/object type strings in labels."""
+        flow = AdsOptionsFlowHandler()
+        flow._config_entry = MagicMock()
+        flow._config_entry.entry_id = "entry-id"
+        flow.hass = MagicMock()
+
+        async def _run_executor(func, *args):
+            return func(*args)
+
+        flow.hass.async_add_executor_job = AsyncMock(side_effect=_run_executor)
+
+        array_symbol = MagicMock()
+        array_symbol.name = "GVL.ArrayValues"
+        array_symbol.symbol_type = "ARRAY [1..5] OF INT"
+        array_symbol.comment = "Array variable"
+
+        object_symbol = MagicMock()
+        object_symbol.name = "GVL.MotorStatus"
+        object_symbol.symbol_type = "ST_MotorStatus"
+        object_symbol.comment = "Object variable"
+
+        hub = MagicMock()
+        hub.get_all_symbols.return_value = [object_symbol, array_symbol]
+        flow.hass.data = {"ads_custom": {"entry-id": hub}}
+
+        symbols = await flow._async_discover_symbols()
+
+        assert [symbol["name"] for symbol in symbols] == ["GVL.ArrayValues", "GVL.MotorStatus"]
+        assert symbols[0]["label"] == "GVL.ArrayValues [ARRAY [1..5] OF INT] — Array variable"
+        assert symbols[1]["label"] == "GVL.MotorStatus [ST_MotorStatus] — Object variable"
+
+    def test_browse_symbols_option_constant_has_expected_value(self):
+        """The browse symbols action constant should remain stable."""
+        assert OPTION_BROWSE_SYMBOLS == "__browse_symbols__"
