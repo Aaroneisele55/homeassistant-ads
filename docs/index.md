@@ -139,8 +139,9 @@ When creating a UI entity, you must assign it to an ADS device (either an existi
 You can also manage devices from the same config entry options:
 
 1. Select a device.
-2. Select an entity to edit, or rename the selected device.
-3. Optionally choose **Delete device** and confirm deletion.
+2. Select an entity to edit, rename the selected device, or choose **Browse PLC variables**.
+3. In **Browse PLC variables**, use the search field to filter by variable name, PLC type, or comment (array/object types are shown as reported by the PLC).
+4. Optionally choose **Delete device** and confirm deletion.
 
 > **Delete rule:** Device deletion is only available when no entities are assigned to that device. This prevents orphaned entities.
 

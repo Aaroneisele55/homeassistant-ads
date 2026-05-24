@@ -72,6 +72,16 @@ class AdsHub:
             except pyads.ADSError as err:
                 _LOGGER.error("Error reading %s: %s", name, err)
 
+    def get_all_symbols(self):
+        """Return all available PLC symbols from the connected device."""
+
+        with self._lock:
+            try:
+                return list(self._client.get_all_symbols())
+            except pyads.ADSError as err:
+                _LOGGER.error("Error discovering PLC symbols: %s", err)
+                return []
+
     def add_device_notification(self, name, plc_datatype, callback):
         """Add a notification to the ADS devices."""
 

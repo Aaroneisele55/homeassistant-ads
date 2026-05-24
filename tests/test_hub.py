@@ -103,6 +103,24 @@ class TestReadWrite:
         result = ads_hub.read_by_name("GVL.x", pyads.PLCTYPE_INT)
         assert result is None
 
+    def test_get_all_symbols_delegates(self, ads_hub, mock_ads_client):
+        """get_all_symbols should return the client symbol list."""
+        symbols = [MagicMock(name="GVL.a"), MagicMock(name="GVL.b")]
+        mock_ads_client.get_all_symbols.return_value = symbols
+
+        result = ads_hub.get_all_symbols()
+
+        assert result == symbols
+        mock_ads_client.get_all_symbols.assert_called_once_with()
+
+    def test_get_all_symbols_handles_ads_error(self, ads_hub, mock_ads_client):
+        """get_all_symbols should catch ADSError and return an empty list."""
+        mock_ads_client.get_all_symbols.side_effect = pyads.ADSError()
+
+        result = ads_hub.get_all_symbols()
+
+        assert result == []
+
 
 # ---------------------------------------------------------------------------
 # Device notification registration
