@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.16] - 2026-05-31
+
+### Changed
+- Merge pull request #95 from Aaroneisele55/copilot/implement-umlaut-handling
 ## [1.2.15] - 2026-05-24
 
 ### Changed
