@@ -10,11 +10,30 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityCategory
+from homeassistant.util import slugify
 
 from .const import DOMAIN, STATE_KEY_STATE
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
+
+
+_UMLAUT_TRANSLATION_TABLE = str.maketrans(
+    {
+        "ä": "ae",
+        "ö": "oe",
+        "ü": "ue",
+        "ß": "ss",
+        "Ä": "Ae",
+        "Ö": "Oe",
+        "Ü": "Ue",
+    }
+)
+
+
+def to_suggested_object_id(name: str) -> str:
+    """Convert a display name to a Home Assistant suggested object ID."""
+    return slugify(name.translate(_UMLAUT_TRANSLATION_TABLE))
 
 
 
@@ -47,6 +66,7 @@ class AdsEntity(Entity):
         if unique_id is not None:
             self._attr_unique_id = unique_id
         self._attr_name = name
+        self._attr_suggested_object_id = to_suggested_object_id(name)
 
         # Set config entry ID for proper association
         if config_entry_id is not None:
