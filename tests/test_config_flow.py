@@ -16,7 +16,7 @@ from custom_components.ads_custom.config_flow import (
     OPTION_DELETE_EMPTY_DEVICES,
     OPTION_MOVE_ENTITIES,
 )
-from custom_components.ads_custom.entity import resolve_device_name
+from custom_components.ads_custom.entity import resolve_device_name, to_suggested_object_id
 
 
 class TestDeviceClassLists:
@@ -705,6 +705,14 @@ class TestDeviceRegistryMembershipHandling:
         resolved_name = resolve_device_name(MagicMock(), "device-id", "Fallback name")
 
         assert resolved_name == "Existing device"
+
+    def test_to_suggested_object_id_transliterates_umlauts(self):
+        """Umlauts should be transliterated before slugification."""
+        assert to_suggested_object_id("Kühlung ein") == "kuehlung_ein"
+
+    def test_to_suggested_object_id_transliterates_sharp_s(self):
+        """ß should be transliterated to ss before slugification."""
+        assert to_suggested_object_id("Straße") == "strasse"
 
 
 class TestDeleteEmptyDevicesSupport:
