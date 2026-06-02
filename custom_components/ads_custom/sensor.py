@@ -40,6 +40,7 @@ from .const import (
 )
 from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
+from .subentry_helpers import iter_subentry_entities
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_NAME = "ADS sensor"
@@ -132,28 +133,28 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    for subentry_id, subentry in entry.subentries.items():
+    for subentry_id, subentry, _, _, entity_data in iter_subentry_entities(entry):
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "sensor":
+        if entity_data.get("entity_type") != "sensor":
             continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = subentry.data.get(CONF_ADS_VAR)
-        ads_type_value = subentry.data.get(CONF_ADS_TYPE, AdsType.INT)
+        name = entity_data.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = entity_data.get(CONF_ADS_VAR)
+        ads_type_value = entity_data.get(CONF_ADS_TYPE, AdsType.INT)
         ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
-        factor = subentry.data.get(CONF_ADS_FACTOR)
-        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
-        state_class = subentry.data.get(CONF_STATE_CLASS) or None
-        unit_of_measurement = subentry.data.get(CONF_UNIT_OF_MEASUREMENT)
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+        factor = entity_data.get(CONF_ADS_FACTOR)
+        device_class = entity_data.get(CONF_DEVICE_CLASS) or None
+        state_class = entity_data.get(CONF_STATE_CLASS) or None
+        unit_of_measurement = entity_data.get(CONF_UNIT_OF_MEASUREMENT)
+        unique_id = entity_data.get(CONF_UNIQUE_ID) or entity_data.get("unique_id")
 
         if ads_var and unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_id = entity_data.get(CONF_ENTITY_DEVICE_ID) or subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
             device_name = resolve_device_name(
                 hass,
                 device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
+                entity_data.get(CONF_ENTITY_DEVICE_NAME) or subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
             )
             device_identifiers = {(DOMAIN, device_id)}
             

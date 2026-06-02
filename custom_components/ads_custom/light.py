@@ -32,6 +32,7 @@ from .const import (
 )
 from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
+from .subentry_helpers import iter_subentry_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -101,25 +102,25 @@ async def async_setup_entry(
     if ads_hub is None:
         return
 
-    for subentry_id, subentry in entry.subentries.items():
+    for subentry_id, subentry, _, _, entity_data in iter_subentry_entities(entry):
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "light":
+        if entity_data.get("entity_type") != "light":
             continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = subentry.data.get(CONF_ADS_VAR)
-        ads_var_brightness = subentry.data.get(CONF_ADS_VAR_BRIGHTNESS)
-        brightness_scale = subentry.data.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
-        brightness_type = subentry.data.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+        name = entity_data.get(CONF_NAME, DEFAULT_NAME)
+        ads_var = entity_data.get(CONF_ADS_VAR)
+        ads_var_brightness = entity_data.get(CONF_ADS_VAR_BRIGHTNESS)
+        brightness_scale = entity_data.get(CONF_ADS_BRIGHTNESS_SCALE, DEFAULT_BRIGHTNESS_SCALE)
+        brightness_type = entity_data.get(CONF_ADS_VAR_BRIGHTNESS_TYPE, DEFAULT_BRIGHTNESS_TYPE)
+        unique_id = entity_data.get(CONF_UNIQUE_ID) or entity_data.get("unique_id")
 
         if ads_var and unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            device_id = entity_data.get(CONF_ENTITY_DEVICE_ID) or subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
             device_name = resolve_device_name(
                 hass,
                 device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
+                entity_data.get(CONF_ENTITY_DEVICE_NAME) or subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
             )
             device_identifiers = {(DOMAIN, device_id)}
             

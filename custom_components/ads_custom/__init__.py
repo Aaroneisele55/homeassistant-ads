@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import uuid
 from types import MappingProxyType
+from typing import Any
 
 import pyads
 import voluptuous as vol
@@ -29,6 +31,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_ADS_VAR,
+    CONF_DEVICE_ENTITIES,
     CONF_ENTITY_DEVICE_ID,
     CONF_ENTITY_DEVICE_NAME,
     DOMAIN,
@@ -409,44 +412,53 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
                     add_config_subentry_id=subentry_id,
                 )
 
-        # Migrate entity: associate existing entity with its subentry
-        entity_entry = None
-        for platform in PLATFORMS:
-            entity_id = entity_registry.async_get_entity_id(
-                platform,
-                DOMAIN,
-                subentry_unique_id
-            )
-            if entity_id:
-                entity_entry = entity_registry.entities.get(entity_id)
-                break
+        entities = subentry.data.get(CONF_DEVICE_ENTITIES)
+        entity_payloads = entities if isinstance(entities, list) else [subentry.data]
 
-        if entity_entry is None:
-            continue
+        # Migrate entities: associate existing entities with their subentry
+        for entity_payload in entity_payloads:
+            if not isinstance(entity_payload, dict):
+                continue
 
-        needs_update = False
-        update_kwargs: dict[str, str] = {}
+            entity_unique_id = entity_payload.get(CONF_UNIQUE_ID) or entity_payload.get("unique_id")
+            if not entity_unique_id:
+                continue
 
-        if entity_entry.config_entry_id != hub_entry.entry_id:
-            update_kwargs["config_entry_id"] = hub_entry.entry_id
-            needs_update = True
+            entity_entry = None
+            preferred_platform = entity_payload.get(CONF_ENTITY_TYPE)
+            platforms_to_check = [preferred_platform] if preferred_platform in PLATFORMS else PLATFORMS
+            for platform in platforms_to_check:
+                entity_id = entity_registry.async_get_entity_id(platform, DOMAIN, entity_unique_id)
+                if entity_id:
+                    entity_entry = entity_registry.entities.get(entity_id)
+                    break
 
-        if entity_entry.config_subentry_id != subentry_id:
-            update_kwargs["config_subentry_id"] = subentry_id
-            needs_update = True
+            if entity_entry is None:
+                continue
 
-        if needs_update:
-            _LOGGER.info(
-                "Migrating entity '%s' (unique_id: %s) to subentry '%s' on hub '%s'",
-                entity_entry.entity_id,
-                subentry_unique_id,
-                subentry.title,
-                hub_entry.title,
-            )
-            entity_registry.async_update_entity(
-                entity_entry.entity_id,
-                **update_kwargs,
-            )
+            needs_update = False
+            update_kwargs: dict[str, str] = {}
+
+            if entity_entry.config_entry_id != hub_entry.entry_id:
+                update_kwargs["config_entry_id"] = hub_entry.entry_id
+                needs_update = True
+
+            if entity_entry.config_subentry_id != subentry_id:
+                update_kwargs["config_subentry_id"] = subentry_id
+                needs_update = True
+
+            if needs_update:
+                _LOGGER.info(
+                    "Migrating entity '%s' (unique_id: %s) to subentry '%s' on hub '%s'",
+                    entity_entry.entity_id,
+                    entity_unique_id,
+                    subentry.title,
+                    hub_entry.title,
+                )
+                entity_registry.async_update_entity(
+                    entity_entry.entity_id,
+                    **update_kwargs,
+                )
 
 
 async def _async_migrate_legacy_unassigned_entities_to_default_device(
@@ -489,6 +501,82 @@ async def _async_migrate_legacy_unassigned_entities_to_default_device(
         )
 
 
+async def _async_migrate_entity_subentries_to_device_subentries(
+    hass: HomeAssistant,
+) -> None:
+    """Ensure there is a single subentry per device with nested entity definitions."""
+
+    entries = hass.config_entries.async_entries(DOMAIN)
+    hub_entries = [e for e in entries if e.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_HUB) == ENTRY_TYPE_HUB]
+    remove_subentry = getattr(hass.config_entries, "async_remove_subentry", None)
+
+    for hub_entry in hub_entries:
+        grouped: dict[str, dict[str, Any]] = {}
+        representatives: dict[str, list[tuple[str, ConfigSubentry]]] = {}
+
+        for subentry_id, subentry in hub_entry.subentries.items():
+            if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
+                continue
+
+            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+            if not device_id:
+                continue
+
+            device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or subentry.title or DEFAULT_MIGRATED_DEVICE_NAME
+            group = grouped.setdefault(
+                device_id,
+                {
+                    CONF_ENTITY_DEVICE_ID: device_id,
+                    CONF_ENTITY_DEVICE_NAME: device_name,
+                    CONF_DEVICE_ENTITIES: [],
+                },
+            )
+
+            if not group.get(CONF_ENTITY_DEVICE_NAME):
+                group[CONF_ENTITY_DEVICE_NAME] = device_name
+
+            entities = subentry.data.get(CONF_DEVICE_ENTITIES)
+            if isinstance(entities, list):
+                for entity in entities:
+                    if not isinstance(entity, dict):
+                        continue
+                    normalized = dict(entity)
+                    normalized[CONF_ENTITY_DEVICE_ID] = device_id
+                    normalized[CONF_ENTITY_DEVICE_NAME] = group[CONF_ENTITY_DEVICE_NAME]
+                    group[CONF_DEVICE_ENTITIES].append(normalized)
+            else:
+                normalized = dict(subentry.data)
+                normalized[CONF_ENTITY_DEVICE_ID] = device_id
+                normalized[CONF_ENTITY_DEVICE_NAME] = group[CONF_ENTITY_DEVICE_NAME]
+                group[CONF_DEVICE_ENTITIES].append(normalized)
+
+            representatives.setdefault(device_id, []).append((subentry_id, subentry))
+
+        for device_id, group_data in grouped.items():
+            reps = representatives.get(device_id, [])
+            if not reps:
+                continue
+
+            _, primary_subentry = reps[0]
+            hass.config_entries.async_update_subentry(
+                hub_entry,
+                primary_subentry,
+                data=MappingProxyType(group_data),
+                title=group_data.get(CONF_ENTITY_DEVICE_NAME, device_id),
+            )
+
+            if len(reps) <= 1 or not callable(remove_subentry):
+                continue
+
+            for extra_subentry_id, extra_subentry in reps[1:]:
+                try:
+                    result = remove_subentry(hub_entry, extra_subentry_id)
+                except TypeError:
+                    result = remove_subentry(hub_entry, extra_subentry)
+                if inspect.isawaitable(result):
+                    await result
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the ADS component from YAML configuration."""
     # Initialize data storage once
@@ -498,6 +586,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Migrate old entity config entries / hub options to subentries
     await _async_migrate_to_subentries(hass)
     await _async_migrate_legacy_unassigned_entities_to_default_device(hass)
+    await _async_migrate_entity_subentries_to_device_subentries(hass)
 
     # Migrate entity registry entries to have proper config_entry_id
     await _async_migrate_entity_config_entries(hass)
@@ -579,49 +668,44 @@ async def _async_handle_device_registry_update(
         # No matching entity subentry for this device.
         return
 
-    if len(matching_subentries) > 1:
-        # Multiple entities share this device; do not sync device rename to
-        # any single entity name in shared-device mode.
-        return
-
     matching_subentry = matching_subentries[0]
-    if CONF_ENTITY_DEVICE_ID in matching_subentry.data:
-        # Explicit device assignment should not rename entity names
-        return
 
     # Get the new device name (prefer name_by_user over name)
     new_device_name = device.name_by_user or device.name
     if not new_device_name:
         return
 
-    # Get the old name from the subentry data
-    old_name = matching_subentry.data.get(CONF_NAME)
-
-    # If the name hasn't changed, no need to update
-    if old_name == new_device_name:
+    old_device_name = (
+        matching_subentry.data.get(CONF_ENTITY_DEVICE_NAME)
+        or matching_subentry.title
+    )
+    if old_device_name == new_device_name:
         return
 
     _LOGGER.info(
         "Device '%s' renamed to '%s', updating subentry",
-        old_name,
+        old_device_name,
         new_device_name,
     )
 
-    # Update the subentry data with the new name
     new_data = dict(matching_subentry.data)
-    new_data[CONF_NAME] = new_device_name
+    new_data[CONF_ENTITY_DEVICE_NAME] = new_device_name
+    entities = new_data.get(CONF_DEVICE_ENTITIES)
+    if isinstance(entities, list):
+        updated_entities: list[dict[str, Any]] = []
+        for entity in entities:
+            if not isinstance(entity, dict):
+                continue
+            updated_entity = dict(entity)
+            updated_entity[CONF_ENTITY_DEVICE_NAME] = new_device_name
+            updated_entities.append(updated_entity)
+        new_data[CONF_DEVICE_ENTITIES] = updated_entities
 
-    # Update the subentry title
-    entity_type = new_data.get(CONF_ENTITY_TYPE, "entity")
-    entity_type_display = entity_type.replace("_", " ").title()
-    new_title = f"{new_device_name} ({entity_type_display})"
-
-    # Update the subentry
     hass.config_entries.async_update_subentry(
         entry,
         matching_subentry,
         data=MappingProxyType(new_data),
-        title=new_title,
+        title=new_device_name,
     )
 
 
