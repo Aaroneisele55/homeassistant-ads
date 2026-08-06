@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.17] - 2026-08-06
+
 ### Changed
 - Adapted device-registry interactions for Home Assistant 2026.8's single-config-entry
   device model (devices now belong to exactly one config entry and at most one
