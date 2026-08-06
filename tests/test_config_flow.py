@@ -13,6 +13,7 @@ from custom_components.ads_custom.config_flow import (
     AdsEntitySubentryFlowHandler,
     AdsOptionsFlowHandler,
     DEVICE_OPTION_CREATE_NEW,
+    OPTION_ADD_ENTITY,
     OPTION_DELETE_EMPTY_DEVICES,
     OPTION_MOVE_ENTITIES,
 )
@@ -764,6 +765,15 @@ class TestDeleteEmptyDevicesSupport:
 
 class TestDeviceActionsSupport:
     """Tests for the simplified device actions flow."""
+
+    def test_device_actions_menu_includes_add_entity_action(self):
+        """The device actions menu should expose grouped-device entity addition."""
+        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
+        with open(config_flow_path, "r", encoding="utf-8") as file:
+            source = file.read()
+
+        assert "Add entity" in source
+        assert OPTION_ADD_ENTITY == "__add_entity__"
 
     def test_device_actions_menu_no_longer_includes_move_entities_action(self):
         """The device actions menu should no longer advertise shared-device moves."""

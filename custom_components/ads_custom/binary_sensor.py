@@ -31,6 +31,7 @@ from .const import (
     SUBENTRY_TYPE_ENTITY,
     AdsType,
 )
+from .device_groups import get_device_name, iter_entity_configs
 from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
 
@@ -95,30 +96,34 @@ async def async_setup_entry(
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "binary_sensor":
-            continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = subentry.data.get(CONF_ADS_VAR)
-        ads_type_value = subentry.data.get(CONF_ADS_TYPE, AdsType.BOOL)
-        ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
-        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+        device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        device_name = get_device_name(dict(subentry.data))
 
-        if ads_var and unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-            device_name = resolve_device_name(
-                hass,
-                device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
-                entry.entry_id,
-            )
-            device_identifiers = {(DOMAIN, device_id)}
-            
-            async_add_entities(
-                [AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id, device_name, device_identifiers, entry.entry_id)],
-                config_subentry_id=subentry_id,
-            )
+        for entity_config in iter_entity_configs(dict(subentry.data)):
+            if entity_config.get("entity_type") != "binary_sensor":
+                continue
+
+            name = entity_config.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entity_config.get(CONF_ADS_VAR)
+            ads_type_value = entity_config.get(CONF_ADS_TYPE, AdsType.BOOL)
+            ads_type = AdsType(ads_type_value) if isinstance(ads_type_value, str) else ads_type_value
+            device_class = entity_config.get(CONF_DEVICE_CLASS) or None
+            unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+
+            if ads_var and unique_id and device_id:
+                resolved_device_name = resolve_device_name(
+                    hass,
+                    device_id,
+                    device_name or name,
+                    entry.entry_id,
+                )
+                device_identifiers = {(DOMAIN, device_id)}
+
+                async_add_entities(
+                    [AdsBinarySensor(ads_hub, name, ads_var, ads_type, device_class, unique_id, resolved_device_name, device_identifiers, entry.entry_id)],
+                    config_subentry_id=subentry_id,
+                )
 
 
 class AdsBinarySensor(AdsEntity, BinarySensorEntity):

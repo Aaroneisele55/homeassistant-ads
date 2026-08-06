@@ -247,8 +247,68 @@ class Test20268DeviceMigration:
     """Tests for the 2026.8 single-config-entry device migration."""
 
     @pytest.mark.asyncio
+    async def test_grouped_subentry_entities_keep_their_shared_device(self, monkeypatch):
+        """Grouped device subentries should migrate each nested entity without flattening the list."""
+        from custom_components.ads_custom import _async_migrate_entity_config_entries_for_hub
+        import custom_components.ads_custom as ads_init
+
+        grouped_entity = {
+            "entity_type": "sensor",
+            "name": "Temperature",
+            "unique_id": "temperature-entity",
+            CONF_ADS_VAR: "GVL.temperature",
+        }
+
+        subentry = MagicMock()
+        subentry.subentry_type = SUBENTRY_TYPE_ENTITY
+        subentry.unique_id = "shared-device-id"
+        subentry.title = "Shared Device"
+        subentry.data = {
+            CONF_ENTITY_DEVICE_ID: "shared-device-id",
+            CONF_ENTITY_DEVICE_NAME: "Shared Device",
+            "entities": [grouped_entity],
+        }
+
+        hub_entry = MagicMock()
+        hub_entry.entry_id = "hub-entry-id"
+        hub_entry.title = "ADS Hub"
+        hub_entry.subentries = {"subentry-id": subentry}
+
+        entity_registry = MagicMock()
+        entity_registry.async_get_entity_id.return_value = "sensor.temperature"
+        entity_registry.entities = {
+            "sensor.temperature": MagicMock(
+                entity_id="sensor.temperature",
+                config_entry_id="other-entry",
+                config_subentry_id="other-subentry",
+            )
+        }
+
+        device = MagicMock()
+        device.name = "Shared Device"
+
+        device_registry = MagicMock()
+        device_registry.async_get_device_by_identifier.return_value = device
+
+        hass = MagicMock()
+        hass.config_entries.async_update_subentry = MagicMock()
+
+        monkeypatch.setattr(ads_init, "er", MagicMock(async_get=MagicMock(return_value=entity_registry)))
+        monkeypatch.setattr(ads_init, "dr", MagicMock(async_get=MagicMock(return_value=device_registry)))
+        monkeypatch.setattr(ads_init, "async_ensure_device_subentry", MagicMock())
+
+        await _async_migrate_entity_config_entries_for_hub(hass, hub_entry)
+
+        hass.config_entries.async_update_subentry.assert_not_called()
+        entity_registry.async_update_entity.assert_called_once_with(
+            "sensor.temperature",
+            config_entry_id="hub-entry-id",
+            config_subentry_id="subentry-id",
+        )
+
+    @pytest.mark.asyncio
     async def test_existing_entity_device_ids_are_rewritten_to_subentry_ids(self, monkeypatch):
-        """Old shared entity device IDs should be rewritten to per-subentry IDs."""
+        """Legacy flat subentries should be normalized into grouped entity lists."""
         from custom_components.ads_custom import _async_migrate_entity_config_entries_for_hub
         import custom_components.ads_custom.device_registry_compat as compat
 
@@ -288,9 +348,10 @@ class Test20268DeviceMigration:
         await _async_migrate_entity_config_entries_for_hub(hass, hub_entry)
 
         device_registry.async_get_device_by_identifier.assert_called_once_with(
-            (DOMAIN, "subentry-unique-id"), "hub-entry-id"
+            (DOMAIN, "shared-device-id"), "hub-entry-id"
         )
         hass.config_entries.async_update_subentry.assert_called_once()
         updated_data = hass.config_entries.async_update_subentry.call_args.kwargs["data"]
-        assert updated_data[CONF_ENTITY_DEVICE_ID] == "subentry-unique-id"
+        assert updated_data[CONF_ENTITY_DEVICE_ID] == "shared-device-id"
         assert updated_data[CONF_ENTITY_DEVICE_NAME] == "Legacy Entity"
+        assert updated_data["entities"][0]["name"] == "Legacy Entity"

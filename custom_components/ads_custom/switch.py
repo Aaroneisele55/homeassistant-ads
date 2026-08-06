@@ -31,6 +31,7 @@ from .const import (
     STATE_KEY_STATE,
     SUBENTRY_TYPE_ENTITY,
 )
+from .device_groups import get_device_name, iter_entity_configs
 from .entity import AdsEntity, resolve_device_name
     # from .entity_options_flow import AdsEntityOptionsFlowHandler
 
@@ -89,30 +90,34 @@ async def async_setup_entry(
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "switch":
-            continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = subentry.data.get(CONF_ADS_VAR)
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
-        icon = subentry.data.get(CONF_ENTITY_ICON)
-        entity_category = subentry.data.get(CONF_ENTITY_CATEGORY)
-        entity_picture = subentry.data.get(CONF_ENTITY_PICTURE)
+        device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        device_name = get_device_name(dict(subentry.data))
 
-        if ads_var and unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-            device_name = resolve_device_name(
-                hass,
-                device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
-                entry.entry_id,
-            )
-            device_identifiers = {(DOMAIN, device_id)}
-            
-            async_add_entities(
-                [AdsSwitch(ads_hub, name, ads_var, unique_id, device_name, device_identifiers, entry.entry_id, icon, entity_category, entity_picture)],
-                config_subentry_id=subentry_id,
-            )
+        for entity_config in iter_entity_configs(dict(subentry.data)):
+            if entity_config.get("entity_type") != "switch":
+                continue
+
+            name = entity_config.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entity_config.get(CONF_ADS_VAR)
+            unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+            icon = entity_config.get(CONF_ENTITY_ICON)
+            entity_category = entity_config.get(CONF_ENTITY_CATEGORY)
+            entity_picture = entity_config.get(CONF_ENTITY_PICTURE)
+
+            if ads_var and unique_id and device_id:
+                resolved_device_name = resolve_device_name(
+                    hass,
+                    device_id,
+                    device_name or name,
+                    entry.entry_id,
+                )
+                device_identifiers = {(DOMAIN, device_id)}
+
+                async_add_entities(
+                    [AdsSwitch(ads_hub, name, ads_var, unique_id, resolved_device_name, device_identifiers, entry.entry_id, icon, entity_category, entity_picture)],
+                    config_subentry_id=subentry_id,
+                )
 
 
 class AdsSwitch(AdsEntity, SwitchEntity):

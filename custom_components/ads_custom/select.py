@@ -26,6 +26,7 @@ from .const import (
     DOMAIN,
     SUBENTRY_TYPE_ENTITY,
 )
+from .device_groups import get_device_name, iter_entity_configs
 from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
 
@@ -92,33 +93,37 @@ async def async_setup_entry(
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "select":
-            continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
-        ads_var = subentry.data.get(CONF_ADS_VAR)
-        options = subentry.data.get(CONF_OPTIONS, [])
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+        device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        device_name = get_device_name(dict(subentry.data))
 
-        if ads_var and options and unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-            device_name = resolve_device_name(
-                hass,
-                device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
-                entry.entry_id,
-            )
-            device_identifiers = {(DOMAIN, device_id)}
-            
-            async_add_entities(
-                [AdsSelect(ads_hub, ads_var, name, options, unique_id, device_name, device_identifiers, entry.entry_id)],
-                config_subentry_id=subentry_id,
-            )
-        else:
-            _LOGGER.warning(
-                "Select configuration for '%s' must include 'adsvar', 'options', and 'unique_id'. Skipping.",
-                name
-            )
+        for entity_config in iter_entity_configs(dict(subentry.data)):
+            if entity_config.get("entity_type") != "select":
+                continue
+
+            name = entity_config.get(CONF_NAME, DEFAULT_NAME)
+            ads_var = entity_config.get(CONF_ADS_VAR)
+            options = entity_config.get(CONF_OPTIONS, [])
+            unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+
+            if ads_var and options and unique_id and device_id:
+                resolved_device_name = resolve_device_name(
+                    hass,
+                    device_id,
+                    device_name or name,
+                    entry.entry_id,
+                )
+                device_identifiers = {(DOMAIN, device_id)}
+
+                async_add_entities(
+                    [AdsSelect(ads_hub, ads_var, name, options, unique_id, resolved_device_name, device_identifiers, entry.entry_id)],
+                    config_subentry_id=subentry_id,
+                )
+            else:
+                _LOGGER.warning(
+                    "Select configuration for '%s' must include 'adsvar', 'options', and 'unique_id'. Skipping.",
+                    name,
+                )
 
 
 class AdsSelect(AdsEntity, SelectEntity):

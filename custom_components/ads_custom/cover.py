@@ -34,6 +34,7 @@ from .const import (
     STATE_KEY_STATE,
     SUBENTRY_TYPE_ENTITY,
 )
+from .device_groups import get_device_name, iter_entity_configs
 from .entity import AdsEntity, resolve_device_name
 from .hub import AdsHub
 
@@ -146,80 +147,84 @@ async def async_setup_entry(
     for subentry_id, subentry in entry.subentries.items():
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
-        if subentry.data.get("entity_type") != "cover":
-            continue
 
-        name = subentry.data.get(CONF_NAME, DEFAULT_NAME)
+        device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        device_name = get_device_name(dict(subentry.data))
 
-        # Normalize ADS variable fields: strip and convert empty strings to None
-        ads_var_is_closed = subentry.data.get(CONF_ADS_VAR)
-        if isinstance(ads_var_is_closed, str):
-            ads_var_is_closed = ads_var_is_closed.strip() or None
+        for entity_config in iter_entity_configs(dict(subentry.data)):
+            if entity_config.get("entity_type") != "cover":
+                continue
 
-        ads_var_position = subentry.data.get(CONF_ADS_VAR_POSITION)
-        if isinstance(ads_var_position, str):
-            ads_var_position = ads_var_position.strip() or None
+            name = entity_config.get(CONF_NAME, DEFAULT_NAME)
 
-        ads_var_pos_set = subentry.data.get(CONF_ADS_VAR_SET_POS)
-        if isinstance(ads_var_pos_set, str):
-            ads_var_pos_set = ads_var_pos_set.strip() or None
+            # Normalize ADS variable fields: strip and convert empty strings to None
+            ads_var_is_closed = entity_config.get(CONF_ADS_VAR)
+            if isinstance(ads_var_is_closed, str):
+                ads_var_is_closed = ads_var_is_closed.strip() or None
 
-        ads_var_open = subentry.data.get(CONF_ADS_VAR_OPEN)
-        if isinstance(ads_var_open, str):
-            ads_var_open = ads_var_open.strip() or None
+            ads_var_position = entity_config.get(CONF_ADS_VAR_POSITION)
+            if isinstance(ads_var_position, str):
+                ads_var_position = ads_var_position.strip() or None
 
-        ads_var_close = subentry.data.get(CONF_ADS_VAR_CLOSE)
-        if isinstance(ads_var_close, str):
-            ads_var_close = ads_var_close.strip() or None
+            ads_var_pos_set = entity_config.get(CONF_ADS_VAR_SET_POS)
+            if isinstance(ads_var_pos_set, str):
+                ads_var_pos_set = ads_var_pos_set.strip() or None
 
-        ads_var_stop = subentry.data.get(CONF_ADS_VAR_STOP)
-        if isinstance(ads_var_stop, str):
-            ads_var_stop = ads_var_stop.strip() or None
+            ads_var_open = entity_config.get(CONF_ADS_VAR_OPEN)
+            if isinstance(ads_var_open, str):
+                ads_var_open = ads_var_open.strip() or None
 
-        ads_var_position_type = subentry.data.get(CONF_ADS_VAR_POSITION_TYPE, DEFAULT_POSITION_TYPE)
-        inverted = subentry.data.get(CONF_INVERTED, False)
-        device_class = subentry.data.get(CONF_DEVICE_CLASS) or None
-        unique_id = subentry.data.get(CONF_UNIQUE_ID) or subentry.data.get("unique_id")
+            ads_var_close = entity_config.get(CONF_ADS_VAR_CLOSE)
+            if isinstance(ads_var_close, str):
+                ads_var_close = ads_var_close.strip() or None
 
-        # Validate that at least one state variable is provided
-        if not ads_var_is_closed and not ads_var_position:
-            _LOGGER.warning(
-                "Cover configuration for '%s' must include either 'adsvar' (closed state) "
-                "or 'adsvar_position' (position feedback). Skipping.",
-                name
-            )
-            continue
+            ads_var_stop = entity_config.get(CONF_ADS_VAR_STOP)
+            if isinstance(ads_var_stop, str):
+                ads_var_stop = ads_var_stop.strip() or None
 
-        if unique_id:
-            device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-            device_name = resolve_device_name(
-                hass,
-                device_id,
-                subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
-                entry.entry_id,
-            )
-            device_identifiers = {(DOMAIN, device_id)}
-            
-            async_add_entities(
-                [AdsCover(
-                    ads_hub,
-                    ads_var_is_closed,
-                    ads_var_position,
-                    ads_var_position_type,
-                    ads_var_pos_set,
-                    ads_var_open,
-                    ads_var_close,
-                    ads_var_stop,
-                    inverted,
+            ads_var_position_type = entity_config.get(CONF_ADS_VAR_POSITION_TYPE, DEFAULT_POSITION_TYPE)
+            inverted = entity_config.get(CONF_INVERTED, False)
+            device_class = entity_config.get(CONF_DEVICE_CLASS) or None
+            unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+
+            # Validate that at least one state variable is provided
+            if not ads_var_is_closed and not ads_var_position:
+                _LOGGER.warning(
+                    "Cover configuration for '%s' must include either 'adsvar' (closed state) "
+                    "or 'adsvar_position' (position feedback). Skipping.",
                     name,
-                    device_class,
-                    unique_id,
-                    device_name,
-                    device_identifiers,
+                )
+                continue
+
+            if unique_id and device_id:
+                resolved_device_name = resolve_device_name(
+                    hass,
+                    device_id,
+                    device_name or name,
                     entry.entry_id,
-                )],
-                config_subentry_id=subentry_id,
-            )
+                )
+                device_identifiers = {(DOMAIN, device_id)}
+
+                async_add_entities(
+                    [AdsCover(
+                        ads_hub,
+                        ads_var_is_closed,
+                        ads_var_position,
+                        ads_var_position_type,
+                        ads_var_pos_set,
+                        ads_var_open,
+                        ads_var_close,
+                        ads_var_stop,
+                        inverted,
+                        name,
+                        device_class,
+                        unique_id,
+                        resolved_device_name,
+                        device_identifiers,
+                        entry.entry_id,
+                    )],
+                    config_subentry_id=subentry_id,
+                )
 
 
 class AdsCover(AdsEntity, CoverEntity):

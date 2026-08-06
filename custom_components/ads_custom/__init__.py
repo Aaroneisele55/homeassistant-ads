@@ -30,6 +30,7 @@ from .device_registry_compat import (
     async_ensure_device_subentry,
     async_get_device_by_identifier,
 )
+from .device_groups import iter_entity_configs, with_entity_configs
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -350,25 +351,26 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
 
-        # Home Assistant 2026.8 only allows a single config subentry per
-        # device. Each ADS subentry therefore needs its own registry device,
-        # keyed by the subentry's unique_id instead of any shared legacy ID.
-        desired_device_id = subentry.unique_id or subentry.data.get(CONF_UNIQUE_ID)
-        if desired_device_id and subentry.data.get(CONF_ENTITY_DEVICE_ID) != desired_device_id:
-            new_data = dict(subentry.data)
-            new_data[CONF_ENTITY_DEVICE_ID] = desired_device_id
-            if not new_data.get(CONF_ENTITY_DEVICE_NAME):
-                new_data[CONF_ENTITY_DEVICE_NAME] = new_data.get(CONF_NAME) or desired_device_id
+        entity_configs = iter_entity_configs(dict(subentry.data))
+        desired_device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
+        desired_device_name = subentry.data.get(CONF_ENTITY_DEVICE_NAME) or subentry.data.get(CONF_NAME)
+
+        if "entities" not in subentry.data:
+            new_data = with_entity_configs(
+                dict(subentry.data),
+                entity_configs,
+                device_id=desired_device_id,
+                device_name=desired_device_name,
+            )
             hass.config_entries.async_update_subentry(
                 hub_entry,
                 subentry,
                 data=MappingProxyType(new_data),
             )
 
-        subentry_unique_id = subentry.unique_id
-        if not subentry_unique_id:
+        subentry_device_id = desired_device_id or subentry.unique_id
+        if not subentry_device_id:
             continue
-        subentry_device_id = desired_device_id or subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry_unique_id
 
         # Migrate device: ensure device is properly associated with subentry.
         # Since Home Assistant 2026.8 a device belongs to a single config
@@ -390,43 +392,48 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
             async_ensure_device_subentry(device_registry, device, hub_entry.entry_id, subentry_id)
 
         # Migrate entity: associate existing entity with its subentry
-        entity_entry = None
-        for platform in PLATFORMS:
-            entity_id = entity_registry.async_get_entity_id(
-                platform,
-                DOMAIN,
-                subentry_unique_id
-            )
-            if entity_id:
-                entity_entry = entity_registry.entities.get(entity_id)
-                break
+        for entity_config in entity_configs:
+            entity_unique_id = entity_config.get(CONF_UNIQUE_ID) or entity_config.get("unique_id")
+            if not entity_unique_id:
+                continue
 
-        if entity_entry is None:
-            continue
+            entity_entry = None
+            for platform in PLATFORMS:
+                entity_id = entity_registry.async_get_entity_id(
+                    platform,
+                    DOMAIN,
+                    entity_unique_id,
+                )
+                if entity_id:
+                    entity_entry = entity_registry.entities.get(entity_id)
+                    break
 
-        needs_update = False
-        update_kwargs: dict[str, str] = {}
+            if entity_entry is None:
+                continue
 
-        if entity_entry.config_entry_id != hub_entry.entry_id:
-            update_kwargs["config_entry_id"] = hub_entry.entry_id
-            needs_update = True
+            needs_update = False
+            update_kwargs: dict[str, str] = {}
 
-        if entity_entry.config_subentry_id != subentry_id:
-            update_kwargs["config_subentry_id"] = subentry_id
-            needs_update = True
+            if entity_entry.config_entry_id != hub_entry.entry_id:
+                update_kwargs["config_entry_id"] = hub_entry.entry_id
+                needs_update = True
 
-        if needs_update:
-            _LOGGER.info(
-                "Migrating entity '%s' (unique_id: %s) to subentry '%s' on hub '%s'",
-                entity_entry.entity_id,
-                subentry_unique_id,
-                subentry.title,
-                hub_entry.title,
-            )
-            entity_registry.async_update_entity(
-                entity_entry.entity_id,
-                **update_kwargs,
-            )
+            if entity_entry.config_subentry_id != subentry_id:
+                update_kwargs["config_subentry_id"] = subentry_id
+                needs_update = True
+
+            if needs_update:
+                _LOGGER.info(
+                    "Migrating entity '%s' (unique_id: %s) to subentry '%s' on hub '%s'",
+                    entity_entry.entity_id,
+                    entity_unique_id,
+                    subentry.title,
+                    hub_entry.title,
+                )
+                entity_registry.async_update_entity(
+                    entity_entry.entity_id,
+                    **update_kwargs,
+                )
 
 
 async def _async_migrate_legacy_unassigned_entities_to_default_device(
