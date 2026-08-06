@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.18] - 2026-08-06
+
 ### Fixed
 - Restructured ADS entity device handling for Home Assistant 2026.8's single-config-entry
   device registry model. Each entity subentry now owns its own registry device ID, and the
