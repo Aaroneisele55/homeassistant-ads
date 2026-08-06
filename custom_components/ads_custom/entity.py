@@ -13,6 +13,7 @@ from homeassistant.helpers.entity import Entity, EntityCategory
 from homeassistant.util import slugify
 
 from .const import DOMAIN, STATE_KEY_STATE
+from .device_registry_compat import async_get_device_by_identifier
 from .hub import AdsHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -139,11 +140,16 @@ def resolve_device_name(
     hass: HomeAssistant,
     device_id: str,
     fallback_name: str | None,
+    config_entry_id: str,
 ) -> str | None:
-    """Return the current registry name for a device, or a fallback for new devices."""
+    """Return the current registry name for a device, or a fallback for new devices.
+
+    Since Home Assistant 2026.8, device identifiers are only unique per
+    config entry, so the lookup is scoped to ``config_entry_id``.
+    """
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+    device = async_get_device_by_identifier(device_registry, DOMAIN, device_id, config_entry_id)
     if device is None:
         return fallback_name
 

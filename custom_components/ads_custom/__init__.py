@@ -25,6 +25,11 @@ from homeassistant.const import (
 from homeassistant.core import Event, HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.device_registry import EVENT_DEVICE_REGISTRY_UPDATED
+
+from .device_registry_compat import (
+    async_ensure_device_subentry,
+    async_get_device_by_identifier,
+)
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -350,64 +355,24 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
             continue
         subentry_device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry_unique_id
 
-        # Migrate device: ensure device is properly associated with subentry
-        # For existing users who already have the duplicate display issue,
-        # we need to clean up and re-associate properly
-        device = device_registry.async_get_device(
-            identifiers={(DOMAIN, subentry_device_id)}
+        # Migrate device: ensure device is properly associated with subentry.
+        # Since Home Assistant 2026.8 a device belongs to a single config
+        # entry and at most one subentry, so there is no longer a "duplicate
+        # display" state to clean up here - async_ensure_device_subentry
+        # simply moves the device to the right entry/subentry if needed.
+        # On older cores it still performs the old duplicate-association
+        # cleanup. See device_registry_compat.py for details.
+        device = async_get_device_by_identifier(
+            device_registry, DOMAIN, subentry_device_id, hub_entry.entry_id
         )
         if device is not None:
-            subentry_ids = device.config_entries_subentries.get(hub_entry.entry_id)
-            needs_subentry = subentry_ids is None or subentry_id not in subentry_ids
-            has_subentry_association = not needs_subentry  # Inverse: True if subentry already exists
-            has_direct_hub_association = hub_entry.entry_id in device.config_entries
-
-            # Identify devices with duplicate display issue:
-            # - Has direct hub association (device.config_entries contains hub_id)
-            # - Has subentry association (needs_subentry is False, meaning subentry already exists)
-            # This happens when old migration called add_config_entry_id explicitly,
-            # creating a redundant direct association separate from the proper parent relationship
-            has_duplicate_display = has_direct_hub_association and has_subentry_association
-
-            if has_duplicate_display:
-                _LOGGER.info(
-                    "Cleaning up device '%s' associations for subentry '%s' on hub '%s' (fixing duplicate display)",
-                    device.name,
-                    subentry.title,
-                    hub_entry.title,
-                )
-                # Fix: Remove redundant direct hub association, then re-add properly with subentry
-                # This resets the device association to the correct state
-                # Note: Two separate calls are needed because async_update_device doesn't support
-                # remove and add of the same entry_id in a single call
-                device_registry.async_update_device(
-                    device.id,       
-                    remove_config_entry_id=hub_entry.entry_id,
-                )
-                # Re-fetch device after removal as it may have been removed if it had no other associations
-                device = device_registry.async_get_device(
-                    identifiers={(DOMAIN, subentry_device_id)}
-                )
-                if device is not None:
-                    device_registry.async_update_device(
-                        device.id,
-                        add_config_entry_id=hub_entry.entry_id,
-                        add_config_subentry_id=subentry_id,
-                    )
-            elif needs_subentry:
-                _LOGGER.info(
-                    "Migrating device '%s' to subentry '%s' on hub '%s'",
-                    device.name,
-                    subentry.title,
-                    hub_entry.title,
-                )
-                # Device is already associated with hub via entity's device_info
-                # Just add the subentry association to nest it properly in the UI
-                device_registry.async_update_device(
-                    device.id,
-                    add_config_entry_id=hub_entry.entry_id,
-                    add_config_subentry_id=subentry_id,
-                )
+            _LOGGER.debug(
+                "Ensuring device '%s' is associated with subentry '%s' on hub '%s'",
+                device.name,
+                subentry.title,
+                hub_entry.title,
+            )
+            async_ensure_device_subentry(device_registry, device, hub_entry.entry_id, subentry_id)
 
         # Migrate entity: associate existing entity with its subentry
         entity_entry = None

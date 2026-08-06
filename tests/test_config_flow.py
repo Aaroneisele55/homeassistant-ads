@@ -702,7 +702,7 @@ class TestDeviceRegistryMembershipHandling:
 
         monkeypatch.setattr("custom_components.ads_custom.entity.dr.async_get", lambda hass: registry)
 
-        resolved_name = resolve_device_name(MagicMock(), "device-id", "Fallback name")
+        resolved_name = resolve_device_name(MagicMock(), "device-id", "Fallback name", "entry-id")
 
         assert resolved_name == "Existing device"
 

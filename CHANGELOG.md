@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Adapted device-registry interactions for Home Assistant 2026.8's single-config-entry
+  device model (devices now belong to exactly one config entry and at most one
+  subentry). Added `device_registry_compat.py`, which transparently supports both
+  the pre-2026.8 and 2026.8+ device registry APIs, so the integration keeps working
+  unmodified on older HA Core versions too. See
+  https://developers.home-assistant.io/blog/2026/07/21/device-registry-single-config-entry/
+
 ## [1.2.16] - 2026-05-31
 
 ### Changed

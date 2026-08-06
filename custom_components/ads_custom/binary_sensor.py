@@ -111,6 +111,7 @@ async def async_setup_entry(
                 hass,
                 device_id,
                 subentry.data.get(CONF_ENTITY_DEVICE_NAME) or name,
+                entry.entry_id,
             )
             device_identifiers = {(DOMAIN, device_id)}
             

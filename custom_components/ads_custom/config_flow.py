@@ -34,6 +34,11 @@ from .const import (
     AdsType,
     SUBENTRY_TYPE_ENTITY,
 )
+from .device_registry_compat import (
+    async_detach_device_from_entry,
+    async_get_device_by_identifier,
+    device_belongs_to_entry,
+)
 
 _LOGGER = logging.getLogger(__name__)
 DEVICE_OPTION_CREATE_NEW = "__create_new__"
@@ -346,7 +351,7 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
         seen_identifiers: set[str] = set()
 
         for device in device_registry.devices.values():
-            if self.entry.entry_id not in device.config_entries:
+            if not device_belongs_to_entry(device, self.entry.entry_id):
                 continue
             for domain, identifier in device.identifiers:
                 if domain != DOMAIN or identifier in seen_identifiers:
@@ -408,7 +413,9 @@ class AdsEntitySubentryFlowHandler(ConfigSubentryFlow):
             return
 
         device_registry = dr.async_get(self.hass)
-        device = device_registry.async_get_device(identifiers={(DOMAIN, subentry_unique_id)})
+        device = async_get_device_by_identifier(
+            device_registry, DOMAIN, subentry_unique_id, self.entry.entry_id
+        )
 
         if not device:
             _LOGGER.debug("No device found for subentry '%s', skipping device name update", subentry_unique_id)
@@ -1089,15 +1096,7 @@ class AdsOptionsFlowHandler(OptionsFlow):
     def _device_belongs_to_entry(self, device: Any) -> bool:
         """Return whether a device is linked to this config entry."""
 
-        config_entries = getattr(device, "config_entries", set())
-        if self.config_entry.entry_id in config_entries:
-            return True
-
-        subentry_map = getattr(device, "config_entries_subentries", None)
-        if not isinstance(subentry_map, dict):
-            return False
-
-        return bool(subentry_map.get(self.config_entry.entry_id))
+        return device_belongs_to_entry(device, self.config_entry.entry_id)
 
     def _get_registry_device_labels(self) -> dict[str, str]:
         labels: dict[str, str] = {}
@@ -1184,7 +1183,9 @@ class AdsOptionsFlowHandler(OptionsFlow):
 
     def _rename_device(self, device_id: str, new_name: str) -> None:
         device_registry = dr.async_get(self.hass)
-        device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+        device = async_get_device_by_identifier(
+            device_registry, DOMAIN, device_id, self.config_entry.entry_id
+        )
         if device:
             if device.name_by_user:
                 device_registry.async_update_device(device.id, name_by_user=new_name)
@@ -1238,21 +1239,16 @@ class AdsOptionsFlowHandler(OptionsFlow):
         return options
 
     def _delete_empty_device(self, device_id: str) -> None:
+        # Callers only reach this once they've confirmed the device has no
+        # entities left (see the "device_has_entities" check above), so it
+        # is always safe to detach/remove it here.
         device_registry = dr.async_get(self.hass)
-        device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
-        if not device:
-            return
-        subentry_map = getattr(device, "config_entries_subentries", None)
-        if isinstance(subentry_map, dict) and subentry_map.get(self.config_entry.entry_id):
-            return
-
-        config_entries = getattr(device, "config_entries", set())
-        if self.config_entry.entry_id not in config_entries:
-            return
-        device_registry.async_update_device(
-            device.id,
-            remove_config_entry_id=self.config_entry.entry_id,
+        device = async_get_device_by_identifier(
+            device_registry, DOMAIN, device_id, self.config_entry.entry_id
         )
+        if not device or not device_belongs_to_entry(device, self.config_entry.entry_id):
+            return
+        async_detach_device_from_entry(device_registry, device, self.config_entry.entry_id)
 
     def _empty_device_ids(self) -> list[str]:
         device_map = self._device_entities_map()
@@ -1278,14 +1274,13 @@ class AdsOptionsFlowHandler(OptionsFlow):
         device_registry = dr.async_get(self.hass)
 
         for device_id in self._empty_device_ids():
-            device = device_registry.async_get_device(identifiers={(DOMAIN, device_id)})
+            device = async_get_device_by_identifier(
+                device_registry, DOMAIN, device_id, self.config_entry.entry_id
+            )
             if not device:
                 continue
 
-            device_registry.async_update_device(
-                device.id,
-                remove_config_entry_id=self.config_entry.entry_id,
-            )
+            async_detach_device_from_entry(device_registry, device, self.config_entry.entry_id)
             deleted_count += 1
 
         return deleted_count
