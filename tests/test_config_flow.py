@@ -530,68 +530,45 @@ class TestDeviceAssignmentSupport:
 class TestResolveDeviceAssignment:
     """Tests for _resolve_device_assignment helper behavior."""
 
-    def test_existing_device_selection_clears_new_device_name(self):
-        """Selecting existing device should keep device id and clear new device name."""
-        user_input = {
-            "entity_device_id": "existing-device",
-            "entity_device_name": "Should be removed",
-        }
+    def test_new_entity_uses_its_own_unique_id(self):
+        """New entities should get their own registry device ID."""
+        user_input = {"name": "Temperature", "unique_id": "subentry-1"}
 
         result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
 
-        assert result is True
-        assert user_input["entity_device_id"] == "existing-device"
-        assert "entity_device_name" not in user_input
+        assert result == "subentry-1"
+        assert user_input["entity_device_id"] == "subentry-1"
+        assert user_input["entity_device_name"] == "Temperature"
 
-    def test_create_new_device_requires_name(self):
-        """Creating a new device without name should fail validation."""
-        user_input = {"entity_device_id": DEVICE_OPTION_CREATE_NEW}
-
-        result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
-
-        assert result is False
-
-    def test_reconfigure_legacy_uses_unique_id_fallback(self):
-        """Legacy reconfigure should reuse unique_id when entity_device_id is absent."""
-        user_input = {}
-        current_data = {"unique_id": "legacy-entity-id"}
+    def test_reconfigure_legacy_reuses_existing_unique_id(self):
+        """Legacy reconfigure should keep the subentry's unique device ID."""
+        user_input = {"name": "Renamed Temperature"}
+        current_data = {"unique_id": "legacy-entity-id", "name": "Temperature"}
 
         result = AdsEntitySubentryFlowHandler._resolve_device_assignment(
             user_input,
             current_data=current_data,
         )
 
-        assert result is True
+        assert result == "legacy-entity-id"
         assert user_input["entity_device_id"] == "legacy-entity-id"
+        assert user_input["entity_device_name"] == "Temperature"
 
-    def test_new_entity_requires_explicit_device_selection(self):
-        """New entities must explicitly choose existing device or create new."""
+    def test_device_name_is_required_somewhere(self):
+        """Missing both device and entity names should fail validation."""
         user_input = {}
+
         result = AdsEntitySubentryFlowHandler._resolve_device_assignment(user_input)
-        assert result is False
+
+        assert result is None
 
 
 class TestLegacyDeviceRenameSync:
-    """Tests for legacy device rename synchronization during reconfigure."""
-
-    def test_legacy_device_rename_syncs_only_when_entity_stays_on_implicit_device(self):
-        """Only the implicit legacy device should follow an entity rename."""
-        flow = AdsEntitySubentryFlowHandler()
-        flow._entity_data = {"unique_id": "legacy-device"}
-
-        assert flow._should_update_legacy_device_name({"entity_device_id": "legacy-device"}) is True
-        assert flow._should_update_legacy_device_name({"entity_device_id": "other-device"}) is False
-
-    def test_explicit_device_assignment_never_syncs_legacy_device_name(self):
-        """Entities already assigned to a device must not rename their legacy device."""
-        flow = AdsEntitySubentryFlowHandler()
-        flow._entity_data = {"unique_id": "legacy-device", "entity_device_id": "existing-device"}
-
-        assert flow._should_update_legacy_device_name({"entity_device_id": "existing-device"}) is False
+    """Tests for device name synchronization during reconfigure."""
 
     @pytest.mark.asyncio
-    async def test_reconfigure_sensor_reassignment_does_not_rename_target_device(self):
-        """Assigning a legacy entity to an existing device should not rename that device."""
+    async def test_reconfigure_sensor_updates_implicit_device_name_on_entity_rename(self):
+        """Renaming an implicit device should update the backing registry device."""
         flow = AdsEntitySubentryFlowHandler()
         flow._entity_data = {
             "unique_id": "legacy-device",
@@ -612,16 +589,17 @@ class TestLegacyDeviceRenameSync:
             {
                 "adsvar": "GVL.Test",
                 "name": "Renamed Entity",
-                "entity_device_id": "existing-device",
             }
         )
 
         assert result["type"] == "abort"
-        flow._update_device_name_if_changed.assert_not_called()
+        flow._update_device_name_if_changed.assert_called_once_with(
+            "legacy-device", "Legacy Entity", "Renamed Entity"
+        )
         flow.hass.config_entries.async_update_subentry.assert_called_once()
         updated_data = flow.hass.config_entries.async_update_subentry.call_args.kwargs["data"]
-        assert updated_data["entity_device_id"] == "existing-device"
-        assert "entity_device_name" not in updated_data
+        assert updated_data["entity_device_id"] == "legacy-device"
+        assert updated_data["entity_device_name"] == "Legacy Entity"
 
 
 class TestHubOptionsFlowSupport:
@@ -784,99 +762,32 @@ class TestDeleteEmptyDevicesSupport:
         assert OPTION_DELETE_EMPTY_DEVICES == "__delete_empty_devices__"
 
 
-class TestMoveEntitiesSupport:
-    """Tests for bulk entity move support in the hub options flow."""
+class TestDeviceActionsSupport:
+    """Tests for the simplified device actions flow."""
 
-    def test_device_actions_menu_includes_move_entities_action(self):
-        """The device actions menu should expose the bulk move action."""
+    def test_device_actions_menu_no_longer_includes_move_entities_action(self):
+        """The device actions menu should no longer advertise shared-device moves."""
         config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
         with open(config_flow_path, "r", encoding="utf-8") as file:
             source = file.read()
 
-        assert "Move entities to this device" in source
-        assert "OPTION_MOVE_ENTITIES" in source
+        assert "Move entities to this device" not in source
 
-    def test_move_entities_step_uses_multi_select(self):
-        """The bulk move step should allow selecting multiple entities."""
-        config_flow_path = Path(__file__).parent.parent / "custom_components" / "ads_custom" / "config_flow.py"
-        with open(config_flow_path, "r", encoding="utf-8") as file:
-            tree = ast.parse(file.read())
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.AsyncFunctionDef) and node.name == "async_step_move_entities":
-                assert any(
-                    isinstance(keyword, ast.keyword)
-                    and keyword.arg == "multiple"
-                    and isinstance(keyword.value, ast.Constant)
-                    and keyword.value.value is True
-                    for keyword in ast.walk(node)
-                ), "async_step_move_entities must set multiple=True on the selector"
-                return
-
-        pytest.fail("async_step_move_entities not found in config_flow.py")
+    def test_move_entities_constant_is_retained_for_legacy_configs(self):
+        """The old move constant remains defined for compatibility, even though the UI no longer uses it."""
+        assert OPTION_MOVE_ENTITIES == "__move_entities__"
 
     @pytest.mark.asyncio
-    async def test_device_actions_routes_to_move_entities_step(self):
-        """Choosing the move action should open the bulk move step."""
+    async def test_device_actions_ignores_stale_move_requests(self):
+        """A stale move request should not route into a bulk move flow."""
         flow = AdsOptionsFlowHandler()
         flow._selected_device_id = "target-device"
         flow._device_name_for_id = MagicMock(return_value="Target device")
         flow._device_entities_map = MagicMock(return_value={})
         flow._entity_select_options = MagicMock(return_value=[])
-        flow.async_step_move_entities = AsyncMock(return_value={"type": "form", "step_id": "move_entities"})
+        flow.async_step_move_entities = AsyncMock()
 
         result = await flow.async_step_device_actions({"device_action": OPTION_MOVE_ENTITIES})
 
-        assert result == {"type": "form", "step_id": "move_entities"}
-        flow.async_step_move_entities.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_move_entities_updates_selected_subentries(self, monkeypatch):
-        """The bulk move step should rewrite every selected entity to the target device."""
-        flow = AdsOptionsFlowHandler()
-        flow._config_entry = MagicMock()
-        flow._config_entry.entry_id = "entry-id"
-        flow._selected_device_id = "target-device"
-
-        selected_one = MagicMock(
-            subentry_type="entity",
-            data={"name": "Entity One", "entity_device_id": "source-device-1"},
-            unique_id="entity-one",
-            title="Entity One",
-        )
-        selected_two = MagicMock(
-            subentry_type="entity",
-            data={"name": "Entity Two", "entity_device_id": "source-device-2"},
-            unique_id="entity-two",
-            title="Entity Two",
-        )
-        flow._config_entry.subentries = {
-            "subentry-one": selected_one,
-            "subentry-two": selected_two,
-        }
-        flow.hass = MagicMock()
-
-        target_device = MagicMock()
-        target_device.id = "target-registry-id"
-        target_device.identifiers = {("ads_custom", "target-device")}
-        target_device.config_entries = {"entry-id"}
-        target_device.config_entries_subentries = {}
-        target_device.name_by_user = None
-        target_device.name = "Target device"
-
-        registry = MagicMock()
-        registry.devices = {target_device.id: target_device}
-
-        monkeypatch.setattr("custom_components.ads_custom.config_flow.dr.async_get", lambda hass: registry)
-
-        await flow.async_step_move_entities({"selected_entity_subentry_id": ["subentry-one", "subentry-two"]})
-
-        assert flow.hass.config_entries.async_update_subentry.call_count == 2
-        for call in flow.hass.config_entries.async_update_subentry.call_args_list:
-            updated_data = call.kwargs["data"]
-            assert updated_data["entity_device_id"] == "target-device"
-            assert updated_data["entity_device_name"] == "Target device"
-
-    def test_move_entities_option_constant_has_expected_value(self):
-        """The bulk move action constant should remain stable."""
-        assert OPTION_MOVE_ENTITIES == "__move_entities__"
+        assert result["type"] == "form"
+        flow.async_step_move_entities.assert_not_awaited()

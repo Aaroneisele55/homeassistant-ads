@@ -241,3 +241,56 @@ class TestLegacyDefaultDeviceMigration:
             == "hub-entry-id-default-device"
         )
         assert updated_data[CONF_ENTITY_DEVICE_NAME] == "Default ADS Device"
+
+
+class Test20268DeviceMigration:
+    """Tests for the 2026.8 single-config-entry device migration."""
+
+    @pytest.mark.asyncio
+    async def test_existing_entity_device_ids_are_rewritten_to_subentry_ids(self, monkeypatch):
+        """Old shared entity device IDs should be rewritten to per-subentry IDs."""
+        from custom_components.ads_custom import _async_migrate_entity_config_entries_for_hub
+        import custom_components.ads_custom.device_registry_compat as compat
+
+        subentry = MagicMock()
+        subentry.subentry_type = SUBENTRY_TYPE_ENTITY
+        subentry.unique_id = "subentry-unique-id"
+        subentry.title = "Legacy Entity"
+        subentry.data = {
+            CONF_ENTITY_DEVICE_ID: "shared-device-id",
+            "name": "Legacy Entity",
+        }
+
+        hub_entry = MagicMock()
+        hub_entry.entry_id = "hub-entry-id"
+        hub_entry.title = "ADS Hub"
+        hub_entry.subentries = {"subentry-id": subentry}
+
+        entity_registry = MagicMock()
+        entity_registry.async_get_entity_id.return_value = None
+
+        device = MagicMock()
+        device.name = "Legacy Entity"
+
+        device_registry = MagicMock()
+        device_registry.async_get_device_by_identifier.return_value = device
+
+        monkeypatch.setattr(compat, "SINGLE_CONFIG_ENTRY_DEVICES", True)
+
+        hass = MagicMock()
+        hass.config_entries.async_update_subentry = MagicMock()
+
+        import custom_components.ads_custom as ads_init
+
+        ads_init.er.async_get = MagicMock(return_value=entity_registry)
+        ads_init.dr.async_get = MagicMock(return_value=device_registry)
+
+        await _async_migrate_entity_config_entries_for_hub(hass, hub_entry)
+
+        device_registry.async_get_device_by_identifier.assert_called_once_with(
+            (DOMAIN, "subentry-unique-id"), "hub-entry-id"
+        )
+        hass.config_entries.async_update_subentry.assert_called_once()
+        updated_data = hass.config_entries.async_update_subentry.call_args.kwargs["data"]
+        assert updated_data[CONF_ENTITY_DEVICE_ID] == "subentry-unique-id"
+        assert updated_data[CONF_ENTITY_DEVICE_NAME] == "Legacy Entity"

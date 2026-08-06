@@ -350,10 +350,25 @@ async def _async_migrate_entity_config_entries_for_hub(hass: HomeAssistant, hub_
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
 
+        # Home Assistant 2026.8 only allows a single config subentry per
+        # device. Each ADS subentry therefore needs its own registry device,
+        # keyed by the subentry's unique_id instead of any shared legacy ID.
+        desired_device_id = subentry.unique_id or subentry.data.get(CONF_UNIQUE_ID)
+        if desired_device_id and subentry.data.get(CONF_ENTITY_DEVICE_ID) != desired_device_id:
+            new_data = dict(subentry.data)
+            new_data[CONF_ENTITY_DEVICE_ID] = desired_device_id
+            if not new_data.get(CONF_ENTITY_DEVICE_NAME):
+                new_data[CONF_ENTITY_DEVICE_NAME] = new_data.get(CONF_NAME) or desired_device_id
+            hass.config_entries.async_update_subentry(
+                hub_entry,
+                subentry,
+                data=MappingProxyType(new_data),
+            )
+
         subentry_unique_id = subentry.unique_id
         if not subentry_unique_id:
             continue
-        subentry_device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry_unique_id
+        subentry_device_id = desired_device_id or subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry_unique_id
 
         # Migrate device: ensure device is properly associated with subentry.
         # Since Home Assistant 2026.8 a device belongs to a single config
