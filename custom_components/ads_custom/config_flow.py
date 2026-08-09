@@ -63,12 +63,11 @@ _LOGGER = logging.getLogger(__name__)
 DEVICE_OPTION_CREATE_NEW = "__create_new__"
 DEFAULT_NEW_DEVICE_NAME = "ADS Device"
 OPTION_ADD_ENTITY = "__add_entity__"
-OPTION_DELETE_EMPTY_DEVICES = "__delete_empty_devices__"
 
 CONF_SELECTED_ENTITY_UNIQUE_ID = "selected_entity_unique_id"
 CONF_SELECTED_DEVICE_ID = "selected_device_id"
 CONF_DELETE_ENTITY = "delete_entity"
-CONF_CONFIRM_DELETE = "confirm_delete"
+CONF_DELETE_EMPTY_DEVICES = "delete_empty_devices"
 
 # Entity type constants
 CONF_ENTITY_TYPE = "entity_type"
@@ -309,22 +308,115 @@ class AdsConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-class _EntityStepsMixin:
-    """Shared "select an entity, then configure it" steps.
-
-    Used by both the native "Entities" subentry flow and the hub options
-    flow so add/edit/delete behave identically no matter which entry point
-    the user came in through. All entities are stored in the single
-    "Entities" subentry; devices are assigned per-entity.
+class _DeviceMapMixin:
+    """Shared helpers for building a device -> entities map and pruning
+    devices with no entities assigned.
     """
 
     hass: HomeAssistant
-    _entity_data: dict[str, Any]
-    _editing_unique_id: str | None
 
     @property
     def entry(self) -> ConfigEntry:
         raise NotImplementedError
+
+    def _entities(self) -> list[dict[str, Any]]:
+        subentry = get_single_entities_subentry(self.entry)
+        if subentry is None:
+            return []
+        return iter_entity_configs(dict(subentry.data))
+
+    def _used_device_ids(self) -> set[str]:
+        return {
+            device_id
+            for entity in self._entities()
+            if (device_id := entity.get(CONF_ENTITY_DEVICE_ID))
+        }
+
+    def _empty_device_ids(self) -> list[str]:
+        """Return identifiers of devices on this entry with no assigned entity."""
+        used_device_ids = self._used_device_ids()
+        device_registry = dr.async_get(self.hass)
+        empty_device_ids: list[str] = []
+
+        for device in device_registry.devices.values():
+            if not device_belongs_to_entry(device, self.entry.entry_id):
+                continue
+            for domain, identifier in device.identifiers:
+                if domain != DOMAIN:
+                    continue
+                if identifier not in used_device_ids:
+                    empty_device_ids.append(identifier)
+                break
+
+        return empty_device_ids
+
+    def _delete_empty_devices(self) -> int:
+        device_registry = dr.async_get(self.hass)
+        deleted_count = 0
+
+        for device_id in self._empty_device_ids():
+            device = async_get_device_by_identifier(
+                device_registry, DOMAIN, device_id, self.entry.entry_id
+            )
+            if not device:
+                continue
+            async_detach_device_from_entry(device_registry, device, self.entry.entry_id)
+            deleted_count += 1
+
+        return deleted_count
+
+    def _build_device_tree(self) -> str:
+        """Build a formatted, read-only tree of devices -> assigned entities."""
+        device_registry = dr.async_get(self.hass)
+        device_names: dict[str, str] = {}
+
+        by_device: dict[str, list[dict[str, Any]]] = {}
+        for entity in self._entities():
+            device_id = entity.get(CONF_ENTITY_DEVICE_ID)
+            if not device_id:
+                continue
+            by_device.setdefault(device_id, []).append(entity)
+
+        for device_id in by_device:
+            device = async_get_device_by_identifier(
+                device_registry, DOMAIN, device_id, self.entry.entry_id
+            )
+            if device is not None:
+                device_names[device_id] = device.name_by_user or device.name or device_id
+            else:
+                fallback = by_device[device_id][0].get(CONF_ENTITY_DEVICE_NAME)
+                device_names[device_id] = fallback or device_id
+
+        if not by_device:
+            return f"{self.entry.title}\n  (no entities configured yet)"
+
+        lines = [self.entry.title]
+        sorted_device_ids = sorted(by_device, key=lambda did: device_names[did].lower())
+        for d_index, device_id in enumerate(sorted_device_ids):
+            is_last_device = d_index == len(sorted_device_ids) - 1
+            device_branch = "└─" if is_last_device else "├─"
+            lines.append(f"{device_branch} {device_names[device_id]}")
+
+            entities = sorted(by_device[device_id], key=lambda e: (e.get(CONF_NAME) or "").lower())
+            child_prefix = "   " if is_last_device else "│  "
+            for e_index, entity in enumerate(entities):
+                is_last_entity = e_index == len(entities) - 1
+                entity_branch = "└─" if is_last_entity else "├─"
+                lines.append(f"{child_prefix}{entity_branch} {entity.get(CONF_NAME, 'Entity')}")
+
+        return "\n".join(lines)
+
+
+class _EntityStepsMixin(_DeviceMapMixin):
+    """Shared "select an entity, then configure it" steps.
+
+    Used by the native "Entities" subentry flow so add/edit/delete entities
+    all behave consistently. All entities are stored in the single
+    "Entities" subentry; devices are assigned per-entity.
+    """
+
+    _entity_data: dict[str, Any]
+    _editing_unique_id: str | None
 
     def _finish(self, reason: str) -> ConfigFlowResult | SubentryFlowResult:
         raise NotImplementedError
@@ -355,12 +447,6 @@ class _EntityStepsMixin:
         for field_name in field_names:
             if field_name in merged_data and field_name not in user_input:
                 del merged_data[field_name]
-
-    def _entities(self) -> list[dict[str, Any]]:
-        subentry = get_single_entities_subentry(self.entry)
-        if subentry is None:
-            return []
-        return iter_entity_configs(dict(subentry.data))
 
     def _find_entity(self, unique_id: str) -> dict[str, Any] | None:
         for entity in self._entities():
@@ -427,46 +513,6 @@ class _EntityStepsMixin:
         labels = {opt["value"]: opt["label"] for opt in self._get_device_assignment_options()}
         device_name = typed_name or labels.get(selected_device_id) or selected_device_id
         return selected_device_id, device_name
-
-    def _used_device_ids(self) -> set[str]:
-        return {
-            device_id
-            for entity in self._entities()
-            if (device_id := entity.get(CONF_ENTITY_DEVICE_ID))
-        }
-
-    def _empty_device_ids(self) -> list[str]:
-        """Return identifiers of devices on this entry with no assigned entity."""
-        used_device_ids = self._used_device_ids()
-        device_registry = dr.async_get(self.hass)
-        empty_device_ids: list[str] = []
-
-        for device in device_registry.devices.values():
-            if not device_belongs_to_entry(device, self.entry.entry_id):
-                continue
-            for domain, identifier in device.identifiers:
-                if domain != DOMAIN:
-                    continue
-                if identifier not in used_device_ids:
-                    empty_device_ids.append(identifier)
-                break
-
-        return empty_device_ids
-
-    def _delete_empty_devices(self) -> int:
-        device_registry = dr.async_get(self.hass)
-        deleted_count = 0
-
-        for device_id in self._empty_device_ids():
-            device = async_get_device_by_identifier(
-                device_registry, DOMAIN, device_id, self.entry.entry_id
-            )
-            if not device:
-                continue
-            async_detach_device_from_entry(device_registry, device, self.entry.entry_id)
-            deleted_count += 1
-
-        return deleted_count
 
     def _save_entity(
         self,
@@ -541,16 +587,7 @@ class _EntityStepsMixin:
             self._entities(),
             key=lambda e: (e.get(CONF_NAME) or "").lower(),
         )
-        empty_device_count = len(self._empty_device_ids())
-        options = [{"label": "Add new entity", "value": OPTION_ADD_ENTITY}]
-        if empty_device_count:
-            options.append(
-                {
-                    "label": f"Delete all empty devices ({empty_device_count})",
-                    "value": OPTION_DELETE_EMPTY_DEVICES,
-                }
-            )
-        options += [
+        options = [{"label": "Add new entity", "value": OPTION_ADD_ENTITY}] + [
             {
                 "label": f"{entity.get(CONF_NAME, 'Entity')} ({ENTITY_TYPE_TITLES.get(entity.get(CONF_ENTITY_TYPE), entity.get(CONF_ENTITY_TYPE))})",
                 "value": entity.get(CONF_UNIQUE_ID) or entity.get("unique_id"),
@@ -564,8 +601,6 @@ class _EntityStepsMixin:
                 errors["base"] = "no_entity_selected"
             elif selected == OPTION_ADD_ENTITY:
                 return await self.async_step_add_entity()
-            elif selected == OPTION_DELETE_EMPTY_DEVICES:
-                return await self.async_step_delete_empty_devices()
             else:
                 entity = self._find_entity(selected)
                 if entity is None:
@@ -586,33 +621,6 @@ class _EntityStepsMixin:
                 ),
                 vol.Optional(CONF_DELETE_ENTITY, default=False): cv.boolean,
             }),
-            errors=errors,
-        )
-
-    async def async_step_delete_empty_devices(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
-        errors: dict[str, str] = {}
-        empty_device_count = len(self._empty_device_ids())
-
-        if user_input is not None:
-            if not empty_device_count:
-                errors["base"] = "no_empty_devices"
-            elif not user_input.get(CONF_CONFIRM_DELETE):
-                errors[CONF_CONFIRM_DELETE] = "delete_confirmation_required"
-            else:
-                deleted_count = self._delete_empty_devices()
-                _LOGGER.info(
-                    "Deleted %d empty device(s) on hub '%s'",
-                    deleted_count,
-                    self.entry.title,
-                )
-                return self._finish("empty_devices_deleted")
-
-        return self.async_show_form(
-            step_id="delete_empty_devices",
-            data_schema=vol.Schema({
-                vol.Optional(CONF_CONFIRM_DELETE, default=False): cv.boolean,
-            }),
-            description_placeholders={"count": str(empty_device_count)},
             errors=errors,
         )
 
@@ -861,24 +869,48 @@ class AdsEntitySubentryFlowHandler(_EntityStepsMixin, ConfigSubentryFlow):
         return await self.async_step_select_entity()
 
 
-class AdsOptionsFlowHandler(_EntityStepsMixin, OptionsFlow):
-    """Handle hub-level entity management via the options system.
+class AdsOptionsFlowHandler(_DeviceMapMixin, OptionsFlow):
+    """Handle the main "ADS" entry's config options.
 
-    This is the primary "select an entity, then configure it" experience:
-    the hub's single "Entities" subentry holds every entity, grouped into
-    devices per the user's own assignment.
+    This page is intentionally minimal: a read-only map of which entities
+    are assigned to which devices, plus a "delete all empty devices"
+    action. Adding/editing/deleting individual entities happens through the
+    "Entities" subentry instead (see AdsEntitySubentryFlowHandler).
     """
-
-    def __init__(self) -> None:
-        self._entity_data = {}
-        self._editing_unique_id = None
 
     @property
     def entry(self) -> ConfigEntry:
         return self.config_entry
 
-    def _finish(self, reason: str) -> ConfigFlowResult:
-        return self.async_create_entry(title="", data={})
-
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return await self.async_step_select_entity(user_input)
+        errors: dict[str, str] = {}
+        empty_device_ids = self._empty_device_ids()
+
+        if user_input is not None:
+            if user_input.get(CONF_DELETE_EMPTY_DEVICES):
+                if not empty_device_ids:
+                    errors["base"] = "no_empty_devices"
+                else:
+                    deleted_count = self._delete_empty_devices()
+                    _LOGGER.info(
+                        "Deleted %d empty device(s) on hub '%s'",
+                        deleted_count,
+                        self.entry.title,
+                    )
+                    return self.async_abort(reason="empty_devices_deleted")
+            else:
+                return self.async_create_entry(title="", data={})
+
+        schema: dict[Any, Any] = {}
+        if empty_device_ids:
+            schema[vol.Optional(CONF_DELETE_EMPTY_DEVICES, default=False)] = cv.boolean
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(schema),
+            description_placeholders={
+                "device_map": self._build_device_tree(),
+                "empty_count": str(len(empty_device_ids)),
+            },
+            errors=errors,
+        )
