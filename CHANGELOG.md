@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.21] - 2026-08-09
+
+### Changed
+- add_delete_all_empty_devices
 ## [1.2.20] - 2026-08-09
 
 ### Changed
