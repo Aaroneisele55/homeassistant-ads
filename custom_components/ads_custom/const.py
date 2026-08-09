@@ -16,6 +16,13 @@ CONF_ADS_VAR = "adsvar"
 
 SUBENTRY_TYPE_ENTITY = "entity"
 
+# All entities live under a single subentry per hub, identified by this
+# fixed unique_id. Individual entities are distinguished by their own
+# "unique_id" field within that subentry's "entities" list, and are grouped
+# into different devices via the per-entity CONF_ENTITY_DEVICE_ID field.
+SINGLE_SUBENTRY_UNIQUE_ID = "entities"
+SINGLE_SUBENTRY_TITLE = "Entities"
+
 STATE_KEY_STATE = "state"
 
 # Entity option configuration keys

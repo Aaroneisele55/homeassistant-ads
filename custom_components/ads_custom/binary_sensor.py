@@ -25,7 +25,6 @@ from . import ADS_TYPEMAP, CONF_ADS_TYPE
 from .const import (
     CONF_ADS_VAR,
     CONF_ENTITY_DEVICE_ID,
-    CONF_ENTITY_DEVICE_NAME,
     DOMAIN,
     STATE_KEY_STATE,
     SUBENTRY_TYPE_ENTITY,
@@ -97,10 +96,13 @@ async def async_setup_entry(
         if subentry.subentry_type != SUBENTRY_TYPE_ENTITY:
             continue
 
-        device_id = subentry.data.get(CONF_ENTITY_DEVICE_ID) or subentry.unique_id
-        device_name = get_device_name(dict(subentry.data))
-
         for entity_config in iter_entity_configs(dict(subentry.data)):
+            device_id = (
+                entity_config.get(CONF_ENTITY_DEVICE_ID)
+                or entity_config.get(CONF_UNIQUE_ID)
+                or entity_config.get("unique_id")
+            )
+            device_name = get_device_name(entity_config)
             if entity_config.get("entity_type") != "binary_sensor":
                 continue
 
