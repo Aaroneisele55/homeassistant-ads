@@ -365,6 +365,20 @@ class _DeviceMapMixin:
 
         return deleted_count
 
+    def _empty_device_names(self) -> list[str]:
+        """Return display names of devices on this entry with no assigned entity."""
+        device_registry = dr.async_get(self.hass)
+        names: list[str] = []
+
+        for device_id in self._empty_device_ids():
+            device = async_get_device_by_identifier(
+                device_registry, DOMAIN, device_id, self.entry.entry_id
+            )
+            name = (device.name_by_user or device.name) if device is not None else None
+            names.append(name or device_id)
+
+        return sorted(names, key=str.lower)
+
     def _build_device_tree(self) -> str:
         """Build a formatted, read-only tree of devices -> assigned entities."""
         device_registry = dr.async_get(self.hass)
@@ -905,12 +919,18 @@ class AdsOptionsFlowHandler(_DeviceMapMixin, OptionsFlow):
         if empty_device_ids:
             schema[vol.Optional(CONF_DELETE_EMPTY_DEVICES, default=False)] = cv.boolean
 
+        empty_device_names = self._empty_device_names()
+        if empty_device_names:
+            empty_devices_list = "\n".join(f"- {name}" for name in empty_device_names)
+        else:
+            empty_devices_list = "_None_"
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(schema),
             description_placeholders={
                 "device_map": self._build_device_tree(),
-                "empty_count": str(len(empty_device_ids)),
+                "empty_devices_list": empty_devices_list,
             },
             errors=errors,
         )
