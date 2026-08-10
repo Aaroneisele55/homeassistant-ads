@@ -30,10 +30,10 @@
   },
   "config_subentries": {
     "entity": {
-      "entry_type": "ADS-Entität",
+      "entry_type": "ADS-Instanz",
       "initiate_flow": {
         "user": "ADS-Entität hinzufügen",
-        "reconfigure": "ADS-Entität neu konfigurieren"
+        "reconfigure": "ADS-Entitäten neu konfigurieren"
       },
       "step": {
         "user": {
