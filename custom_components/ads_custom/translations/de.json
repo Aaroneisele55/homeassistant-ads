@@ -30,7 +30,7 @@
   },
   "config_subentries": {
     "entity": {
-      "entry_type": "ADS-Instanz",
+      "entry_type": "SPS",
       "initiate_flow": {
         "user": "ADS-Entität hinzufügen",
         "reconfigure": "ADS-Entitäten neu konfigurieren"
