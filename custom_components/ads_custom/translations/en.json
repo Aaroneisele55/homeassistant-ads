@@ -30,7 +30,7 @@
   },
   "config_subentries": {
     "entity": {
-      "entry_type": "ADS Entity",
+      "entry_type": "PLC",
       "initiate_flow": {
         "user": "Add ADS Entity",
         "reconfigure": "Manage ADS Entities"
