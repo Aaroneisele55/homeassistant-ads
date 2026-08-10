@@ -289,7 +289,7 @@
     "step": {
       "init": {
         "title": "ADS Devices & Entities",
-        "description": "Here's a map of which entities are currently assigned to which devices on this hub:\n\n```\n{device_map}\n```\n\nTo add, edit, or delete individual entities, use the \"Entities\" item under this integration's devices/entries instead.\n\n**Empty devices (no entities assigned):**\n{empty_devices_list}",
+        "description": "# Device Map\n\n```\n{device_map}\n```\n\nTo add, edit, or delete individual entities, use the \"Entities\" item under this integration's devices/entries instead.\n\n**Empty devices (no entities assigned):**\n{empty_devices_list}",
         "data": {
           "delete_empty_devices": "Delete all empty devices"
         },
