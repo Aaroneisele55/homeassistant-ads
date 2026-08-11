@@ -62,8 +62,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEVICE_OPTION_CREATE_NEW = "__create_new__"
 DEFAULT_NEW_DEVICE_NAME = "ADS Device"
-OPTION_ADD_ENTITY = "__add_entity__"
-
 CONF_SELECTED_ENTITY_UNIQUE_ID = "selected_entity_unique_id"
 CONF_SELECTED_DEVICE_ID = "selected_device_id"
 CONF_DELETE_ENTITY = "delete_entity"
@@ -601,7 +599,11 @@ class _EntityStepsMixin(_DeviceMapMixin):
             self._entities(),
             key=lambda e: (e.get(CONF_NAME) or "").lower(),
         )
-        options = [{"label": "Add new entity", "value": OPTION_ADD_ENTITY}] + [
+
+        if not entities:
+            return self._finish("no_entities")
+
+        options = [
             {
                 "label": f"{entity.get(CONF_NAME, 'Entity')} ({ENTITY_TYPE_TITLES.get(entity.get(CONF_ENTITY_TYPE), entity.get(CONF_ENTITY_TYPE))})",
                 "value": entity.get(CONF_UNIQUE_ID) or entity.get("unique_id"),
@@ -613,8 +615,6 @@ class _EntityStepsMixin(_DeviceMapMixin):
             selected = user_input.get(CONF_SELECTED_ENTITY_UNIQUE_ID)
             if not selected:
                 errors["base"] = "no_entity_selected"
-            elif selected == OPTION_ADD_ENTITY:
-                return await self.async_step_add_entity()
             else:
                 entity = self._find_entity(selected)
                 if entity is None:
@@ -637,6 +637,7 @@ class _EntityStepsMixin(_DeviceMapMixin):
             }),
             errors=errors,
         )
+
 
     async def _async_step_configure_for_type(self, entity_type: str | None) -> SubentryFlowResult:
         mapping = {

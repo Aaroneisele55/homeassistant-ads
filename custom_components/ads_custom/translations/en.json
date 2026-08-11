@@ -222,7 +222,7 @@
         },
         "select_entity": {
           "title": "Manage Entities",
-          "description": "Select an entity to edit or delete, or choose \"Add new entity\" to create one.",
+          "description": "Select an entity to edit or delete.",
           "data": {
             "selected_entity_unique_id": "Entity",
             "delete_entity": "Delete selected entity"
@@ -232,7 +232,7 @@
       "error": {
         "no_state_var": "Cover must have either a closed state variable (adsvar) or position variable (adsvar_position)",
         "no_options": "Select must have at least one option",
-        "no_entity_selected": "Select an entity or \"Add new entity\".",
+        "no_entity_selected": "Select an entity.",
         "entity_not_found": "The selected entity no longer exists.",
         "device_name_required": "A device name is required when creating a new device"
       },
