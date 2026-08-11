@@ -36,33 +36,23 @@
         "reconfigure": "ADS-Entitäten neu konfigurieren"
       },
       "step": {
-        "user": {
-          "title": "Entität hinzufügen",
-          "description": "Wählen Sie den Typ der Entität aus, die Sie hinzufügen möchten.",
-          "menu_options": {
-            "add_switch": "Schalter",
-            "add_sensor": "Sensor",
-            "add_binary_sensor": "Binärer Sensor",
-            "add_light": "Licht",
-            "add_cover": "Rollladen/Abdeckung",
-            "add_valve": "Ventil",
-            "add_select": "Auswahl"
-          }
-        },
         "configure_switch": {
           "title": "Schalter konfigurieren",
           "description": "Konfigurieren Sie eine Schalter-Entität, die eine boolesche Variable auf Ihrer SPS steuert.",
           "data": {
             "adsvar": "ADS-Variablenname",
             "name": "Entitätsname",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Der SPS-Variablenname (z.B. GVL.pumpe)",
             "name": "Anzeigename für den Schalter",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_sensor": {
@@ -75,8 +65,11 @@
             "unit_of_measurement": "Maßeinheit (optional)",
             "device_class": "Geräteklasse (optional)",
             "state_class": "Zustandsklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Der SPS-Variablenname (z.B. GVL.temperatur)",
@@ -85,8 +78,8 @@
             "unit_of_measurement": "z.B. °C, %, kW",
             "device_class": "z.B. temperature, humidity, power",
             "state_class": "Für Statistiken und Langzeitdaten",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_binary_sensor": {
@@ -97,16 +90,19 @@
             "name": "Entitätsname",
             "adstype": "Datentyp",
             "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Der SPS-Variablenname (z.B. GVL.tuer_offen)",
             "name": "Anzeigename für den binären Sensor",
             "adstype": "bool für boolesch, real für Gleitkomma",
             "device_class": "z.B. door, motion, window",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_light": {
@@ -118,8 +114,11 @@
             "adsvar_brightness": "Helligkeitsvariable (optional)",
             "adsvar_brightness_type": "Helligkeitsdatentyp",
             "adsvar_brightness_scale": "Helligkeitsskala",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Die SPS-Variable für die Ein/Aus-Steuerung",
@@ -127,8 +126,8 @@
             "adsvar_brightness": "SPS-Variable für Helligkeit (leer lassen für nur Ein/Aus)",
             "adsvar_brightness_type": "Datentyp: byte (0-255) oder uint (0-65535)",
             "adsvar_brightness_scale": "Maximaler Helligkeitswert (255 für HA-Standard, 100 für Beckhoff)",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_cover": {
@@ -145,8 +144,11 @@
             "adsvar_stop": "Stopp-Befehlsvariable (optional)",
             "inverted": "Invertierte Positionierung",
             "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Boolesche Variable, die anzeigt, ob die Abdeckung geschlossen ist",
@@ -159,8 +161,8 @@
             "adsvar_stop": "Boolesche Variable zum Auslösen des Stoppbefehls",
             "inverted": "Wenn wahr, Position 0=offen und 100=geschlossen",
             "device_class": "z.B. blind, curtain, garage",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_valve": {
@@ -170,15 +172,18 @@
             "adsvar": "ADS-Variablenname",
             "name": "Entitätsname",
             "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Die SPS-Variable für die Ventilsteuerung (true=offen, false=geschlossen)",
             "name": "Anzeigename für das Ventil",
             "device_class": "z.B. gas, water",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
         "configure_select": {
@@ -188,143 +193,55 @@
             "adsvar": "ADS-Variablenname",
             "name": "Entitätsname",
             "options": "Optionen (durch Komma getrennt)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
+            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)",
+            "selected_device_id": "Gerät (bestehend oder neu erstellen)",
+            "icon": "Symbol (optional)",
+            "entity_category": "Entitätskategorie (optional)",
+            "entity_picture": "Entitätsbild-URL (optional)"
           },
           "data_description": {
             "adsvar": "Die SPS-Variable, die den Optionsindex speichert (0-basierte Ganzzahl)",
             "name": "Anzeigename für die Auswahl",
             "options": "Geben Sie Optionen getrennt durch Kommas ein (z.B. 'Aus, Auto, Manuell')",
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet.",
+            "selected_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät."
           }
         },
-        "reconfigure_switch": {
-          "title": "Schalter bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Schalter-Entität.",
-          "data": {
-            "adsvar": "ADS-Variablenname",
-            "name": "Entitätsname",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+        "add_entity": {
+          "title": "Entität hinzufügen",
+          "description": "Wählen Sie den Typ der Entität, die Sie hinzufügen möchten.",
+          "menu_options": {
+            "add_switch": "Schalter",
+            "add_sensor": "Sensor",
+            "add_binary_sensor": "Binärsensor",
+            "add_light": "Licht",
+            "add_cover": "Abdeckung",
+            "add_valve": "Ventil",
+            "add_select": "Auswahl"
           }
         },
-        "reconfigure_sensor": {
-          "title": "Sensor bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Sensor-Entität.",
+        "select_entity": {
+          "title": "Entitäten verwalten",
+          "description": "Wählen Sie eine Entität zum Bearbeiten oder Löschen aus.",
           "data": {
-            "adsvar": "ADS-Variablenname",
-            "name": "Entitätsname",
-            "adstype": "Datentyp",
-            "unit_of_measurement": "Maßeinheit (optional)",
-            "device_class": "Geräteklasse (optional)",
-            "state_class": "Zustandsklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
-          }
-        },
-        "reconfigure_binary_sensor": {
-          "title": "Binären Sensor bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese binäre Sensor-Entität.",
-          "data": {
-            "adsvar": "ADS-Variablenname",
-            "name": "Entitätsname",
-            "adstype": "Datentyp",
-            "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
-          }
-        },
-        "reconfigure_light": {
-          "title": "Licht bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Licht-Entität.",
-          "data": {
-            "adsvar": "ADS-Variablenname (Ein/Aus)",
-            "name": "Entitätsname",
-            "adsvar_brightness": "Helligkeitsvariable (optional)",
-            "adsvar_brightness_type": "Helligkeitsdatentyp",
-            "adsvar_brightness_scale": "Helligkeitsskala",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
-          }
-        },
-        "reconfigure_cover": {
-          "title": "Rollladen/Abdeckung bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Rollladen-Entität.",
-          "data": {
-            "adsvar": "Geschlossen-Zustandsvariable (optional)",
-            "name": "Entitätsname",
-            "adsvar_position": "Positionsvariable (optional)",
-            "adsvar_position_type": "Positionsdatentyp",
-            "adsvar_set_position": "Sollpositionsvariable (optional)",
-            "adsvar_open": "Öffnen-Befehlsvariable (optional)",
-            "adsvar_close": "Schließen-Befehlsvariable (optional)",
-            "adsvar_stop": "Stopp-Befehlsvariable (optional)",
-            "inverted": "Invertierte Positionierung",
-            "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
-          }
-        },
-        "reconfigure_valve": {
-          "title": "Ventil bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Ventil-Entität.",
-          "data": {
-            "adsvar": "ADS-Variablenname",
-            "name": "Entitätsname",
-            "device_class": "Geräteklasse (optional)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
-          }
-        },
-        "reconfigure_select": {
-          "title": "Auswahl bearbeiten",
-          "description": "Ändern Sie die Konfiguration für diese Auswahl-Entität.",
-          "data": {
-            "adsvar": "ADS-Variablenname",
-            "name": "Entitätsname",
-            "options": "Optionen (durch Komma getrennt)",
-            "entity_device_id": "Gerät (bestehend oder neu erstellen)",
-            "entity_device_name": "Neuer Gerätename (erforderlich für neues Gerät)"
-          },
-          "data_description": {
-            "entity_device_id": "Wählen Sie ein bestehendes Gerät zur Gruppierung oder erstellen Sie ein neues Gerät.",
-            "entity_device_name": "Wird nur beim Erstellen eines neuen Geräts verwendet."
+            "selected_entity_unique_id": "Entität",
+            "delete_entity": "Ausgewählte Entität löschen"
           }
         }
       },
       "error": {
         "no_state_var": "Abdeckung muss entweder eine Geschlossen-Zustandsvariable (adsvar) oder eine Positionsvariable (adsvar_position) haben",
         "no_options": "Auswahl muss mindestens eine Option haben",
-        "device_name_required": "Beim Erstellen eines neuen Geräts ist ein Gerätename erforderlich"
+        "device_name_required": "Beim Erstellen eines neuen Geräts ist ein Gerätename erforderlich",
+        "no_entity_selected": "Wählen Sie eine Entität aus.",
+        "entity_not_found": "Die ausgewählte Entität existiert nicht mehr."
       },
       "abort": {
         "entity_type_not_supported": "Dieser Entitätstyp wird noch nicht unterstützt",
-        "reconfigure_successful": "Entität erfolgreich aktualisiert"
+        "reconfigure_successful": "Entität erfolgreich aktualisiert",
+        "entity_added": "Entität erfolgreich hinzugefügt",
+        "entity_deleted": "Entität erfolgreich gelöscht",
+        "no_entities": "Es gibt noch keine Entitäten zu verwalten"
       }
     }
   },
@@ -415,6 +332,26 @@
         "shutter": "Rolladen",
         "": "(Keine Auswahl)"
       }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "ADS Geräte & Entitäten",
+        "description": "# Geräte\n\n```\n{device_map}\n```\n\nUm einzelne Entitäten zu bearbeiten oder zu löschen, verwenden Sie stattdessen den Eintrag \"Entitäten\" unter den Geräten/Einträgen dieser Integration.\n\n**Leere Geräte (keine Entitäten zugewiesen):**\n{empty_devices_list}",
+        "data": {
+          "delete_empty_devices": "Alle leeren Geräte löschen"
+        },
+        "data_description": {
+          "delete_empty_devices": "Entfernt alle Geräte an diesem Hub, denen derzeit keine Entität zugewiesen ist. Dies kann nicht rückgängig gemacht werden."
+        }
+      }
+    },
+    "error": {
+      "no_empty_devices": "Es gibt keine leeren Geräte zum Löschen."
+    },
+    "abort": {
+      "empty_devices_deleted": "Leere Geräte erfolgreich gelöscht"
     }
   }
 }
