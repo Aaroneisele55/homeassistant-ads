@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.29] - 2026-08-11
+
+### Removed
+- remove duplicate "Add new entity" option from subentry config menu (add entities via the native HA add button "Add ADS entity")
 ## [1.2.28] - 2026-08-10
 
 ### Changed
