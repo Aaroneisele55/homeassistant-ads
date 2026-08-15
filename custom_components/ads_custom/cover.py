@@ -20,10 +20,11 @@ from homeassistant.components.cover import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE_CLASS, CONF_NAME, CONF_UNIQUE_ID
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .const import (
@@ -51,8 +52,28 @@ CONF_INVERTED = "inverted"
 STATE_KEY_POSITION = "position"
 STATE_KEY_PREV_POSITION = "prev_position"
 
-# If no position update arrives within this window, the cover is considered stopped
+# If no *genuine* position change arrives within this window, the cover is
+# considered stopped. Only real value changes reset this window (see
+# update_position below) - duplicate/cyclic delivery of an unchanged value
+# must never keep a stationary cover looking like it's still moving.
 _MOVEMENT_TIMEOUT = 2.0
+
+# Minimum raw position change between consecutive samples to count as actual
+# movement. Below this, a differing reading is treated as sensor/PLC jitter
+# on an otherwise stationary cover, not real motion. This applies uniformly
+# across the whole 0-100 range (not just the fully open/closed endpoints).
+_MIN_POSITION_DELTA = 2
+
+# Raw positions within this distance of the closed endpoint (0 or 100,
+# depending on inversion) are treated as fully closed. PLC encoders/
+# potentiometers often settle a percent or two short of the true endpoint,
+# so an exact-match check alone would leave the cover reporting "open".
+_CLOSED_POSITION_TOLERANCE = 1
+
+# A raw position within this many units of the fully-closed raw value is
+# still reported as "closed" (mechanical/PLC readings often settle at 99
+# instead of a perfect 100, or 1 instead of a perfect 0).
+_NEAR_CLOSED_TOLERANCE = 1
 
 # Default to BYTE for backwards compatibility
 DEFAULT_POSITION_TYPE = "byte"
@@ -263,6 +284,7 @@ class AdsCover(AdsEntity, CoverEntity):
         self._state_dict[STATE_KEY_POSITION] = None
         self._state_dict[STATE_KEY_PREV_POSITION] = None
         self._position_last_updated: float | None = None
+        self._movement_timeout_unsub: Any = None
         self._ads_var_position = ads_var_position
         self._ads_var_position_type = ads_var_position_type
         self._ads_var_pos_set = ads_var_pos_set
@@ -290,17 +312,28 @@ class AdsCover(AdsEntity, CoverEntity):
             
             # Register custom update handler for position to track previous value
             def update_position(name, value):
-                """Handle position updates and track previous position."""
+                """Handle position updates and track previous position.
+
+                Only a *genuine* change in value counts as movement. Cyclic
+                or duplicate notifications carrying the same value must not
+                refresh the movement window, or a stationary cover sitting
+                at any intermediate position (e.g. 51%) would look like it's
+                still opening/closing indefinitely.
+                """
                 _LOGGER.debug("Variable %s changed its value to %d", name, value)
-                
-                # Store previous position before updating
+
                 current_position = self._state_dict.get(STATE_KEY_POSITION)
-                if current_position is not None:
-                    self._state_dict[STATE_KEY_PREV_POSITION] = current_position
-                
-                # Update current position
+                if current_position is None or value != current_position:
+                    # First reading, or a real change from the last reading:
+                    # record it as the new movement reference point.
+                    if current_position is not None:
+                        self._state_dict[STATE_KEY_PREV_POSITION] = current_position
+                    self._position_last_updated = time.monotonic()
+                # else: identical value re-delivered - leave PREV_POSITION and
+                # _position_last_updated untouched so the movement timeout can
+                # still expire normally.
+
                 self._state_dict[STATE_KEY_POSITION] = value
-                self._position_last_updated = time.monotonic()
                 
                 # Schedule update
                 async def async_event_set():
@@ -346,16 +379,18 @@ class AdsCover(AdsEntity, CoverEntity):
             return self._state_dict.get(STATE_KEY_STATE)
         if self._ads_var_position is not None:
             position = self._state_dict.get(STATE_KEY_POSITION)
+            if position is None:
+                return None
             # Safe comparison handling potential type mismatches
             try:
                 if self._inverted:
-                    # When inverted: PLC uses 0=open, 100=closed
-                    # So position == 100 means closed (raw PLC value)
-                    return position == 100 if position is not None else None
+                    # When inverted: PLC uses 0=open, 100=closed.
+                    # Treat anything within tolerance of 100 as closed, since
+                    # PLC encoders often settle a percent or two short.
+                    return position >= 100 - _CLOSED_POSITION_TOLERANCE
                 else:
-                    # Normal mode: PLC uses 0=closed, 100=open
-                    # So position == 0 means closed (raw PLC value)
-                    return position == 0 if position is not None else None
+                    # Normal mode: PLC uses 0=closed, 100=open.
+                    return position <= _CLOSED_POSITION_TOLERANCE
             except (TypeError, ValueError):
                 return None
         return None
@@ -401,6 +436,11 @@ class AdsCover(AdsEntity, CoverEntity):
         # If no position update has arrived recently, the cover has stopped
         if self._is_movement_timed_out():
             return False
+
+        # Ignore sub-threshold differences (sensor/PLC jitter on a stationary
+        # cover) anywhere in the range, not just at the endpoints.
+        if abs(current_position - prev_position) < _MIN_POSITION_DELTA:
+            return False
         
         # Compare raw PLC positions (before inversion conversion)
         # Opening means moving toward open position
@@ -433,19 +473,24 @@ class AdsCover(AdsEntity, CoverEntity):
         # If no position update has arrived recently, the cover has stopped
         if self._is_movement_timed_out():
             return False
+
+        # Ignore sub-threshold differences (sensor/PLC jitter on a stationary
+        # cover) anywhere in the range, not just at the endpoints.
+        if abs(current_position - prev_position) < _MIN_POSITION_DELTA:
+            return False
         
         # Compare raw PLC positions (before inversion conversion)
         # Closing means moving toward closed position
         if self._inverted:
             # When inverted: PLC 100=closed, so closing means moving toward 100
-            # If already at 100 (fully closed), cover has finished closing
-            if current_position == 100:
+            # Once within tolerance of fully closed, treat as arrived
+            if current_position >= 100 - _CLOSED_POSITION_TOLERANCE:
                 return False
             return current_position > prev_position
         else:
             # Normal mode: PLC 0=closed, so closing means moving toward 0
-            # If already at 0 (fully closed), cover has finished closing
-            if current_position == 0:
+            # Once within tolerance of fully closed, treat as arrived
+            if current_position <= _CLOSED_POSITION_TOLERANCE:
                 return False
             return current_position < prev_position
 
