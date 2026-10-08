@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Automatically reconnect to the ADS client after communication errors and restore entity notification subscriptions so updates recover after PLC restarts.
+
 ## [1.2.34] - 2026-08-15
 
 ### Fixed
@@ -298,4 +301,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Security
-
