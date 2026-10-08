@@ -1,5 +1,7 @@
 """Support for Automation Device Specification (ADS)."""
 
+from __future__ import annotations
+
 from collections import namedtuple
 import ctypes
 import logging
@@ -12,7 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # Tuple to hold data needed for notification
 NotificationItem = namedtuple(  # noqa: PYI024
-    "NotificationItem", "hnotify huser name plc_datatype callback"
+    "NotificationItem", "hnotify huser name plc_datatype callback subscription_id"
 )
 
 
@@ -27,6 +29,8 @@ class AdsHub:
         # All ADS devices are registered here
         self._devices = []
         self._notification_items = {}
+        self._notification_subscriptions = {}
+        self._next_subscription_id = 1
         self._lock = threading.Lock()
 
     def shutdown(self, *args, **kwargs):
@@ -50,6 +54,55 @@ class AdsHub:
         except pyads.ADSError as err:
             _LOGGER.error(err)
 
+    def _register_notification_locked(
+        self, subscription_id, name, plc_datatype, callback
+    ):
+        """Register a notification while lock is held."""
+        attr = pyads.NotificationAttrib(ctypes.sizeof(plc_datatype))
+        hnotify, huser = self._client.add_device_notification(
+            name, attr, self._device_notification_callback
+        )
+        hnotify = int(hnotify)
+        self._notification_items[hnotify] = NotificationItem(
+            hnotify, huser, name, plc_datatype, callback, subscription_id
+        )
+        _LOGGER.debug("Added device notification %d for variable %s", hnotify, name)
+
+    def _reconnect_locked(self):
+        """Reconnect ADS client and restore notifications while lock is held."""
+        _LOGGER.warning("ADS connection lost; attempting reconnect")
+        try:
+            self._client.close()
+        except pyads.ADSError as err:
+            _LOGGER.debug("Error closing ADS connection during reconnect: %s", err)
+
+        try:
+            self._client.open()
+        except pyads.ADSError as err:
+            _LOGGER.error("Failed to reconnect ADS client: %s", err)
+            return False
+
+        self._notification_items.clear()
+        for (
+            subscription_id,
+            (name, plc_datatype, callback),
+        ) in self._notification_subscriptions.items():
+            try:
+                self._register_notification_locked(
+                    subscription_id, name, plc_datatype, callback
+                )
+            except pyads.ADSError as err:
+                _LOGGER.error(
+                    "Error restoring notification for %s after reconnect: %s",
+                    name,
+                    err,
+                )
+        _LOGGER.info(
+            "ADS reconnect succeeded; restored %d notification subscriptions",
+            len(self._notification_items),
+        )
+        return True
+
     def register_device(self, device):
         """Register a new device."""
         self._devices.append(device)
@@ -62,6 +115,15 @@ class AdsHub:
                 return self._client.write_by_name(name, value, plc_datatype)
             except pyads.ADSError as err:
                 _LOGGER.error("Error writing %s: %s", name, err)
+                if not self._reconnect_locked():
+                    return None
+                try:
+                    return self._client.write_by_name(name, value, plc_datatype)
+                except pyads.ADSError as retry_err:
+                    _LOGGER.error(
+                        "Error writing %s after ADS reconnect: %s", name, retry_err
+                    )
+                    return None
 
     def read_by_name(self, name, plc_datatype):
         """Read a value from the device."""
@@ -71,28 +133,34 @@ class AdsHub:
                 return self._client.read_by_name(name, plc_datatype)
             except pyads.ADSError as err:
                 _LOGGER.error("Error reading %s: %s", name, err)
+                if not self._reconnect_locked():
+                    return None
+                try:
+                    return self._client.read_by_name(name, plc_datatype)
+                except pyads.ADSError as retry_err:
+                    _LOGGER.error(
+                        "Error reading %s after ADS reconnect: %s", name, retry_err
+                    )
+                    return None
 
     def add_device_notification(self, name, plc_datatype, callback):
         """Add a notification to the ADS devices."""
 
-        attr = pyads.NotificationAttrib(ctypes.sizeof(plc_datatype))
-
         with self._lock:
+            subscription_id = self._next_subscription_id
+            self._next_subscription_id += 1
+            self._notification_subscriptions[subscription_id] = (
+                name,
+                plc_datatype,
+                callback,
+            )
             try:
-                hnotify, huser = self._client.add_device_notification(
-                    name, attr, self._device_notification_callback
+                self._register_notification_locked(
+                    subscription_id, name, plc_datatype, callback
                 )
             except pyads.ADSError as err:
                 _LOGGER.error("Error subscribing to %s: %s", name, err)
-            else:
-                hnotify = int(hnotify)
-                self._notification_items[hnotify] = NotificationItem(
-                    hnotify, huser, name, plc_datatype, callback
-                )
-
-                _LOGGER.debug(
-                    "Added device notification %d for variable %s", hnotify, name
-                )
+                self._reconnect_locked()
 
     def _device_notification_callback(self, notification, name):
         """Handle device notifications."""

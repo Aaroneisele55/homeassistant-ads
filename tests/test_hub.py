@@ -103,6 +103,23 @@ class TestReadWrite:
         result = ads_hub.read_by_name("GVL.x", pyads.PLCTYPE_INT)
         assert result is None
 
+    def test_read_by_name_reconnects_and_retries(self, ads_hub, mock_ads_client):
+        """read_by_name should reconnect and retry once after ADSError."""
+        mock_ads_client.read_by_name.side_effect = [pyads.ADSError(), 42]
+        result = ads_hub.read_by_name("GVL.x", pyads.PLCTYPE_INT)
+        assert result == 42
+        assert mock_ads_client.read_by_name.call_count == 2
+        assert mock_ads_client.close.call_count == 1
+        assert mock_ads_client.open.call_count == 2
+
+    def test_write_by_name_reconnects_and_retries(self, ads_hub, mock_ads_client):
+        """write_by_name should reconnect and retry once after ADSError."""
+        mock_ads_client.write_by_name.side_effect = [pyads.ADSError(), None]
+        ads_hub.write_by_name("GVL.x", 1, pyads.PLCTYPE_INT)
+        assert mock_ads_client.write_by_name.call_count == 2
+        assert mock_ads_client.close.call_count == 1
+        assert mock_ads_client.open.call_count == 2
+
 
 # ---------------------------------------------------------------------------
 # Device notification registration
@@ -128,6 +145,33 @@ class TestAddDeviceNotification:
         ads_hub.add_device_notification(
             "GVL.x", pyads.PLCTYPE_BOOL, MagicMock()
         )  # must not raise
+
+    def test_add_notification_reconnects_after_ads_error(self, ads_hub, mock_ads_client):
+        """add_device_notification should reconnect and restore subscriptions."""
+        cb = MagicMock()
+        mock_ads_client.add_device_notification.side_effect = [
+            pyads.ADSError(),
+            (4, 4),
+        ]
+        ads_hub.add_device_notification("GVL.retry", pyads.PLCTYPE_BOOL, cb)
+
+        assert mock_ads_client.close.call_count == 1
+        assert mock_ads_client.open.call_count == 2
+        assert 4 in ads_hub._notification_items
+        assert ads_hub._notification_items[4].name == "GVL.retry"
+
+    def test_reconnect_restores_existing_notifications(self, ads_hub, mock_ads_client):
+        """Reconnect should resubscribe all existing notification registrations."""
+        cb = MagicMock()
+        ads_hub.add_device_notification("GVL.var", pyads.PLCTYPE_BOOL, cb)
+        mock_ads_client.add_device_notification.return_value = (2, 2)
+        mock_ads_client.read_by_name.side_effect = [pyads.ADSError(), 7]
+
+        result = ads_hub.read_by_name("GVL.counter", pyads.PLCTYPE_INT)
+
+        assert result == 7
+        assert mock_ads_client.add_device_notification.call_count == 2
+        assert 2 in ads_hub._notification_items
 
 
 # ---------------------------------------------------------------------------
